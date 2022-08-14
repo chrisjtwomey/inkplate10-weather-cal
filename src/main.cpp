@@ -5,14 +5,12 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <secrets.h>
 
 #define uS_TO_S_FACTOR 1000000
 #define TIME_TO_SLEEP 5
 
 RTC_DATA_ATTR int bootCount = 0;
-
-const char* ssid = "xxxx";
-const char* password = "xxxx";
 
 // tinys3
 static const uint8_t EPD_BUSY = 2;  // D2 to EPD BUSY
@@ -118,7 +116,7 @@ void setup() {
 
     display.init(115200, true, 2, false);
     WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
     int ConnectTimeout = 30;  // 15 seconds
     Serial.print("WiFi connecting");
     while (WiFi.status() != WL_CONNECTED) {
@@ -132,23 +130,19 @@ void setup() {
         }
     }
     Serial.println();
-    Serial.println("connected");
-
+    Serial.println("connected - ");
     // Print the IP address
-    // Serial.println(WiFi.localIP());
-
-    const char* host = "rpi2.local";
-    const int port = 8080;
-    const char* path = "/calendar";
+    Serial.print(WiFi.localIP());
+    Serial.println();
 
     WiFiClient client;
-    if (!client.connect(host, port)) {
-        Serial.println("Error: connection to " + String(host) + ":" +
-                       String(port) + " failed");
+    if (!client.connect(IMAGE_HOST, IMAGE_HOST_PORT)) {
+        Serial.println("Error: connection to " + String(IMAGE_HOST) + ":" +
+                       String(IMAGE_HOST_PORT) + " failed");
         // sleep();
     }
 
-    showBitmapFrom_HTTP(client, host, port, path, 0, 0, true);
+    showBitmapFrom_HTTP(client, IMAGE_HOST, IMAGE_HOST_PORT, IMAGE_HOST_PATH, 0, 0, true);
 
     client.stop();
 
