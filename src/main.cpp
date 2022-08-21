@@ -3,12 +3,13 @@
 #include <Arduino.h>
 #include <GxEPD2_3C.h>
 #include <HTTPClient.h>
+#include <UMS3.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <secrets.h>
 
-#define uS_TO_S_FACTOR 1000000
-#define TIME_TO_SLEEP 5
+#define uS_TO_S_FACTOR 1000000LL
+#define DAY_SECONDS 86400
 
 RTC_DATA_ATTR int bootCount = 0;
 
@@ -22,20 +23,8 @@ static const uint8_t EPD_MISO =
     37;  // Master-In Slave-Out not used, as no data from display
 static const uint8_t EPD_MOSI = 35;  // MOSI to EPD DIN
 
-// firebeetle32
-// static const uint8_t EPD_BUSY = 25;  // D2 to EPD BUSY
-// static const uint8_t EPD_CS = 5;     // D8 to EPD CS
-// static const uint8_t EPD_RST = 26;   // D3 to EPD RST
-// static const uint8_t EPD_DC = 27;    // D4 to EPD DC
-// static const uint8_t EPD_SCK = 18;   // SCK to EPD CLK
-// static const uint8_t EPD_MISO =
-//     19;  // Master-In Slave-Out not used, as no data from display
-// static const uint8_t EPD_MOSI = 23;  // MOSI to EPD DIN
-
 static const uint16_t bmp_signature = 0x4D42;
-
 static const uint16_t input_buffer_pixels = 800;  // may affect performance
-
 static const uint16_t max_row_width = 800;  // for up to 7.5" display 800x480
 static const uint16_t max_palette_pixels = 256;  // for depth <= 8
 
@@ -62,6 +51,55 @@ void sleep() {
     delay(1000);
     Serial.flush();
     esp_deep_sleep_start();
+}
+
+void setup() {
+    Serial.begin(9600);
+
+    ++bootCount;
+    Serial.println("Boot count: " + String(bootCount));
+    esp_sleep_enable_timer_wakeup(DAY_SECONDS * uS_TO_S_FACTOR);
+    Serial.println("Deep sleeping every " + String(DAY_SECONDS) +
+                   " seconds");
+
+    UMS3 ums3;
+    float bvolt = ums3.getBatteryVoltage();
+    Serial.println(bvolt);
+
+    display.init(115200, true, 2, false);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    int ConnectTimeout = 30;  // 15 seconds
+    Serial.print("WiFi connecting");
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+        if (--ConnectTimeout <= 0) {
+            Serial.println();
+            Serial.println("Error: WiFi connect timeout");
+
+            sleep();
+        }
+    }
+    Serial.println();
+    Serial.println("connected - ");
+    // Print the IP address
+    Serial.print(WiFi.localIP());
+    Serial.println();
+
+    WiFiClient client;
+    if (!client.connect(IMAGE_HOST, IMAGE_HOST_PORT)) {
+        Serial.println("Error: connection to " + String(IMAGE_HOST) + ":" +
+                       String(IMAGE_HOST_PORT) + " failed");
+        sleep();
+    }
+
+    showBitmapFrom_HTTP(client, IMAGE_HOST, IMAGE_HOST_PORT, IMAGE_HOST_PATH, 0,
+                        0, true);
+
+    client.stop();
+
+    sleep();
 }
 
 uint16_t read16(WiFiClient& client) {
@@ -111,46 +149,6 @@ uint32_t read8n(WiFiClient& client, uint8_t* buffer, int32_t bytes) {
     return bytes - remain;
 }
 
-void setup() {
-    Serial.begin(9600);
-
-    display.init(115200, true, 2, false);
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
-    int ConnectTimeout = 30;  // 15 seconds
-    Serial.print("WiFi connecting");
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-        if (--ConnectTimeout <= 0) {
-            Serial.println();
-            Serial.println("Error: WiFi connect timeout");
-
-            // sleep();
-        }
-    }
-    Serial.println();
-    Serial.println("connected - ");
-    // Print the IP address
-    Serial.print(WiFi.localIP());
-    Serial.println();
-
-    WiFiClient client;
-    if (!client.connect(IMAGE_HOST, IMAGE_HOST_PORT)) {
-        Serial.println("Error: connection to " + String(IMAGE_HOST) + ":" +
-                       String(IMAGE_HOST_PORT) + " failed");
-        // sleep();
-    }
-
-    showBitmapFrom_HTTP(client, IMAGE_HOST, IMAGE_HOST_PORT, IMAGE_HOST_PATH, 0, 0, true);
-
-    client.stop();
-
-    // sleep();
-}
-
-void loop() {}
-
 void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                          const char* path, int16_t x, int16_t y,
                          bool with_color) {
@@ -167,7 +165,7 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                    path);
 
     client.print(String("GET ") + path + " HTTP/1.1\r\n" + "Host: " + host +
-                 "\r\n" + "User-Agent: GxEPD2_WiFi_Example\r\n" +
+                 "\r\n" + "User-Agent: tinys3\r\n" +
                  "Connection: close\r\n\r\n");
 
     bool connection_ok = false;
@@ -286,13 +284,15 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
         return;
     }
 
-    if (depth < 8) bitmask >>= depth;
-    // bytes_read += skip(client, 54 - bytes_read); //palette is
-    // always @ 54
+    if (depth < 8) {
+        bitmask >>= depth;
+    }
+
     bytes_read +=
         skip(client,
-             imageOffset - (4 << depth) - bytes_read);  // 54 for regular, diff
-                                                        // for colorsimportant
+             imageOffset - (4 << depth) -
+                 bytes_read);  // 54 for regular, diff for colorsimportant
+
     for (uint16_t pn = 0; pn < (1 << depth); pn++) {
         blue = client.read();
         green = client.read();
@@ -302,17 +302,14 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
         whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80))
                              : ((red + green + blue) > 3 * 0x80);  // whitish
         colored = (red > 0xF0) ||
-                  ((green > 0xF0) && (blue > 0xF0));  // reddish or yellowish?
-        if (0 == pn % 8) {
+                  ((green > 0xF0) && (blue > 0xF0));  // reddi sh or yellowish?
+
+        if (pn % 8 == 0) {
             mono_palette_buffer[pn / 8] = 0;
-        }
-
-        mono_palette_buffer[pn / 8] |= whitish << pn % 8;
-
-        if (0 == pn % 8) {
             color_palette_buffer[pn / 8] = 0;
         }
 
+        mono_palette_buffer[pn / 8] |= whitish << pn % 8;
         color_palette_buffer[pn / 8] |= colored << pn % 8;
     }
 
@@ -409,7 +406,7 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                 case 1:
                 case 4:
                 case 8: {
-                    if (0 == in_bits) {
+                    if (in_bits == 0) {
                         in_byte = input_buffer[in_idx++];
                         in_bits = 8;
                     }
@@ -453,3 +450,5 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
 
     client.stop();
 }
+
+void loop() {}
