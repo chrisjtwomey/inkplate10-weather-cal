@@ -1,26 +1,39 @@
 #define ENABLE_GxEPD2_GFX 0
+#define uS_TO_S_FACTOR 1000000LL
 
 #include <Arduino.h>
 #include <GxEPD2_3C.h>
 #include <HTTPClient.h>
+#include <NTPClient.h>
+#include <TimeLib.h>
 #include <UMS3.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <WiFiUdp.h>
 #include <secrets.h>
 
-#define uS_TO_S_FACTOR 1000000LL
-#define DAY_SECONDS 86400
-
 RTC_DATA_ATTR int bootCount = 0;
+RTC_DATA_ATTR time_t sleepTime = 0;
 
-// tinys3
-static const uint8_t EPD_BUSY = 2;  // D2 to EPD BUSY
-static const uint8_t EPD_CS = 34;   // D8 to EPD CS
-static const uint8_t EPD_RST = 5;   // D3 to EPD RST
-static const uint8_t EPD_DC = 4;    // D4 to EPD DC
-static const uint8_t EPD_SCK = 36;  // SCK to EPD CLK
-static const uint8_t EPD_MISO =
-    37;  // Master-In Slave-Out not used, as no data from display
+const char* IMAGE_HOST = "localhost";
+const int IMAGE_HOST_PORT = 8080;
+const char* IMAGE_HOST_PATH = "/homepage.bmp";
+
+const int UPDATE_HOUR = 8;     // hour to update in 24hour format
+const int UPDATE_MINUTE = 45;  // minute to update
+const int UPDATE_SECOND = 0;   // second to update
+const int GMT_OFFSET = 1;      // timezone eg. GMT+1
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", GMT_OFFSET * 60 * 60,
+                     60000);
+
+// tinys3/pros3
+static const uint8_t EPD_BUSY = 2;   // D2 to EPD BUSY
+static const uint8_t EPD_CS = 34;    // D8 to EPD CS
+static const uint8_t EPD_RST = 5;    // D3 to EPD RST
+static const uint8_t EPD_DC = 4;     // D4 to EPD DC
+static const uint8_t EPD_SCK = 36;   // SCK to EPD CLK
 static const uint8_t EPD_MOSI = 35;  // MOSI to EPD DIN
 
 static const uint16_t bmp_signature = 0x4D42;
@@ -28,26 +41,61 @@ static const uint16_t input_buffer_pixels = 800;  // may affect performance
 static const uint16_t max_row_width = 800;  // for up to 7.5" display 800x480
 static const uint16_t max_palette_pixels = 256;  // for depth <= 8
 
-uint8_t input_buffer[3 * input_buffer_pixels];  // up to depth 24
-uint8_t output_row_mono_buffer[max_row_width /
-                               8];  // buffer for at least one row of b/w bits
-uint8_t output_row_color_buffer[max_row_width / 8];  // buffer for at least one
-                                                     // row of color bits
-uint8_t mono_palette_buffer[max_palette_pixels /
-                            8];  // palette buffer for depth <= 8 b/w
-uint8_t color_palette_buffer[max_palette_pixels /
-                             8];  // palette buffer for depth <= 8 c/w
+GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(
+    GxEPD2_750c_Z08(/*CS=D8*/ EPD_CS, /*DC=D3*/ EPD_DC, /*RST=D4*/ EPD_RST,
+                    /*BUSY=D2*/ EPD_BUSY));  // GDEW075Z08 800x480
+
+// up to depth 24
+uint8_t input_buffer[3 * input_buffer_pixels];
+// buffer for at least one row of b/w bits
+uint8_t output_row_mono_buffer[max_row_width / 8];
+// buffer for at least one row of color bits
+uint8_t output_row_color_buffer[max_row_width / 8];
+// palette buffer for depth <= 8 b/w
+uint8_t mono_palette_buffer[max_palette_pixels / 8];
+// palette buffer for depth <= 8 c/w
+uint8_t color_palette_buffer[max_palette_pixels / 8];
 
 void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                          const char* path, int16_t x, int16_t y,
                          bool with_color = true);
 
-GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(
-    GxEPD2_750c_Z08(/*CS=D8*/ EPD_CS, /*DC=D3*/ EPD_DC, /*RST=D4*/ EPD_RST,
-                    /*BUSY=D2*/ EPD_BUSY));  // GDEW075Z08 800x480
+// Gets the number of seconds until next wake time
+unsigned long get_sleep_seconds() {
+    timeStatus_t status = timeStatus();
+    if (status == timeNotSet || status == timeNeedsSync) {
+        Serial.println("Warning: time not set, setting sleep for 60 seconds");
+        return 60;
+    }
+
+    tmElements_t tm;
+
+    tm.Second = UPDATE_SECOND;
+    tm.Hour = UPDATE_HOUR;
+    tm.Minute = UPDATE_MINUTE;
+    tm.Day = day();
+    tm.Month = month();
+    tm.Year = year() - 1970;
+
+    time_t then = makeTime(tm);
+    time_t nowTime = now();
+
+    // rollover to tomorrow
+    if (nowTime > then) {
+        then += SECS_PER_DAY;
+    }
+
+    return then - nowTime;
+}
 
 void sleep() {
+    unsigned long sleep_seconds = get_sleep_seconds();
+
+    esp_sleep_enable_timer_wakeup(sleep_seconds * uS_TO_S_FACTOR);
+    Serial.println("Deep sleeping for " + String(sleep_seconds) + " seconds");
+
     Serial.println("Going to sleep now");
+    sleepTime = now();
     delay(1000);
     Serial.flush();
     esp_deep_sleep_start();
@@ -55,16 +103,16 @@ void sleep() {
 
 void setup() {
     Serial.begin(9600);
+    delay(10000);
 
     ++bootCount;
     Serial.println("Boot count: " + String(bootCount));
-    esp_sleep_enable_timer_wakeup(DAY_SECONDS * uS_TO_S_FACTOR);
-    Serial.println("Deep sleeping every " + String(DAY_SECONDS) +
-                   " seconds");
 
-    UMS3 ums3;
-    float bvolt = ums3.getBatteryVoltage();
-    Serial.println(bvolt);
+    if (sleepTime > 0) {
+        Serial.printf("Last sleep time: %d:%d:%d %d/%d/%d\n" + hour(sleepTime),
+                      minute(sleepTime), second(sleepTime), day(sleepTime),
+                      month(sleepTime), year(sleepTime));
+    }
 
     display.init(115200, true, 2, false);
     WiFi.mode(WIFI_STA);
@@ -81,11 +129,13 @@ void setup() {
             sleep();
         }
     }
-    Serial.println();
-    Serial.println("connected - ");
     // Print the IP address
-    Serial.print(WiFi.localIP());
-    Serial.println();
+    Serial.printf("%s\n", WiFi.localIP().toString());
+
+    // configure time
+    timeClient.begin();
+    timeClient.update();
+    setTime(timeClient.getEpochTime());
 
     WiFiClient client;
     if (!client.connect(IMAGE_HOST, IMAGE_HOST_PORT)) {
@@ -160,13 +210,16 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
         return;
     }
 
+    UMS3 ums3;
+    float bvolt = ums3.getBatteryVoltage();
+
     Serial.print("requesting URL: ");
     Serial.println(String("http://") + String(host) + ":" + String(port) +
-                   path);
+                   path + "?bvolt=" + String(bvolt));
 
-    client.print(String("GET ") + path + " HTTP/1.1\r\n" + "Host: " + host +
-                 "\r\n" + "User-Agent: tinys3\r\n" +
-                 "Connection: close\r\n\r\n");
+    client.print(String("GET ") + path + "?bvolt=" + String(bvolt) +
+                 " HTTP/1.1\r\n" + "Host: " + host + "\r\n" +
+                 "User-Agent: tinys3\r\n" + "Connection: close\r\n\r\n");
 
     bool connection_ok = false;
     while (client.connected()) {
