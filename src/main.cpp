@@ -1,60 +1,83 @@
-#define ENABLE_GxEPD2_GFX 0
-#define uS_TO_S_FACTOR 1000000LL
-
 #include <Arduino.h>
 #include <GxEPD2_3C.h>
 #include <HTTPClient.h>
 #include <NTPClient.h>
+#include <Syslog.h>
 #include <TimeLib.h>
 #include <UMS3.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
-#include <secrets.h>
+
+#define ENABLE_GxEPD2_GFX 0
+#define uS_TO_S_FACTOR 1000000LL
+#define DEFAULT_SLEEP 60  // if can't determine sleep seconds
+#define WAKE_SECONDS 10   // sleep if we are not in this window
+
+#define DAILY_UPDATE_TIME "08:45:00"  // the time everyday to refresh
+#define GMT_OFFSET 1                  // +X timezone (eg. GMT+1)
+
+#define WIFI_SSID "XXXX"        // replace with your WiFi SSID
+#define WIFI_PASS "XXXX"        // replace with your WiFi password
+#define IMAGE_HOST "loca.host"  // the image host
+#define IMAGE_HOST_PORT 8080
+#define IMAGE_HOST_PATH "/homepage.bmp"
+
+#define NTP_HOST "europe.pool.ntp.org"
+WiFiUDP udpClient;
+NTPClient timeClient(udpClient, NTP_HOST, GMT_OFFSET * 60 * 60, 60000);
+
+#if defined(ARDUINO_PROS3) || defined(ARDUINO_TINYS3)
+// UnexpectedMaker TinyS3 + ProS3
+#define DEVICE_HOSTNAME "ums3"
+#define PIN_BUSY 2   // D2 to EPD BUSY
+#define PIN_CS 34    // D8 to EPD CS
+#define PIN_RST 5    // D3 to EPD RST
+#define PIN_DC 4     // D4 to EPD DC
+#define PIN_SCK 36   // SCK to EPD CLK
+#define PIN_MOSI 35  // MOSI to EPD DIN
+#elif defined(ESP32)
+#define DEVICE_HOSTNAME "esp32"
+// Waveshare driver board
+#define PIN_BUSY 25
+#define PIN_CS 15
+#define PIN_RST 26
+#define PIN_DC 27
+#define PIN_SCK 13
+#define PIN_MOSI 14
+#else
+#define DEVICE_HOSTNAME "unknown"
+#error "No pin mapping for your board, please update pin mapping"
+#endif
+
+#define SYSLOG_HOST IMAGE_HOST  // syslog server same as image host
+#define SYSLOG_HOST_PORT 514
+#define APP_NAME "eink-cal-client"
+Syslog syslog(udpClient, SYSLOG_HOST, SYSLOG_HOST_PORT, DEVICE_HOSTNAME,
+              APP_NAME, LOG_KERN);
+
+GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(
+    GxEPD2_750c_Z08(PIN_CS, PIN_DC, PIN_RST, PIN_BUSY));  // GDEW075Z08 800x480
+
+#define BMP_SIGNATURE 0x4D42
+#define MAX_ROW_WIDTH 800                  // for up to 7.5" display 800x480
+#define INPUT_BUFFER_PIXELS MAX_ROW_WIDTH  // may affect performance
+#define MAX_PALETTE_PIXELS 256             // for depth <= 8
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR time_t sleepTime = 0;
-
-const char* IMAGE_HOST = "localhost";
-const int IMAGE_HOST_PORT = 8080;
-const char* IMAGE_HOST_PATH = "/homepage.bmp";
-
-const int UPDATE_HOUR = 8;     // hour to update in 24hour format
-const int UPDATE_MINUTE = 45;  // minute to update
-const int UPDATE_SECOND = 0;   // second to update
-const int GMT_OFFSET = 1;      // timezone eg. GMT+1
-
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", GMT_OFFSET * 60 * 60,
-                     60000);
-
-// tinys3/pros3
-static const uint8_t EPD_BUSY = 2;   // D2 to EPD BUSY
-static const uint8_t EPD_CS = 34;    // D8 to EPD CS
-static const uint8_t EPD_RST = 5;    // D3 to EPD RST
-static const uint8_t EPD_DC = 4;     // D4 to EPD DC
-static const uint8_t EPD_SCK = 36;   // SCK to EPD CLK
-static const uint8_t EPD_MOSI = 35;  // MOSI to EPD DIN
-
-static const uint16_t bmp_signature = 0x4D42;
-static const uint16_t input_buffer_pixels = 800;  // may affect performance
-static const uint16_t max_row_width = 800;  // for up to 7.5" display 800x480
-static const uint16_t max_palette_pixels = 256;  // for depth <= 8
-
-GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(
-    GxEPD2_750c_Z08(/*CS=D8*/ EPD_CS, /*DC=D3*/ EPD_DC, /*RST=D4*/ EPD_RST,
-                    /*BUSY=D2*/ EPD_BUSY));  // GDEW075Z08 800x480
+RTC_DATA_ATTR unsigned long sleepSecs = 0;
 
 // up to depth 24
-uint8_t input_buffer[3 * input_buffer_pixels];
+uint8_t input_buffer[3 * INPUT_BUFFER_PIXELS];
 // buffer for at least one row of b/w bits
-uint8_t output_row_mono_buffer[max_row_width / 8];
+uint8_t output_row_mono_buffer[MAX_ROW_WIDTH / 8];
 // buffer for at least one row of color bits
-uint8_t output_row_color_buffer[max_row_width / 8];
+uint8_t output_row_color_buffer[MAX_ROW_WIDTH / 8];
 // palette buffer for depth <= 8 b/w
-uint8_t mono_palette_buffer[max_palette_pixels / 8];
+uint8_t mono_palette_buffer[MAX_PALETTE_PIXELS / 8];
 // palette buffer for depth <= 8 c/w
-uint8_t color_palette_buffer[max_palette_pixels / 8];
+uint8_t color_palette_buffer[MAX_PALETTE_PIXELS / 8];
 
 void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                          const char* path, int16_t x, int16_t y,
@@ -64,18 +87,21 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
 unsigned long get_sleep_seconds() {
     timeStatus_t status = timeStatus();
     if (status == timeNotSet || status == timeNeedsSync) {
-        Serial.println("Warning: time not set, setting sleep for 60 seconds");
-        return 60;
+        syslog.logf(LOG_WARNING, "time not set, setting sleep for %d seconds",
+                    DEFAULT_SLEEP);
+        return DEFAULT_SLEEP;
     }
 
     tmElements_t tm;
+    int hr, min, sec;
+    sscanf(DAILY_UPDATE_TIME, "%d:%d:%d", &hr, &min, &sec);
 
-    tm.Second = UPDATE_SECOND;
-    tm.Hour = UPDATE_HOUR;
-    tm.Minute = UPDATE_MINUTE;
+    tm.Hour = hr;
+    tm.Minute = min;
+    tm.Second = sec;
     tm.Day = day();
     tm.Month = month();
-    tm.Year = year() - 1970;
+    tm.Year = CalendarYrToTm(year());
 
     time_t then = makeTime(tm);
     time_t nowTime = now();
@@ -89,12 +115,12 @@ unsigned long get_sleep_seconds() {
 }
 
 void sleep() {
-    unsigned long sleep_seconds = get_sleep_seconds();
+    sleepSecs = get_sleep_seconds();
 
-    esp_sleep_enable_timer_wakeup(sleep_seconds * uS_TO_S_FACTOR);
-    Serial.println("Deep sleeping for " + String(sleep_seconds) + " seconds");
+    esp_sleep_enable_timer_wakeup(sleepSecs * uS_TO_S_FACTOR);
+    syslog.logf(LOG_INFO, "deep sleeping for %d seconds", sleepSecs);
 
-    Serial.println("Going to sleep now");
+    syslog.log(LOG_INFO, "going to sleep now");
     sleepTime = now();
     delay(1000);
     Serial.flush();
@@ -103,44 +129,50 @@ void sleep() {
 
 void setup() {
     Serial.begin(9600);
-    delay(10000);
 
     ++bootCount;
-    Serial.println("Boot count: " + String(bootCount));
-
-    if (sleepTime > 0) {
-        Serial.printf("Last sleep time: %d:%d:%d %d/%d/%d\n" + hour(sleepTime),
-                      minute(sleepTime), second(sleepTime), day(sleepTime),
-                      month(sleepTime), year(sleepTime));
-    }
 
     display.init(115200, true, 2, false);
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
-    int ConnectTimeout = 30;  // 15 seconds
-    Serial.print("WiFi connecting");
+    int connectTimeout = 30;  // 15 seconds
+    syslog.log(LOG_INFO, "WiFi connecting...");
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
-        Serial.print(".");
-        if (--ConnectTimeout <= 0) {
-            Serial.println();
-            Serial.println("Error: WiFi connect timeout");
+        if (--connectTimeout <= 0) {
+            syslog.log(LOG_ERR, "WiFi connect timeout");
 
             sleep();
         }
     }
     // Print the IP address
-    Serial.printf("%s\n", WiFi.localIP().toString());
+    syslog.logf(LOG_INFO, "IP address: %s", WiFi.localIP().toString());
 
     // configure time
     timeClient.begin();
     timeClient.update();
     setTime(timeClient.getEpochTime());
 
+    syslog.logf(LOG_INFO, "boot count: %d", bootCount);
+
+    if (sleepTime > 0) {
+        syslog.logf(LOG_INFO, "last sleep time: %d:%d:%d %d/%d/%d",
+                    hour(sleepTime), minute(sleepTime), second(sleepTime),
+                    day(sleepTime), month(sleepTime), year(sleepTime));
+    }
+
+    int earlySeconds = sleepSecs - WAKE_SECONDS;
+    if (earlySeconds > 0) {
+        syslog.logf(LOG_WARNING,
+                    "woke %d seconds before upload window, returning to sleep",
+                    earlySeconds);
+        sleep();
+    }
+
     WiFiClient client;
     if (!client.connect(IMAGE_HOST, IMAGE_HOST_PORT)) {
-        Serial.println("Error: connection to " + String(IMAGE_HOST) + ":" +
-                       String(IMAGE_HOST_PORT) + " failed");
+        syslog.logf(LOG_ERR, "connection to %s:%d failed", IMAGE_HOST,
+                    IMAGE_HOST_PORT);
         sleep();
     }
 
@@ -206,16 +238,15 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     uint32_t startTime = millis();
 
     if ((x >= display.epd2.WIDTH) || (y >= display.epd2.HEIGHT)) {
-        Serial.println("Error: xy out of bounds");
+        syslog.log(LOG_ERR, "xy out of bounds");
         return;
     }
 
     UMS3 ums3;
     float bvolt = ums3.getBatteryVoltage();
 
-    Serial.print("requesting URL: ");
-    Serial.println(String("http://") + String(host) + ":" + String(port) +
-                   path + "?bvolt=" + String(bvolt));
+    syslog.logf(LOG_INFO, "requesting URL: http://%s:%d%s?bvolt=%f", host, port,
+                path, bvolt);
 
     client.print(String("GET ") + path + "?bvolt=" + String(bvolt) +
                  " HTTP/1.1\r\n" + "Host: " + host + "\r\n" +
@@ -234,7 +265,7 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     }
 
     if (!connection_ok) {
-        Serial.println("Error: non-200 response from host");
+        syslog.log(LOG_ERR, "non-200 response from host");
         return;
     }
 
@@ -245,7 +276,7 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
         currTime = millis();
 
         if (currTime - waitStartTime >= timeout * 1000) {
-            Serial.println("Error: timeout waiting for image bytes");
+            syslog.log(LOG_ERR, "timeout waiting for image bytes");
             return;
         }
         delay(50);
@@ -253,11 +284,9 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
 
     // Parse BMP header
     uint16_t sig = read16(client);
-    if (sig != bmp_signature) {
-        Serial.print("Error: mismatch between bmp signature 0x");
-        Serial.print(bmp_signature, HEX);
-        Serial.print(" and file signature 0x");
-        Serial.print(sig, HEX);
+    if (sig != BMP_SIGNATURE) {
+        syslog.logf(LOG_ERR, "file signature %h not BMP signature %h", sig,
+                    BMP_SIGNATURE);
         return;
     }
 
@@ -273,29 +302,20 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     uint32_t bytes_read = 7 * 4 + 3 * 2;  // read so far
 
     if (planes != 1) {
-        Serial.println("Error: unsupported planes ");
-        Serial.print(planes, HEX);
+        syslog.logf(LOG_ERR, "unsupported planes: %h", planes);
         return;
     }
 
     if ((format != 0) && (format != 3)) {
-        Serial.println("Error: unsupported format ");
-        Serial.print(format, HEX);
+        syslog.logf(LOG_ERR, "unsupported format: %h", format);
         return;
     }
 
-    Serial.print("File size: ");
-    Serial.println(fileSize);
-    Serial.print("Image Offset: ");
-    Serial.println(imageOffset);
-    Serial.print("Header size: ");
-    Serial.println(headerSize);
-    Serial.print("Bit Depth: ");
-    Serial.println(depth);
-    Serial.print("Image size: ");
-    Serial.print(width);
-    Serial.print('x');
-    Serial.println(height);
+    syslog.logf(LOG_INFO, "file size: %d", fileSize);
+    syslog.logf(LOG_INFO, "image Offset: %d", imageOffset);
+    syslog.logf(LOG_INFO, "header size: %d", headerSize);
+    syslog.logf(LOG_INFO, "bit depth: %d", depth);
+    syslog.logf(LOG_INFO, "image size: %dx%d", width, height);
 
     // BMP rows are padded (if needed) to 4-byte boundary
     uint32_t rowSize = (width * depth / 8 + 3) & ~3;
@@ -318,8 +338,9 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
         h = display.epd2.HEIGHT - y;
     }
 
-    if (w > max_row_width) {
-        Serial.println("Error: width greater than max row width");
+    if (w > MAX_ROW_WIDTH) {
+        syslog.logf(LOG_ERR, "width %d greater than max row width %d", width,
+                    MAX_ROW_WIDTH);
         return;
     }
 
@@ -333,7 +354,7 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     }
 
     if (depth > 8) {
-        Serial.println("Error: unsupported depth " + depth);
+        syslog.logf(LOG_ERR, "unsupported depth %d", depth);
         return;
     }
 
@@ -415,9 +436,8 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
             }
 
             if (!connection_ok) {
-                Serial.print("Error: got no more after ");
-                Serial.print(bytes_read);
-                Serial.println(" bytes read!");
+                syslog.logf(LOG_ERR, "got no more after %d bytes read!",
+                            bytes_read);
                 break;
             }
 
@@ -492,14 +512,12 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                            yrow, w, 1);
 
     }  // end line
-    Serial.print("downloaded in ");
-    Serial.print((millis() - startTime) / 1000);
-    Serial.println(" seconds");
+    syslog.logf(LOG_INFO, "downloaded in %d seconds",
+                (millis() - startTime) / 1000);
 
     display.refresh();
 
-    Serial.print("bytes read ");
-    Serial.println(bytes_read);
+    syslog.logf(LOG_INFO, "bytes read: %d", bytes_read);
 
     client.stop();
 }
