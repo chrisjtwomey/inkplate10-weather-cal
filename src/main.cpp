@@ -79,60 +79,28 @@ uint8_t mono_palette_buffer[MAX_PALETTE_PIXELS / 8];
 // palette buffer for depth <= 8 c/w
 uint8_t color_palette_buffer[MAX_PALETTE_PIXELS / 8];
 
+// sleep enables deep sleep for a number of seconds
+void sleep();
+// get_sleep_seconds gets the number of seconds for deep sleep
+unsigned long get_sleep_seconds();
+// read8n reads a 8-bit value from the WiFi client
+uint32_t read8n(WiFiClient& client, uint8_t* buffer, int32_t bytes);
+// read8n reads a 16-bit value from the WiFi client
+uint16_t read16(WiFiClient& client);
+// read8n reads a 32-bit value from the WiFi client
+uint32_t read32(WiFiClient& client);
+// skip reads ahead a number of bytes
+uint32_t skip(WiFiClient& client, int32_t bytes);
+// showBitmapFrom_HTTP sends the bitmap stream to the E-Ink display
 void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                          const char* path, int16_t x, int16_t y,
                          bool with_color = true);
-
-// Gets the number of seconds until next wake time
-unsigned long get_sleep_seconds() {
-    timeStatus_t status = timeStatus();
-    if (status == timeNotSet || status == timeNeedsSync) {
-        syslog.logf(LOG_WARNING, "time not set, setting sleep for %d seconds",
-                    DEFAULT_SLEEP);
-        return DEFAULT_SLEEP;
-    }
-
-    tmElements_t tm;
-    int hr, min, sec;
-    sscanf(DAILY_UPDATE_TIME, "%d:%d:%d", &hr, &min, &sec);
-
-    tm.Hour = hr;
-    tm.Minute = min;
-    tm.Second = sec;
-    tm.Day = day();
-    tm.Month = month();
-    tm.Year = CalendarYrToTm(year());
-
-    time_t then = makeTime(tm);
-    time_t nowTime = now();
-
-    // rollover to tomorrow
-    if (nowTime > then) {
-        then += SECS_PER_DAY;
-    }
-
-    return then - nowTime;
-}
-
-void sleep() {
-    sleepSecs = get_sleep_seconds();
-
-    esp_sleep_enable_timer_wakeup(sleepSecs * uS_TO_S_FACTOR);
-    syslog.logf(LOG_INFO, "deep sleeping for %d seconds", sleepSecs);
-
-    syslog.log(LOG_INFO, "going to sleep now");
-    sleepTime = now();
-    delay(1000);
-    Serial.flush();
-    esp_deep_sleep_start();
-}
 
 void setup() {
     Serial.begin(9600);
 
     ++bootCount;
 
-    display.init(115200, true, 2, false);
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     int connectTimeout = 30;  // 15 seconds
@@ -141,7 +109,6 @@ void setup() {
         delay(500);
         if (--connectTimeout <= 0) {
             syslog.log(LOG_ERR, "WiFi connect timeout");
-
             sleep();
         }
     }
@@ -184,53 +151,8 @@ void setup() {
     sleep();
 }
 
-uint16_t read16(WiFiClient& client) {
-    // BMP data is stored little-endian, same as Arduino.
-    uint16_t result;
-    ((uint8_t*)&result)[0] = client.read();  // LSB
-    ((uint8_t*)&result)[1] = client.read();  // MSB
-    return result;
-}
-
-uint32_t read32(WiFiClient& client) {
-    // BMP data is stored little-endian, same as Arduino.
-    uint32_t result;
-    ((uint8_t*)&result)[0] = client.read();  // LSB
-    ((uint8_t*)&result)[1] = client.read();
-    ((uint8_t*)&result)[2] = client.read();
-    ((uint8_t*)&result)[3] = client.read();  // MSB
-    return result;
-}
-
-uint32_t skip(WiFiClient& client, int32_t bytes) {
-    int32_t remain = bytes;
-    uint32_t start = millis();
-    while ((client.connected() || client.available()) && (remain > 0)) {
-        if (client.available()) {
-            int16_t v = client.read();
-            remain--;
-        } else
-            delay(1);
-        if (millis() - start > 2000) break;  // don't hang forever
-    }
-    return bytes - remain;
-}
-
-uint32_t read8n(WiFiClient& client, uint8_t* buffer, int32_t bytes) {
-    int32_t remain = bytes;
-    uint32_t start = millis();
-    while ((client.connected() || client.available()) && (remain > 0)) {
-        if (client.available()) {
-            int16_t v = client.read();
-            *buffer++ = uint8_t(v);
-            remain--;
-        } else
-            delay(1);
-        if (millis() - start > 2000) break;  // don't hang forever
-    }
-    return bytes - remain;
-}
-
+// showBitmapFrom_HTTP sends the bitmap stream to the E-Ink display from the
+// WiFi client connection
 void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                          const char* path, int16_t x, int16_t y,
                          bool with_color) {
@@ -520,6 +442,108 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     syslog.logf(LOG_INFO, "bytes read: %d", bytes_read);
 
     client.stop();
+}
+
+// sleep enables deep sleep for a number of seconds
+void sleep() {
+    sleepSecs = get_sleep_seconds();
+
+    esp_err_t err = esp_sleep_enable_timer_wakeup(sleepSecs * uS_TO_S_FACTOR);
+    if (err == ESP_ERR_INVALID_ARG) {
+        syslog.logf(LOG_WARNING, "overflow or invalid range for sleep %lu",
+                    sleepSecs * uS_TO_S_FACTOR);
+        syslog.logf(LOG_WARNING, "using default sleep %d seconds",
+                    DEFAULT_SLEEP);
+        esp_sleep_enable_timer_wakeup(DEFAULT_SLEEP * uS_TO_S_FACTOR);
+    }
+    syslog.logf(LOG_INFO, "deep sleeping now for %d seconds", sleepSecs);
+
+    sleepTime = now();
+    delay(1000);
+    Serial.flush();
+    esp_deep_sleep_start();
+}
+
+// get_sleep_seconds gets the number of seconds for deep sleep
+unsigned long get_sleep_seconds() {
+    timeStatus_t status = timeStatus();
+    if (status == timeNotSet || status == timeNeedsSync) {
+        syslog.logf(LOG_WARNING, "time not set, setting sleep for %d seconds",
+                    DEFAULT_SLEEP);
+        return DEFAULT_SLEEP;
+    }
+
+    tmElements_t tm;
+    int hr, min, sec;
+    sscanf(DAILY_UPDATE_TIME, "%d:%d:%d", &hr, &min, &sec);
+
+    tm.Hour = hr;
+    tm.Minute = min;
+    tm.Second = sec;
+    tm.Day = day();
+    tm.Month = month();
+    tm.Year = CalendarYrToTm(year());
+
+    time_t then = makeTime(tm);
+    time_t nowTime = now();
+
+    // rollover to tomorrow
+    if (nowTime > then) {
+        then += SECS_PER_DAY;
+    }
+
+    return then - nowTime;
+}
+
+// read8n reads a 8-bit value from the WiFi client
+uint32_t read8n(WiFiClient& client, uint8_t* buffer, int32_t bytes) {
+    int32_t remain = bytes;
+    uint32_t start = millis();
+    while ((client.connected() || client.available()) && (remain > 0)) {
+        if (client.available()) {
+            int16_t v = client.read();
+            *buffer++ = uint8_t(v);
+            remain--;
+        } else
+            delay(1);
+        if (millis() - start > 2000) break;  // don't hang forever
+    }
+    return bytes - remain;
+}
+
+// read16 reads a 16-bit value from the WiFi client
+uint16_t read16(WiFiClient& client) {
+    // BMP data is stored little-endian, same as Arduino.
+    uint16_t result;
+    ((uint8_t*)&result)[0] = client.read();  // LSB
+    ((uint8_t*)&result)[1] = client.read();  // MSB
+    return result;
+}
+
+// read32 reads a 32-bit value from the WiFi client
+uint32_t read32(WiFiClient& client) {
+    // BMP data is stored little-endian, same as Arduino.
+    uint32_t result;
+    ((uint8_t*)&result)[0] = client.read();  // LSB
+    ((uint8_t*)&result)[1] = client.read();
+    ((uint8_t*)&result)[2] = client.read();
+    ((uint8_t*)&result)[3] = client.read();  // MSB
+    return result;
+}
+
+// skip reads ahead a number of bytes
+uint32_t skip(WiFiClient& client, int32_t bytes) {
+    int32_t remain = bytes;
+    uint32_t start = millis();
+    while ((client.connected() || client.available()) && (remain > 0)) {
+        if (client.available()) {
+            int16_t v = client.read();
+            remain--;
+        } else
+            delay(1);
+        if (millis() - start > 2000) break;  // don't hang forever
+    }
+    return bytes - remain;
 }
 
 void loop() {}
