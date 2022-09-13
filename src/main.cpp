@@ -11,7 +11,7 @@
 
 #define ENABLE_GxEPD2_GFX 0
 #define uS_TO_S_FACTOR 1000000LL
-#define SYNC_SLEEP_SECS 60 * 60 * 6  // 6 hour sync interval
+#define MAX_SLEEP_SECS 60 * 60 * 24  // 24 hours
 #define DEFAULT_SLEEP_SECS 60        // if can't determine sleep seconds
 #define MAX_ATTEMPTS 3  // num attempts to connect, download, and draw image
 #define SLEEP_IF_EARLY true  // sleep instead of attempt if woke early
@@ -543,8 +543,8 @@ time_t get_wake_time() {
     time_t nowTime = now();
     unsigned long seconds = dlTime - nowTime;
 
-    if (seconds >= SYNC_SLEEP_SECS) {
-        seconds = SYNC_SLEEP_SECS;
+    if (seconds >= MAX_SLEEP_SECS) {
+        seconds = MAX_SLEEP_SECS;
     }
 
     return nowTime + seconds;
