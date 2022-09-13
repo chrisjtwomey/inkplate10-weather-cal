@@ -501,10 +501,11 @@ void sleep() {
         syslog.logf(LOG_WARNING, "WARNING: using default sleep %d seconds",
                     DEFAULT_SLEEP_SECS);
         sleepSecs = DEFAULT_SLEEP_SECS;
+    } else {
+        // set the seconds to sleep for
+        sleepSecs = wakeTime - now();
     }
 
-    // set the seconds to sleep for
-    sleepSecs = wakeTime - now();
     syslog.logf(LOG_DEBUG,
                 "DEBUG: setting deep sleep timer wakeup for %d seconds",
                 sleepSecs);
