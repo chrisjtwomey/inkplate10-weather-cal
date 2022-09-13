@@ -11,15 +11,17 @@
 
 #define ENABLE_GxEPD2_GFX 0
 #define uS_TO_S_FACTOR 1000000LL
-#define DEFAULT_SLEEP 60  // if can't determine sleep seconds
-#define WAKE_SECONDS 10   // sleep if we are not in this window
+#define SYNC_SLEEP_SECS 60 * 60 * 6  // 6 hour sync interval
+#define DEFAULT_SLEEP_SECS 60        // if can't determine sleep seconds
+#define MAX_ATTEMPTS 3  // num attempts to connect, download, and draw image
+#define SLEEP_IF_EARLY true  // sleep instead of attempt if woke early
 
-#define DAILY_UPDATE_TIME "08:45:00"  // the time everyday to refresh
-#define GMT_OFFSET 1                  // +X timezone (eg. GMT+1)
+#define DAILY_WAKE_TIME "08:45:00"  // the time everyday to refresh
+#define GMT_OFFSET 1                // +X timezone (eg. GMT+1)
 
-#define WIFI_SSID "XXXX"        // replace with your WiFi SSID
-#define WIFI_PASS "XXXX"        // replace with your WiFi password
-#define IMAGE_HOST "loca.host"  // the image host
+#define WIFI_SSID "XXXX"         // replace with your WiFi SSID
+#define WIFI_PASS "XXXX"         // replace with your WiFi password
+#define IMAGE_HOST "local.host"  // the image host
 #define IMAGE_HOST_PORT 8080
 #define IMAGE_HOST_PATH "/homepage.bmp"
 
@@ -66,6 +68,8 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR time_t sleepTime = 0;
+RTC_DATA_ATTR time_t wakeTime = 0;
+RTC_DATA_ATTR time_t dlTime = 0;
 RTC_DATA_ATTR unsigned long sleepSecs = 0;
 
 // up to depth 24
@@ -81,8 +85,10 @@ uint8_t color_palette_buffer[MAX_PALETTE_PIXELS / 8];
 
 // sleep enables deep sleep for a number of seconds
 void sleep();
-// get_sleep_seconds gets the number of seconds for deep sleep
-unsigned long get_sleep_seconds();
+// get_wake_time returns a time object representing the wake time
+time_t get_wake_time();
+// get_download_time returns a time object representing the download time
+time_t get_download_time();
 // read8n reads a 8-bit value from the WiFi client
 uint32_t read8n(WiFiClient& client, uint8_t* buffer, int32_t bytes);
 // read8n reads a 16-bit value from the WiFi client
@@ -92,87 +98,130 @@ uint32_t read32(WiFiClient& client);
 // skip reads ahead a number of bytes
 uint32_t skip(WiFiClient& client, int32_t bytes);
 // showBitmapFrom_HTTP sends the bitmap stream to the E-Ink display
-void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
+bool showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                          const char* path, int16_t x, int16_t y,
                          bool with_color = true);
 
 void setup() {
-    Serial.begin(9600);
-
     ++bootCount;
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     int connectTimeout = 30;  // 15 seconds
-    syslog.log(LOG_INFO, "WiFi connecting...");
+    syslog.log(LOG_INFO, "INFO: WiFi connecting...");
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         if (--connectTimeout <= 0) {
-            syslog.log(LOG_ERR, "WiFi connect timeout");
+            syslog.log(LOG_ERR, "ERROR: WiFi connect timeout");
             sleep();
         }
     }
     // Print the IP address
-    syslog.logf(LOG_INFO, "IP address: %s", WiFi.localIP().toString());
+    syslog.logf(LOG_INFO, "INFO: IP address: %s", WiFi.localIP().toString());
 
     // configure time
     timeClient.begin();
     timeClient.update();
     setTime(timeClient.getEpochTime());
 
-    syslog.logf(LOG_INFO, "boot count: %d", bootCount);
-
+    syslog.logf(LOG_INFO, "INFO: boot count: %d", bootCount);
     if (sleepTime > 0) {
-        syslog.logf(LOG_INFO, "last sleep time: %d:%d:%d %d/%d/%d",
+        syslog.logf(LOG_INFO,
+                    "INFO: last sleep time:    %02d:%02d:%02d %02d/%02d/%d",
                     hour(sleepTime), minute(sleepTime), second(sleepTime),
                     day(sleepTime), month(sleepTime), year(sleepTime));
     }
 
-    int earlySeconds = sleepSecs - WAKE_SECONDS;
-    if (earlySeconds > 0) {
+    if (wakeTime > 0) {
+        syslog.logf(LOG_INFO,
+                    "INFO: expected wake time: %02d:%02d:%02d %02d/%02d/%d",
+                    hour(wakeTime), minute(wakeTime), second(wakeTime),
+                    day(wakeTime), month(wakeTime), year(wakeTime));
+    }
+
+    dlTime = get_download_time();
+    syslog.logf(LOG_INFO,
+                "INFO: download time:      %02d:%02d:%02d %02d/%02d/%d",
+                hour(dlTime), minute(dlTime), second(dlTime), day(dlTime),
+                month(dlTime), year(dlTime));
+
+    if (DEVICE_HOSTNAME == "ums3") {
+        UMS3 ums3;
+        ums3.begin();
+        float bvolt = ums3.getBatteryVoltage();
+        syslog.logf(LOG_INFO, "INFO: battery voltage: %sv", String(bvolt, 2));
+
+        if (ums3.getVbusPresent()) {
+            const char* bstat = (bvolt < 4.0) ? "charging" : "charged";
+            syslog.logf(LOG_INFO, "INFO: USB power present - battery %s",
+                        bstat);
+        } else {
+            if (bvolt < 3.1) {
+                syslog.log(
+                    LOG_ALERT,
+                    "ALERT: battery near empty! - sleeping until charged");
+                sleep();
+            } else if (bvolt < 3.3) {
+                syslog.log(LOG_WARNING, "WARNING: battery low, charge soon!");
+            } else {
+                const char* bstat = (bvolt < 3.6) ? "below" : "above";
+                syslog.logf(LOG_INFO, "INFO: battery approx %s 50%% capacity",
+                            bstat);
+            }
+        }
+    }
+
+    int earlySeconds = dlTime - now();
+    if (earlySeconds > 0 && SLEEP_IF_EARLY) {
         syslog.logf(LOG_WARNING,
-                    "woke %d seconds before upload window, returning to sleep",
+                    "WARNING: woke %d seconds before download window, "
+                    "returning to sleep",
                     earlySeconds);
         sleep();
     }
 
+    bool ok;
+    int attempts = -1;
     WiFiClient client;
-    if (!client.connect(IMAGE_HOST, IMAGE_HOST_PORT)) {
-        syslog.logf(LOG_ERR, "connection to %s:%d failed", IMAGE_HOST,
-                    IMAGE_HOST_PORT);
-        sleep();
+
+    while (!ok && ++attempts < MAX_ATTEMPTS) {
+        if (attempts > 0) {
+            delay(5000);
+        }
+
+        if (!client.connect(IMAGE_HOST, IMAGE_HOST_PORT)) {
+            syslog.logf(LOG_ERR, "ERROR: connection to %s:%d failed",
+                        IMAGE_HOST, IMAGE_HOST_PORT);
+            continue;
+        }
+
+        ok = showBitmapFrom_HTTP(client, IMAGE_HOST, IMAGE_HOST_PORT,
+                                 IMAGE_HOST_PATH, 0, 0, true);
     }
 
-    showBitmapFrom_HTTP(client, IMAGE_HOST, IMAGE_HOST_PORT, IMAGE_HOST_PATH, 0,
-                        0, true);
-
     client.stop();
-
     sleep();
 }
 
 // showBitmapFrom_HTTP sends the bitmap stream to the E-Ink display from the
 // WiFi client connection
-void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
+bool showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                          const char* path, int16_t x, int16_t y,
                          bool with_color) {
     bool flip = true;  // bitmap is stored bottom-to-top
     uint32_t startTime = millis();
 
     if ((x >= display.epd2.WIDTH) || (y >= display.epd2.HEIGHT)) {
-        syslog.log(LOG_ERR, "xy out of bounds");
-        return;
+        syslog.log(LOG_ERR, "ERROR: xy out of bounds");
+        return false;
     }
 
-    UMS3 ums3;
-    float bvolt = ums3.getBatteryVoltage();
+    syslog.logf(LOG_INFO, "INFO: requesting URL: http://%s:%d%s", host, port,
+                path);
 
-    syslog.logf(LOG_INFO, "requesting URL: http://%s:%d%s?bvolt=%f", host, port,
-                path, bvolt);
-
-    client.print(String("GET ") + path + "?bvolt=" + String(bvolt) +
-                 " HTTP/1.1\r\n" + "Host: " + host + "\r\n" +
-                 "User-Agent: tinys3\r\n" + "Connection: close\r\n\r\n");
+    client.print(String("GET ") + path + " HTTP/1.1\r\n" + "Host: " + host +
+                 "\r\n" + "User-Agent: tinys3\r\n" +
+                 "Connection: close\r\n\r\n");
 
     bool connection_ok = false;
     while (client.connected()) {
@@ -187,8 +236,8 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     }
 
     if (!connection_ok) {
-        syslog.log(LOG_ERR, "non-200 response from host");
-        return;
+        syslog.log(LOG_ERR, "ERROR: non-200 response from host");
+        return false;
     }
 
     uint32_t waitStartTime = millis();
@@ -198,8 +247,8 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
         currTime = millis();
 
         if (currTime - waitStartTime >= timeout * 1000) {
-            syslog.log(LOG_ERR, "timeout waiting for image bytes");
-            return;
+            syslog.log(LOG_ERR, "ERROR: timeout waiting for image bytes");
+            return false;
         }
         delay(50);
     }
@@ -207,9 +256,9 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     // Parse BMP header
     uint16_t sig = read16(client);
     if (sig != BMP_SIGNATURE) {
-        syslog.logf(LOG_ERR, "file signature %h not BMP signature %h", sig,
-                    BMP_SIGNATURE);
-        return;
+        syslog.logf(LOG_ERR, "ERROR: file signature %h not BMP signature %h",
+                    sig, BMP_SIGNATURE);
+        return false;
     }
 
     uint32_t fileSize = read32(client);
@@ -224,20 +273,20 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     uint32_t bytes_read = 7 * 4 + 3 * 2;  // read so far
 
     if (planes != 1) {
-        syslog.logf(LOG_ERR, "unsupported planes: %h", planes);
-        return;
+        syslog.logf(LOG_ERR, "ERROR: unsupported planes: %h", planes);
+        return false;
     }
 
     if ((format != 0) && (format != 3)) {
-        syslog.logf(LOG_ERR, "unsupported format: %h", format);
-        return;
+        syslog.logf(LOG_ERR, "ERROR: unsupported format: %h", format);
+        return false;
     }
 
-    syslog.logf(LOG_INFO, "file size: %d", fileSize);
-    syslog.logf(LOG_INFO, "image Offset: %d", imageOffset);
-    syslog.logf(LOG_INFO, "header size: %d", headerSize);
-    syslog.logf(LOG_INFO, "bit depth: %d", depth);
-    syslog.logf(LOG_INFO, "image size: %dx%d", width, height);
+    syslog.logf(LOG_INFO, "INFO: file size: %d", fileSize);
+    syslog.logf(LOG_INFO, "INFO: image Offset: %d", imageOffset);
+    syslog.logf(LOG_INFO, "INFO: header size: %d", headerSize);
+    syslog.logf(LOG_INFO, "INFO: bit depth: %d", depth);
+    syslog.logf(LOG_INFO, "INFO: image size: %dx%d", width, height);
 
     // BMP rows are padded (if needed) to 4-byte boundary
     uint32_t rowSize = (width * depth / 8 + 3) & ~3;
@@ -261,9 +310,9 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     }
 
     if (w > MAX_ROW_WIDTH) {
-        syslog.logf(LOG_ERR, "width %d greater than max row width %d", width,
-                    MAX_ROW_WIDTH);
-        return;
+        syslog.logf(LOG_ERR, "ERROR: width %d greater than max row width %d",
+                    width, MAX_ROW_WIDTH);
+        return false;
     }
 
     uint8_t bitmask = 0xFF;
@@ -276,8 +325,8 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
     }
 
     if (depth > 8) {
-        syslog.logf(LOG_ERR, "unsupported depth %d", depth);
-        return;
+        syslog.logf(LOG_ERR, "ERROR: unsupported depth %d", depth);
+        return false;
     }
 
     if (depth < 8) {
@@ -358,7 +407,7 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
             }
 
             if (!connection_ok) {
-                syslog.logf(LOG_ERR, "got no more after %d bytes read!",
+                syslog.logf(LOG_ERR, "ERROR: got no more after %d bytes read!",
                             bytes_read);
                 break;
             }
@@ -434,48 +483,82 @@ void showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
                            yrow, w, 1);
 
     }  // end line
-    syslog.logf(LOG_INFO, "downloaded in %d seconds",
+    syslog.logf(LOG_INFO, "INFO: downloaded in %d seconds",
                 (millis() - startTime) / 1000);
 
     display.refresh();
 
-    syslog.logf(LOG_INFO, "bytes read: %d", bytes_read);
+    syslog.logf(LOG_INFO, "INFO: bytes read: %d", bytes_read);
 
-    client.stop();
+    return true;
 }
 
 // sleep enables deep sleep for a number of seconds
 void sleep() {
-    sleepSecs = get_sleep_seconds();
+    wakeTime = get_wake_time();
+
+    if (wakeTime == (time_t)(-1)) {
+        syslog.logf(LOG_WARNING, "WARNING: using default sleep %d seconds",
+                    DEFAULT_SLEEP_SECS);
+        sleepSecs = DEFAULT_SLEEP_SECS;
+    }
+
+    // set the seconds to sleep for
+    sleepSecs = wakeTime - now();
+    syslog.logf(LOG_DEBUG,
+                "DEBUG: setting deep sleep timer wakeup for %d seconds",
+                sleepSecs);
 
     esp_err_t err = esp_sleep_enable_timer_wakeup(sleepSecs * uS_TO_S_FACTOR);
     if (err == ESP_ERR_INVALID_ARG) {
-        syslog.logf(LOG_WARNING, "overflow or invalid range for sleep %lu",
+        syslog.logf(LOG_WARNING,
+                    "WARNING: overflow or invalid range for sleep %lu",
                     sleepSecs * uS_TO_S_FACTOR);
-        syslog.logf(LOG_WARNING, "using default sleep %d seconds",
-                    DEFAULT_SLEEP);
-        esp_sleep_enable_timer_wakeup(DEFAULT_SLEEP * uS_TO_S_FACTOR);
+        syslog.logf(LOG_WARNING, "WARNING: using default sleep %d seconds",
+                    DEFAULT_SLEEP_SECS);
+        esp_sleep_enable_timer_wakeup(DEFAULT_SLEEP_SECS * uS_TO_S_FACTOR);
     }
-    syslog.logf(LOG_INFO, "deep sleeping now for %d seconds", sleepSecs);
+    syslog.logf(LOG_ALERT,
+                "ALERT: deep sleeping until %02d:%02d:%02d %02d/%02d/%d",
+                hour(wakeTime), minute(wakeTime), second(wakeTime),
+                day(wakeTime), month(wakeTime), year(wakeTime));
 
-    sleepTime = now();
     delay(1000);
+    sleepTime = now();
     Serial.flush();
     esp_deep_sleep_start();
 }
 
-// get_sleep_seconds gets the number of seconds for deep sleep
-unsigned long get_sleep_seconds() {
+// get_wake_time returns a time object representing the wake time
+time_t get_wake_time() {
     timeStatus_t status = timeStatus();
     if (status == timeNotSet || status == timeNeedsSync) {
-        syslog.logf(LOG_WARNING, "time not set, setting sleep for %d seconds",
-                    DEFAULT_SLEEP);
-        return DEFAULT_SLEEP;
+        syslog.log(LOG_ERR, "ERROR: time not set - can't determine wake time");
+        return (time_t)(-1);
+    }
+
+    time_t nowTime = now();
+    unsigned long seconds = dlTime - nowTime;
+
+    if (seconds >= SYNC_SLEEP_SECS) {
+        seconds = SYNC_SLEEP_SECS;
+    }
+
+    return nowTime + seconds;
+}
+
+// get_download_time returns a time object representing the download time
+time_t get_download_time() {
+    timeStatus_t status = timeStatus();
+    if (status == timeNotSet || status == timeNeedsSync) {
+        syslog.log(LOG_ERR,
+                   "ERROR: time not set - can't determine download time");
+        return (time_t)(-1);
     }
 
     tmElements_t tm;
     int hr, min, sec;
-    sscanf(DAILY_UPDATE_TIME, "%d:%d:%d", &hr, &min, &sec);
+    sscanf(DAILY_WAKE_TIME, "%d:%d:%d", &hr, &min, &sec);
 
     tm.Hour = hr;
     tm.Minute = min;
@@ -484,15 +567,15 @@ unsigned long get_sleep_seconds() {
     tm.Month = month();
     tm.Year = CalendarYrToTm(year());
 
-    time_t then = makeTime(tm);
+    time_t dlTime = makeTime(tm);
     time_t nowTime = now();
 
     // rollover to tomorrow
-    if (nowTime > then) {
-        then += SECS_PER_DAY;
+    if (nowTime > dlTime) {
+        dlTime += SECS_PER_DAY;
     }
 
-    return then - nowTime;
+    return dlTime;
 }
 
 // read8n reads a 8-bit value from the WiFi client
