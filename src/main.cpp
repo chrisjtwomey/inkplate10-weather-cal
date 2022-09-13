@@ -338,6 +338,8 @@ bool showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
              imageOffset - (4 << depth) -
                  bytes_read);  // 54 for regular, diff for colorsimportant
 
+    display.init(115200, true, 2, false);
+
     for (uint16_t pn = 0; pn < (1 << depth); pn++) {
         blue = client.read();
         green = client.read();
