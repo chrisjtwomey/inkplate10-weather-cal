@@ -11,13 +11,15 @@
 
 #define ENABLE_GxEPD2_GFX 0
 #define uS_TO_S_FACTOR 1000000LL
-#define MAX_SLEEP_SECS 60 * 60 * 24  // 24 hours
-#define DEFAULT_SLEEP_SECS 60        // if can't determine sleep seconds
-#define MAX_ATTEMPTS 3  // num attempts to connect, download, and draw image
-#define SLEEP_IF_EARLY true  // sleep instead of attempt if woke early
 
-#define DAILY_WAKE_TIME "08:45:00"  // the time everyday to refresh
-#define GMT_OFFSET 1                // +X timezone (eg. GMT+1)
+#define DAILY_WAKE_TIME "08:45:00"   // the time everyday to refresh
+#define GMT_OFFSET 1                 // +X timezone (eg. GMT+1)
+#define MAX_DL_WINDOW_SECS 600       // 10 minutes
+#define MAX_SLEEP_SECS 60 * 60 * 24  // 24 hours
+#define ACCOUNT_FOR_DRIFT false  // add in recorded time drift to sleep seconds
+#define DEFAULT_SLEEP_SECS 60    // if can't determine sleep seconds
+#define MAX_ATTEMPTS 3  // num attempts to connect, download, and draw image
+#define SLEEP_IF_EARLY false  // sleep instead of try to dl if early
 
 #define WIFI_SSID "XXXX"         // replace with your WiFi SSID
 #define WIFI_PASS "XXXX"         // replace with your WiFi password
@@ -67,9 +69,11 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(
 #define MAX_PALETTE_PIXELS 256             // for depth <= 8
 
 RTC_DATA_ATTR int bootCount = 0;
-RTC_DATA_ATTR time_t sleepTime = 0;
-RTC_DATA_ATTR time_t wakeTime = 0;
-RTC_DATA_ATTR time_t dlTime = 0;
+RTC_DATA_ATTR time_t lastBootTime = 0;
+RTC_DATA_ATTR time_t lastSleepTime = 0;
+RTC_DATA_ATTR time_t targetWakeTime = 0;
+RTC_DATA_ATTR time_t targetDlTime = 0;
+RTC_DATA_ATTR unsigned long driftSecs = 0;
 RTC_DATA_ATTR unsigned long sleepSecs = 0;
 
 // up to depth 24
@@ -124,26 +128,48 @@ void setup() {
     timeClient.update();
     setTime(timeClient.getEpochTime());
 
+    time_t bootTime = now();
+
     syslog.logf(LOG_INFO, "INFO: boot count: %d", bootCount);
-    if (sleepTime > 0) {
-        syslog.logf(LOG_INFO,
-                    "INFO: last sleep time:    %02d:%02d:%02d %02d/%02d/%d",
-                    hour(sleepTime), minute(sleepTime), second(sleepTime),
-                    day(sleepTime), month(sleepTime), year(sleepTime));
+    syslog.logf(LOG_INFO,
+                "INFO: boot time:          %02d:%02d:%02d %02d/%02d/%d",
+                hour(bootTime), minute(bootTime), second(bootTime),
+                day(bootTime), month(bootTime), year(bootTime));
+
+    if (lastBootTime > 0) {
+        syslog.logf(
+            LOG_INFO, "INFO: last boot time:    %02d:%02d:%02d %02d/%02d/%d",
+            hour(lastBootTime), minute(lastBootTime), second(lastBootTime),
+            day(lastBootTime), month(lastBootTime), year(lastBootTime));
+    }
+    lastBootTime = bootTime;
+
+    if (lastSleepTime > 0) {
+        syslog.logf(
+            LOG_INFO, "INFO: last sleep time:    %02d:%02d:%02d %02d/%02d/%d",
+            hour(lastSleepTime), minute(lastSleepTime), second(lastSleepTime),
+            day(lastSleepTime), month(lastSleepTime), year(lastSleepTime));
     }
 
-    if (wakeTime > 0) {
+    if (targetWakeTime > 0) {
         syslog.logf(LOG_INFO,
                     "INFO: expected wake time: %02d:%02d:%02d %02d/%02d/%d",
-                    hour(wakeTime), minute(wakeTime), second(wakeTime),
-                    day(wakeTime), month(wakeTime), year(wakeTime));
+                    hour(targetWakeTime), minute(targetWakeTime),
+                    second(targetWakeTime), day(targetWakeTime),
+                    month(targetWakeTime), year(targetWakeTime));
+
+        driftSecs = targetWakeTime - bootTime;
     }
 
-    dlTime = get_download_time();
+    if (driftSecs > 0) {
+        syslog.logf(LOG_INFO, "INFO: time drift: %d seconds", driftSecs);
+    }
+
+    targetDlTime = get_download_time();
     syslog.logf(LOG_INFO,
                 "INFO: download time:      %02d:%02d:%02d %02d/%02d/%d",
-                hour(dlTime), minute(dlTime), second(dlTime), day(dlTime),
-                month(dlTime), year(dlTime));
+                hour(targetDlTime), minute(targetDlTime), second(targetDlTime),
+                day(targetDlTime), month(targetDlTime), year(targetDlTime));
 
     if (DEVICE_HOSTNAME == "ums3") {
         UMS3 ums3;
@@ -171,12 +197,11 @@ void setup() {
         }
     }
 
-    int earlySeconds = dlTime - now();
-    if (earlySeconds > 0 && SLEEP_IF_EARLY) {
-        syslog.logf(LOG_WARNING,
-                    "WARNING: woke %d seconds before download window, "
-                    "returning to sleep",
-                    earlySeconds);
+    if (SLEEP_IF_EARLY && (bootTime < targetDlTime ||
+                           bootTime > targetDlTime + MAX_DL_WINDOW_SECS)) {
+        syslog.log(
+            LOG_WARNING,
+            "WARNING: woke outside download window - returning to sleep");
         sleep();
     }
 
@@ -497,20 +522,25 @@ bool showBitmapFrom_HTTP(WiFiClient client, const char* host, const int port,
 
 // sleep enables deep sleep for a number of seconds
 void sleep() {
-    wakeTime = get_wake_time();
+    targetWakeTime = get_wake_time();
 
-    if (wakeTime == (time_t)(-1)) {
+    if (targetWakeTime == (time_t)(-1)) {
         syslog.logf(LOG_WARNING, "WARNING: using default sleep %d seconds",
                     DEFAULT_SLEEP_SECS);
         sleepSecs = DEFAULT_SLEEP_SECS;
     } else {
         // set the seconds to sleep for
-        sleepSecs = wakeTime - now();
+        sleepSecs = targetWakeTime - now();
     }
 
     syslog.logf(LOG_DEBUG,
                 "DEBUG: setting deep sleep timer wakeup for %d seconds",
                 sleepSecs);
+
+    if (ACCOUNT_FOR_DRIFT && driftSecs > 0) {
+        sleepSecs += driftSecs;
+        syslog.logf(LOG_DEBUG, "adding %d seconds of drift to wake time");
+    }
 
     esp_err_t err = esp_sleep_enable_timer_wakeup(sleepSecs * uS_TO_S_FACTOR);
     if (err == ESP_ERR_INVALID_ARG) {
@@ -521,13 +551,14 @@ void sleep() {
                     DEFAULT_SLEEP_SECS);
         esp_sleep_enable_timer_wakeup(DEFAULT_SLEEP_SECS * uS_TO_S_FACTOR);
     }
-    syslog.logf(LOG_ALERT,
-                "ALERT: deep sleeping until %02d:%02d:%02d %02d/%02d/%d",
-                hour(wakeTime), minute(wakeTime), second(wakeTime),
-                day(wakeTime), month(wakeTime), year(wakeTime));
+
+    syslog.logf(
+        LOG_ALERT, "ALERT: deep sleeping until %02d:%02d:%02d %02d/%02d/%d",
+        hour(targetWakeTime), minute(targetWakeTime), second(targetWakeTime),
+        day(targetWakeTime), month(targetWakeTime), year(targetWakeTime));
 
     delay(1000);
-    sleepTime = now();
+    lastSleepTime = now();
     Serial.flush();
     esp_deep_sleep_start();
 }
@@ -541,8 +572,9 @@ time_t get_wake_time() {
     }
 
     time_t nowTime = now();
-    unsigned long seconds = dlTime - nowTime;
+    unsigned long seconds = targetDlTime - nowTime;
 
+    // cap at max
     if (seconds >= MAX_SLEEP_SECS) {
         seconds = MAX_SLEEP_SECS;
     }
@@ -570,15 +602,15 @@ time_t get_download_time() {
     tm.Month = month();
     tm.Year = CalendarYrToTm(year());
 
-    time_t dlTime = makeTime(tm);
+    time_t targetDlTime = makeTime(tm);
     time_t nowTime = now();
 
     // rollover to tomorrow
-    if (nowTime > dlTime) {
-        dlTime += SECS_PER_DAY;
+    if (nowTime > targetDlTime) {
+        targetDlTime += SECS_PER_DAY;
     }
 
-    return dlTime;
+    return targetDlTime;
 }
 
 // read8n reads a 8-bit value from the WiFi client
