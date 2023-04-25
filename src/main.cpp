@@ -1,21 +1,19 @@
-#define LOG_LEVEL LOG_DEBUG
-#include "config.h"
+#include <ArduinoJson.h>
+#include <ArduinoYaml.h>
+#include <SdFat.h>
+#include <StreamUtils.h>
 
-RTC_DATA_ATTR int bootCount = 0;
-RTC_DATA_ATTR time_t lastBootTime = 0;
-RTC_DATA_ATTR time_t lastSleepTime = 0;
-RTC_DATA_ATTR time_t targetWakeTime = 0;
-RTC_DATA_ATTR unsigned long driftSecs = 0;
+#include "lib.h"
 
 void setup() {
     ++bootCount;
     Serial.begin(115200);
-    // Init inkplate board
-    display.begin();
-    // Set display to portait mode
-    display.setRotation(1);
+    // Init inkplate board.
+    board.begin();
+    // Set board to portait mode.
+    board.setRotation(1);
 
-    time_t bootTime = display.rtcGetEpoch();
+    time_t bootTime = board.rtcGetEpoch();
     logf(LOG_INFO, "boot count: %d", bootCount);
     logf(LOG_INFO, "boot time: %s", fmtTime(bootTime));
 
@@ -23,7 +21,7 @@ void setup() {
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_EXT0:
             logf(LOG_INFO, "wakeup caused by external signal using RTC_IO.");
-            display.rtcClearAlarmFlag();
+            board.rtcClearAlarmFlag();
             break;
         case ESP_SLEEP_WAKEUP_EXT1:
             logf(LOG_INFO, "wakeup caused by external signal using RTC_CNTL.");
@@ -42,65 +40,95 @@ void setup() {
             break;
     }
 
-    // Init storage
-    if (!display.sdCardInit()) {
-        const char* errMsg = "SD card error";
+    // Init err state.
+    esp_err_t err = ESP_OK;
+
+    // Init storage.
+    if (board.sdCardInit()) {
+        // If previous image exists, load into board buffer.
+        err = displayImage(CALENDAR_RW_PATH);
+        if (err != ESP_OK) {
+            log(LOG_WARNING, "load previous calendar error");
+        }
+    } else {
+        const char* errMsg = "SD card init failure";
         log(LOG_ERROR, errMsg);
-        displayError(errMsg);
-        sleep();
-    }
-    // If previous image exists, load into display buffer
-    if (!display.drawImage(IMAGE_HOST_PATH, 0, 0, false, true)) {
-        log(LOG_WARNING, "load previous calendar error");
+        displayMessage(errMsg);
+        sleep(CONFIG_DEFAULT_CALENDAR_DAILY_REFRESH_TIME);
     }
 
-    // Get battery voltages before connecting to WiFi
-    float bvoltCal = getCalibratedBatteryVoltage();
-    // Get inkplate's calculation for reference
-    float bvolt = display.readBattery();
-
-    // Connect to WiFi
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
-    logf(LOG_INFO, "connecting to WiFi SSID %s...", WIFI_SSID);
-
-    // Retry until success or give up
-    int attempts = 0;
-    while (attempts++ <= MAX_RETRIES && WiFi.status() != WL_CONNECTED) {
-        delay(1000);
+    // Attempt to get config yaml file.
+    File file = sd.open(CONFIG_FILE_PATH, FILE_READ);
+    if (!file) {
+        const char* errMsg = "Failed to open config file";
+        logf(LOG_ERROR, errMsg);
+        displayMessage(errMsg);
+        sleep(CONFIG_DEFAULT_CALENDAR_DAILY_REFRESH_TIME);
     }
 
-    // If give up, display error to display
-    if (WiFi.status() != WL_CONNECTED) {
-        const char* errMsg = "WiFi connect timeout";
+    // Attempt to parse yaml file.
+    StaticJsonDocument<768> doc;
+    ReadBufferingStream bufferedFile(file, 64);
+    DeserializationError dse = deserializeYml(doc, bufferedFile);
+    if (dse) {
+        const char* errMsg = "Failed to load config from file";
+        logf(LOG_ERROR, "failed to deserialize YAML: %s", dse.c_str());
+        displayMessage(errMsg);
+        sleep(CONFIG_DEFAULT_CALENDAR_DAILY_REFRESH_TIME);
+    }
+    file.close();
+
+    // Assign config values.
+    JsonObject calendarCfg = doc["calendar"];
+    const char* calendarUrl = calendarCfg["url"];
+    const char* calendarDailyRefreshTime = calendarCfg["daily_refresh_time"];
+    int calendarRetries = calendarCfg["retries"];
+
+    // Wifi config.
+    JsonObject wifiCfg = doc["wifi"];
+    const char* wifiSSID = wifiCfg["ssid"];
+    const char* wifiPass = wifiCfg["pass"];
+    int wifiRetries = wifiCfg["retries"];
+
+    // NTP config.
+    const char* ntpHost = doc["ntp"]["host"];
+    int ntpGMTOffset = doc["ntp"]["gmt_offset"];
+
+    // Remote logging config.
+    JsonObject mqttLoggerCfg = doc["mqtt_logger"];
+    bool mqttLoggerEnabled = mqttLoggerCfg["enabled"];
+    const char* mqttLoggerBroker = mqttLoggerCfg["broker"];
+    int mqttLoggerPort = mqttLoggerCfg["port"];
+    const char* mqttLoggerClientID = mqttLoggerCfg["clientId"];
+    const char* mqttLoggerTopic = mqttLoggerCfg["topic"];
+    int mqttLoggerRetries = mqttLoggerCfg["retries"];
+
+    // Attempt to connect to WiFi.
+    err = configureWiFi(wifiSSID, wifiPass, wifiRetries);
+    if (err == ESP_ERR_TIMEOUT) {
+        const char* errMsg = "wifi connect timeout";
         log(LOG_ERROR, errMsg);
-        displayError(errMsg);
-        sleep();
+        displayMessage(errMsg);
+        sleep(calendarDailyRefreshTime);
     }
-    // Print the IP address
-    logf(LOG_INFO, "IP address: %s", WiFi.localIP().toString());
 
-    // Set up remote logging with mqtt broker
-    logf(LOG_INFO, "configuring remote logging...");
-    mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
-    attempts = 0;
-    while (!mqttClient.connect(MQTT_CLIENT_ID)) {
-        if (attempts++ >= MAX_RETRIES) {
+    if (mqttLoggerEnabled) {
+        // Attempt to connect to MQTT broker for remote logging.
+        err = configureMQTT(mqttLoggerBroker, mqttLoggerPort, mqttLoggerTopic,
+                            mqttLoggerClientID, mqttLoggerRetries);
+        if (err == ESP_ERR_TIMEOUT) {
             log(LOG_WARNING,
                 "failed to connect remote logging, fallback to serial");
-            break;
         }
-        logf(LOG_WARNING, "mqtt connection failed, rc=%d", mqttClient.state());
-        delay(250);
     }
 
-    // Get time from NTP server
-    timeClient.begin();
-    timeClient.update();
-    // Sync RTC with NTP time
-    display.rtcSetEpoch(timeClient.getEpochTime());
-    logf(LOG_DEBUG, "RTC synced to %s", fmtTime(display.rtcGetEpoch()));
+    // Attempt to synchronize real-time clock with network time.
+    err = configureTime(ntpHost, ntpGMTOffset);
+    if (err != ESP_OK) {
+        log(LOG_WARNING, "failed to synchronize RTC with network time");
+    }
 
+    // Print some information about sleep and wake times.
     if (lastBootTime > 0) {
         logf(LOG_INFO, "last boot time: %s", fmtTime(lastBootTime));
     }
@@ -119,6 +147,12 @@ void setup() {
         logf(LOG_INFO, "time drift: %d seconds", driftSecs);
     }
 
+    // Read battery voltage.
+    // TODO: might be worth investigating whether this readings are affected
+    // when connected to WiFi.
+    float bvoltCal = getCalibratedBatteryVoltage();
+    // Get inkplate's battery calculation for reference.
+    float bvolt = board.readBattery();
     logf(LOG_INFO, "battery voltage: %sv", String(bvoltCal, 2));
     logf(LOG_DEBUG, "reference inkplate battery voltage: %sv",
          String(bvolt, 2));
@@ -129,8 +163,9 @@ void setup() {
     } else if (bvolt > 0.0) {
         if (bvolt < 3.1) {
             log(LOG_NOTICE, "battery near empty! - sleeping until charged");
-            displayError("Battery empty, please charge!");
-            sleep();
+            displayMessage("Battery empty, please charge!");
+            // Sleep instead of proceeding when battery is too low.
+            sleep(calendarDailyRefreshTime);
         } else if (bvolt < 3.3) {
             log(LOG_WARNING, "battery low, charge soon!");
         } else {
@@ -141,130 +176,41 @@ void setup() {
         log(LOG_WARNING, "problem detecting battery voltage");
     }
 
-    // Format url
-    char url[256];
-    sprintf(url, "http://%s:%d%s", IMAGE_HOST, IMAGE_HOST_PORT,
-            IMAGE_HOST_PATH);
-
-    downloadImage(url, IMAGE_HOST_PATH);
-    displayImage(IMAGE_HOST_PATH);
-    sleep();
-}
-
-time_t getWakeTime() {
-    if (!display.rtcIsSet()) {
-        log(LOG_WARNING, "cannot determine wake time: RTC not set");
-        return display.rtcGetEpoch() + FALLBACK_SLEEP_SECONDS;
-    }
-
-    tmElements_t tm;
-    int hr, min, sec;
-    sscanf(DAILY_WAKE_TIME, "%d:%d:%d", &hr, &min, &sec);
-
-    tm.Hour = hr;
-    tm.Minute = min;
-    tm.Second = sec;
-    tm.Day = display.rtcGetDay();
-    tm.Month = display.rtcGetMonth();
-    tm.Year = CalendarYrToTm(display.rtcGetYear());
-
-    time_t targetTime = makeTime(tm);
-    time_t nowTime = display.rtcGetEpoch();
-
-    // Rollover to tomorrow
-    if (nowTime > targetTime) {
-        targetTime += SECS_PER_DAY;
-    }
-
-    return targetTime;
-}
-
-void sleep() {
-    targetWakeTime = getWakeTime();
-
-    log(LOG_NOTICE, "deep sleep initiated");
-    logf(LOG_DEBUG, "RTC time now is %s", fmtTime(display.rtcGetEpoch()));
-    logf(LOG_DEBUG, "setting deep sleep RTC wakeup on pin %d", GPIO_NUM_39);
-
-    display.rtcSetAlarmEpoch(targetWakeTime, RTC_ALARM_MATCH_DHHMMSS);
-    esp_sleep_enable_ext0_wakeup(GPIO_NUM_39, 0);
-
-    logf(LOG_INFO, "waking at %s", fmtTime(targetWakeTime));
-    log(LOG_NOTICE, "deep sleeping in 5 seconds");
-    delay(5000);
-
-    WiFi.mode(WIFI_OFF);
-    lastSleepTime = display.rtcGetEpoch();
-    esp_deep_sleep_start();
-}
-
-void downloadImage(const char* url, const char* filePath) {
-    logf(LOG_INFO, "downloading image at URL %s", url);
-
-    // Guestimate file size for PNG image @ 1200x825
-    int32_t len = E_INK_WIDTH * E_INK_HEIGHT * 4 + 100;
-    // Download file from URL
-    uint8_t* buf = display.downloadFile(url, &len);
-    if (!buf) {
-        const char* errMsg = "image download error";
-        log(LOG_ERROR, errMsg);
-        displayError(errMsg);
-        sleep();
-    }
-
-    logf(LOG_INFO, "writing image data to path %s", filePath);
-    SdFat sd = display.getSdFat();
-
-    // Write image buffer to SD card
-    if (sd.exists(filePath)) {
-        sd.remove(filePath);
-    }
-
-    File sdfile = sd.open(filePath, FILE_WRITE);
-    if (!sdfile) {
-        const char* errMsg = "file write error";
-        log(LOG_ERROR, errMsg);
-        displayError(errMsg);
-        sleep();
-    }
-
-    sdfile.write(buf, len);
-    sdfile.close();
-}
-
-void displayImage(const char* filePath) {
-    logf(LOG_INFO, "drawing image from path: %s", filePath);
-
-    bool ok = false;
+    // Reset err state.
+    err = ESP_FAIL;
     int attempts = 0;
-    while (!ok && ++attempts <= MAX_RETRIES) {
-        logf(LOG_DEBUG, "draw attempt #%d", attempts);
+    do {
+        logf(LOG_DEBUG, "calendar refresh attempt #%d", attempts + 1);
 
-        if (attempts > 1) {
-            delay(5000);
+        err = downloadFile(calendarUrl, CALENDAR_IMAGE_SIZE, CALENDAR_RW_PATH);
+        if (err == ESP_OK) {
+            err = displayImage(CALENDAR_RW_PATH);
         }
+    } while (err != ESP_OK && ++attempts <= calendarRetries);
 
-        display.clearDisplay();
-        if (!display.drawImage(filePath, 0, 0, false, true)) {
-            log(LOG_ERROR, "image draw error");
-            continue;
+    // If we were not successfully, print the error msg to the inkplate display.
+    if (err != ESP_OK) {
+        const char* errMsg;
+        if (err == ESP_ERR_EDRAW) {
+            errMsg = "image draw error";
+            log(LOG_ERROR, errMsg);
+            displayMessage(errMsg);
+        } else if (err == ESP_ERR_EDL) {
+            errMsg = "file download error";
+            log(LOG_ERROR, errMsg);
+            displayMessage(errMsg);
+        } else if (err == ESP_ERR_EFILEW) {
+            errMsg = "sd card file write error";
+            log(LOG_ERROR, errMsg);
+        } else {
+            errMsg = "unexpected error downloading file";
+            log(LOG_ERROR, errMsg);
+            displayMessage(errMsg);
         }
-        display.display();
-
-        logf(LOG_INFO, "draw attempt #%d success", attempts);
-        ok = true;
     }
 
-    if (!ok) displayError("Calendar refresh failed");
-}
-
-void displayError(const char* msg) {
-    display.setTextSize(4);
-    display.setTextColor(1, 0);
-    display.setTextWrap(true);
-    display.setCursor(0, 0);
-    display.print(msg);
-    display.display();
+    // Deep sleep until next refresh time
+    sleep(calendarDailyRefreshTime);
 }
 
 void loop() {}
