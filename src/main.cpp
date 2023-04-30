@@ -13,9 +13,13 @@ void setup() {
     // Set board to portait mode.
     board.setRotation(1);
 
+    // Set clock from RTC
+    board.rtcGetRtcData();
     time_t bootTime = board.rtcGetEpoch();
+    setTime(bootTime);
+    
     logf(LOG_INFO, "boot count: %d", bootCount);
-    logf(LOG_INFO, "boot time: %s", fmtTime(bootTime));
+    logf(LOG_INFO, "boot time: %s", dateTime(bootTime, RFC3339).c_str());
 
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
@@ -92,7 +96,7 @@ void setup() {
 
     // NTP config.
     const char* ntpHost = doc["ntp"]["host"];
-    int ntpGMTOffset = doc["ntp"]["gmt_offset"];
+    const char* ntpTimezone = doc["ntp"]["timezone"];
 
     // Remote logging config.
     JsonObject mqttLoggerCfg = doc["mqtt_logger"];
@@ -122,24 +126,25 @@ void setup() {
         }
     }
 
-    // Attempt to synchronize real-time clock with network time.
-    err = configureTime(ntpHost, ntpGMTOffset);
+    // Attempt to synchronize clocks with network time.
+    err = configureTime(ntpHost, ntpTimezone);
     if (err != ESP_OK) {
         log(LOG_WARNING, "failed to synchronize RTC with network time");
     }
 
     // Print some information about sleep and wake times.
     if (lastBootTime > 0) {
-        logf(LOG_INFO, "last boot time: %s", fmtTime(lastBootTime));
+        logf(LOG_INFO, "last boot time: %s", dateTime(lastBootTime, RFC3339).c_str());
     }
     lastBootTime = bootTime;
 
     if (lastSleepTime > 0) {
-        logf(LOG_INFO, "last sleep time: %s", fmtTime(lastSleepTime));
+        logf(LOG_INFO, "last sleep time: %s", dateTime(lastSleepTime, RFC3339).c_str());
     }
 
     if (targetWakeTime > 0) {
-        logf(LOG_INFO, "expected wake time: %s", fmtTime(targetWakeTime));
+        logf(LOG_INFO, "expected wake time: %s",
+             dateTime(targetWakeTime, RFC3339).c_str());
         driftSecs = targetWakeTime - bootTime;
     }
 
@@ -178,35 +183,28 @@ void setup() {
 
     // Reset err state.
     err = ESP_FAIL;
+    const char* errMsg;
     int attempts = 0;
     do {
         logf(LOG_DEBUG, "calendar refresh attempt #%d", attempts + 1);
 
         err = downloadFile(calendarUrl, CALENDAR_IMAGE_SIZE, CALENDAR_RW_PATH);
-        if (err == ESP_OK) {
-            err = displayImage(CALENDAR_RW_PATH);
+        if (err != ESP_OK) {
+            errMsg = "file download error";
+            log(LOG_ERROR, errMsg);
+            continue;
+        }
+
+        err = displayImage(CALENDAR_RW_PATH);
+        if (err != ESP_OK) {
+            errMsg = "image display error";
+            log(LOG_ERROR, errMsg);
         }
     } while (err != ESP_OK && ++attempts <= calendarRetries);
 
     // If we were not successfully, print the error msg to the inkplate display.
     if (err != ESP_OK) {
-        const char* errMsg;
-        if (err == ESP_ERR_EDRAW) {
-            errMsg = "image draw error";
-            log(LOG_ERROR, errMsg);
-            displayMessage(errMsg);
-        } else if (err == ESP_ERR_EDL) {
-            errMsg = "file download error";
-            log(LOG_ERROR, errMsg);
-            displayMessage(errMsg);
-        } else if (err == ESP_ERR_EFILEW) {
-            errMsg = "sd card file write error";
-            log(LOG_ERROR, errMsg);
-        } else {
-            errMsg = "unexpected error downloading file";
-            log(LOG_ERROR, errMsg);
-            displayMessage(errMsg);
-        }
+        displayMessage(errMsg);
     }
 
     // Deep sleep until next refresh time

@@ -17,6 +17,8 @@ PubSubClient client(espClient);
 MqttLogger mqttLogger(client, "", MqttLoggerMode::SerialOnly);
 // inkplate10 board driver
 Inkplate board(INKPLATE_3BIT);
+// timezone store
+Timezone myTz;
 
 /**
   Connect to a WiFi network in Station Mode.
@@ -174,7 +176,6 @@ esp_err_t configureMQTT(const char* broker, int port, const char* topic,
 */
 const char* msgPrefix(uint16_t pri) {
     char* priority;
-    board.rtcGetRtcData();
 
     switch (pri) {
         case LOG_CRIT:
@@ -201,7 +202,7 @@ const char* msgPrefix(uint16_t pri) {
     }
 
     char* prefix = new char[35];
-    sprintf(prefix, "%s - %s - ", fmtTime(board.rtcGetEpoch()), priority);
+    sprintf(prefix, "%s - %s - ", myTz.dateTime(RFC3339).c_str(), priority);
     return prefix;
 }
 
@@ -302,37 +303,28 @@ bool isVbusPresent() {
   Connect to an NTP server and synchronize the on-board real-time clock.
 
   @param host the hostname of the NTP server (eg. pool.ntp.org).
-  @param gmtOffset the timezone offset from GMT in hours. (eg. 0 == GMT, 1 ==
-  GMT+1). error.
+  @param timezoneName the name of the timezone in Olson format (eg.
+  Europe/Dublin)
   @returns the esp_err_t code:
   - ESP_OK if successful.
   - ESP_ERR_ENTP if updating the NTP client fails.
 */
-esp_err_t configureTime(const char* host, int gmtOffset) {
-    WiFiUDP udp;
-    NTPClient ntp(udp, host, gmtOffset * 60 * 60, 60000);
-    ntp.begin();
-    if (!ntp.update() || !ntp.isTimeSet()) {
+esp_err_t configureTime(const char* ntpHost, const char* timezoneName) {
+    setServer(ntpHost);
+
+    if (!waitForSync()) {
         return ESP_ERR_ENTP;
     }
+    myTz.setLocation(F(timezoneName));
 
+    updateNTP();
     // Sync RTC with NTP time
-    board.rtcSetEpoch(ntp.getEpochTime());
-    logf(LOG_DEBUG, "RTC synced to %s", fmtTime(board.rtcGetEpoch()));
+    // time_t nowTime = now();
+    time_t nowTime = myTz.now();
+    board.rtcSetEpoch(nowTime);
+    logf(LOG_DEBUG, "RTC synced to %s", dateTime(nowTime, RFC3339).c_str());
 
     return ESP_OK;
-}
-
-/**
-  Format epoch time.
-
-  @returns a representation of epoch time in the format DD:MM:YY HH:MM:SS
-*/
-const char* fmtTime(uint32_t t) {
-    char* tstr = new char[20];
-    sprintf(tstr, "%02d-%02d-%04d %02d:%02d:%02d", day(t), month(t), year(t),
-            hour(t), minute(t), second(t));
-    return tstr;
 }
 
 /**
@@ -357,12 +349,13 @@ time_t getWakeTime(const char* refreshTime) {
     tm.Hour = hr;
     tm.Minute = min;
     tm.Second = sec;
-    tm.Day = board.rtcGetDay();
-    tm.Month = board.rtcGetMonth();
-    tm.Year = CalendarYrToTm(board.rtcGetYear());
+
+    tm.Day = myTz.day();
+    tm.Month = myTz.month();
+    tm.Year = CalendarYrToTm(myTz.year());
 
     time_t targetTime = makeTime(tm);
-    time_t nowTime = board.rtcGetEpoch();
+    time_t nowTime = myTz.now();
 
     // Rollover to tomorrow
     if (nowTime > targetTime) {
@@ -382,17 +375,18 @@ void sleep(const char* refreshTime) {
     targetWakeTime = getWakeTime(refreshTime);
 
     log(LOG_NOTICE, "deep sleep initiated");
-    logf(LOG_DEBUG, "RTC time now is %s", fmtTime(board.rtcGetEpoch()));
+    time_t rtcTime = board.rtcGetEpoch();
+    logf(LOG_DEBUG, "RTC time now is %s", dateTime(rtcTime, RFC3339).c_str());
     logf(LOG_DEBUG, "setting deep sleep RTC wakeup on pin %d", GPIO_NUM_39);
 
     board.rtcSetAlarmEpoch(targetWakeTime, RTC_ALARM_MATCH_DHHMMSS);
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_39, 0);
 
-    logf(LOG_INFO, "waking at %s", fmtTime(targetWakeTime));
+    logf(LOG_INFO, "waking at %s", dateTime(targetWakeTime, RFC3339).c_str());
     log(LOG_NOTICE, "deep sleeping in 5 seconds");
     delay(5000);
 
     WiFi.mode(WIFI_OFF);
-    lastSleepTime = board.rtcGetEpoch();
+    lastSleepTime = rtcTime;
     esp_deep_sleep_start();
 }

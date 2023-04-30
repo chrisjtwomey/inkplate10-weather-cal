@@ -1,16 +1,16 @@
 #ifndef LIB_H
 #define LIB_H
 #include <Inkplate.h>
-#include <NTPClient.h>
-#include <TimeLib.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <driver/rtc_io.h>
 #include <esp_adc_cal.h>
+#include <ezTime.h>
 #include <rom/rtc.h>
-#include <time.h>
 
 #include "MqttLogger.h"
+
+#define  CalendarYrToTm(Y)   ((Y) - 1970)
 
 // The number of seconds to sleep if RTC not configured correctly.
 #define DEEP_SLEEP_FALLBACK_SECONDS 120
@@ -59,6 +59,8 @@ extern RTC_DATA_ATTR unsigned long driftSecs;
 extern MqttLogger mqttLogger;
 // The Inkplate board driver instance.
 extern Inkplate board;
+// The timezone object to store localised time
+extern Timezone myTz;
 
 /**
   Connect to a WiFi network in Station Mode.
@@ -110,14 +112,14 @@ void displayMessage(const char* msg);
 /**
   Connect to an NTP server and synchronize the on-board real-time clock.
 
-  @param host the hostname of the NTP server (eg. pool.ntp.org).
-  @param gmtOffset the timezone offset from GMT in hours. (eg. 0 == GMT, 1 ==
-  GMT+1). error.
+  @param ntpHost the hostname of the NTP server (eg. pool.ntp.org).
+  @param timezoneName the name of the timezone in Olson format (eg.
+  Europe/Dublin)
   @returns the esp_err_t code:
   - ESP_OK if successful.
   - ESP_ERR_ENTP if updating the NTP client fails.
 */
-esp_err_t configureTime(const char* host, int gmtOffset);
+esp_err_t configureTime(const char* ntpHost, const char* timezoneName);
 
 /**
   Get the next scheduled time to wake from deep sleep.
@@ -137,13 +139,6 @@ time_t getWakeTime(const char* refreshTime);
   09:00:00). error.
 */
 void sleep(const char* refreshTime);
-
-/**
-  Format epoch time.
-
-  @returns a representation of epoch time in the format DD:MM:YY HH:MM:SS
-*/
-const char* fmtTime(uint32_t t);
 
 /**
   Connect to a MQTT broker for remote logging.

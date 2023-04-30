@@ -23,7 +23,7 @@ wifi:
   retries: 6
 ntp:
   host: pool.ntp.org
-  gmt_offset: 1
+  timezone: Europe/Dublin
 mqtt_logger:
   enabled: false
   broker: localhost
