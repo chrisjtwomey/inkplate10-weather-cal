@@ -7,15 +7,17 @@
 #include <esp_adc_cal.h>
 #include <ezTime.h>
 #include <rom/rtc.h>
+#include <cppQueue.h>
 
 #include "MqttLogger.h"
 
 #define  CalendarYrToTm(Y)   ((Y) - 1970)
-
 // The number of seconds to sleep if RTC not configured correctly.
 #define DEEP_SLEEP_FALLBACK_SECONDS 120
 // set the log verbosity
 #define LOG_LEVEL LOG_DEBUG
+// log message entry history size
+#define LOG_QUEUE_MAX_ENTRIES 10
 // The file path on SD card to load config.
 #define CONFIG_FILE_PATH "/config.yaml"
 // Fallback time to refresh.
@@ -57,6 +59,8 @@ extern RTC_DATA_ATTR time_t targetWakeTime;
 extern RTC_DATA_ATTR unsigned long driftSecs;
 // The remote logging instance.
 extern MqttLogger mqttLogger;
+// The log message queue.
+extern cppQueue logQ;
 // The Inkplate board driver instance.
 extern Inkplate board;
 // The timezone object to store localised time
@@ -179,6 +183,13 @@ void logf(uint16_t pri, const char* fmt, ...);
   @returns the string value of the priority.
 */
 const char* msgPrefix(uint16_t pri);
+
+/**
+  Ensure log queue is populated/emptied based on MQTT connection.
+
+  @param msg the log message
+*/
+void ensureQueue(char* msg);
 
 /**
   Check whether 5v USB power is detected.

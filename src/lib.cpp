@@ -15,6 +15,8 @@ RTC_DATA_ATTR unsigned long driftSecs = 0;
 WiFiClient espClient;
 PubSubClient client(espClient);
 MqttLogger mqttLogger(client, "", MqttLoggerMode::SerialOnly);
+// queue to store messages to publish once mqtt connection is established.
+cppQueue logQ(sizeof(char) * 100, LOG_QUEUE_MAX_ENTRIES, FIFO, true);
 // inkplate10 board driver
 Inkplate board(INKPLATE_3BIT);
 // timezone store
@@ -221,8 +223,7 @@ void log(uint16_t pri, const char* msg) {
     char buf[prefixLen + msgLen + 1];
     strcpy(buf, prefix);
     strcat(buf, msg);
-
-    mqttLogger.println(buf);
+    ensureQueue(buf);
 }
 
 /**
@@ -246,8 +247,32 @@ void logf(uint16_t pri, const char* fmt, ...) {
     size_t size = snprintf(NULL, 0, a, args);
     char b[size + 1];
     vsprintf(b, a, args);
-    mqttLogger.println(b);
+    ensureQueue(b);
     va_end(args);
+}
+
+/**
+  Ensure log queue is populated/emptied based on MQTT connection.
+
+  @param msg the log message.
+*/
+void ensureQueue(char* logMsg) {
+    if (!client.connected()) {
+        // populate log queue while no mqtt connection
+        logQ.push(logMsg);
+    } else {
+        // send queued logs once we are connected.
+        if (logQ.getCount() > 0) {
+            mqttLogger.setMode(MqttLoggerMode::MqttOnly);
+            while (!logQ.isEmpty()) {
+                logQ.pop(logMsg);
+                mqttLogger.println(logMsg);
+            }
+            mqttLogger.setMode(MqttLoggerMode::MqttAndSerial);
+        }
+    }
+    // print/send the current log
+    mqttLogger.println(logMsg);
 }
 
 /**
@@ -310,6 +335,8 @@ bool isVbusPresent() {
   - ESP_ERR_ENTP if updating the NTP client fails.
 */
 esp_err_t configureTime(const char* ntpHost, const char* timezoneName) {
+    log(LOG_INFO, "configuring network time and RTC...");
+
     setServer(ntpHost);
 
     if (!waitForSync()) {
