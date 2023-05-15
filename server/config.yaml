@@ -1,0 +1,23 @@
+---
+server:
+  enabled: true
+  port: 8080
+  aliveSeconds: 60
+  maxServes: 1
+weather:
+  service: accuweather
+  apikey: XXXX
+  num_hourly_forecasts: 6
+  metric: true
+google:
+  apikey: XXXX
+  staticmaps_mapid: XXXX
+location: Dublin
+image:
+  width: 825
+  height: 1200
+mqtt:
+  enabled: false
+  host: localhost
+  port: 1883
+  topic: mqtt/eink-cal-client

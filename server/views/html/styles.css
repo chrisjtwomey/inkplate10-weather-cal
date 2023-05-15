@@ -1,0 +1,194 @@
+@font-face {
+  font-family: "Merienda-Bold";
+  src: url('Merienda-Bold.ttf');
+}
+
+@font-face {
+  font-family: "Merienda-Regular";
+  src: url('Merienda-Regular.ttf');
+}
+
+.text-uppercase {
+  text-transform: uppercase !important;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: "Merienda-Regular";
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  color: #000;
+  background-color: #fff;
+}
+
+.bg-container {
+  width: 100%;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  background-color: white;
+}
+
+.container {
+  width: 95%;
+  padding: 0 !important;
+  margin: 0 auto !important;
+}
+
+h3.numcircle {
+  font-size: 18vw;
+  font-weight: 700;
+  line-height: 24vw;
+  width: 24vw;
+  border-radius: 12vw;
+}
+
+h4.numcircle, #icon-container.numcircle {
+  font-size: 5vw;
+  font-weight: 600;
+  line-height: 10vh;
+  height: 10vh;
+  width: 14vw;
+  border-radius: 7vw;
+}
+
+#icon-container.numcircle img {
+  width: 90%;
+  position: absolute;
+  left:5%;
+  bottom:10%;
+  filter: invert(1);
+}
+
+.numcircle {
+  color: white;
+  background: #000000;
+  margin: 1rem;
+  vertical-align: middle;
+}
+
+#top-banner {
+  height: 20vh;
+}
+
+#top-banner .numcircle, #top-banner #month {
+  float: left;
+}
+
+#top-banner #temp {
+  position: absolute;
+  top: 20vh;
+  right: 2vw;
+}
+
+#top-banner #icon-container {
+  position: absolute;
+  top: 32vh;
+  right: 2vw;
+}
+
+#top-banner #month {
+  margin: auto 0;
+  vertical-align: middle;
+  line-height: 20vh;
+  font-size: 10vw;
+}
+
+#map-container {
+  position: relative;
+  overflow: hidden;
+  height: 400px;
+  z-index: -1;
+}
+
+#map {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.fc-icon-stat {
+  display: flex;
+  align-items: center;
+}
+
+.fc-icon-stat div {
+  margin: 0.5vh 0 !important;
+  padding: 0 !important;
+}
+
+.fc-icon-stat .fc-icon {
+  float: left;
+  width: 35%;
+  padding: 0;
+  margin: 0 auto;
+}
+
+.fc-icon-stat .fc-stat {
+  float: left;
+  width: 55%;
+  font-size: 4.5vw;
+  line-height: 3vh;
+}
+
+.fc-icon-stat .fc-stat p {
+  padding-left: 1vw;
+}
+
+.fc-icon img {
+  width: 100%;
+  text-align: center;
+  margin: auto !important;
+}
+
+#current-weather {
+  overflow: hidden;
+  padding-bottom: 1rem;
+}
+
+#forecast-today-icon {
+  float: left;
+  width: 40%;
+  position: relative;
+}
+
+#forecast-today-icon .fc-icon {
+  float: none;
+  width: 90%;
+}
+
+#forecast-today-icon>div.fc-icon>img {
+  width: 100%;
+  margin: 0 auto !important;
+}
+
+#forecast-today-icon .fc-stat p {
+  margin: 0;
+}
+
+#forecast-today-stat {
+  float: left;
+  width: 60%;
+}
+
+#hourly-forecasts .forecast-hour {
+  text-align: center;
+  font-size: 5vw;
+  font-family: "Merienda-Regular";
+}
+
+.hourly-forecasts-forecast>tr {
+  padding: 0 1vw;
+}
+
+.hourly-forecast-icon {
+  width: 80%;
+  margin: 0 auto !important;
+}

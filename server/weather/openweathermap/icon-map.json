@@ -1,0 +1,19 @@
+
+{
+    "01d": "day/clear.png",
+    "01n": "night/clear.png",
+    "02d": "day/partly-clear.png",
+    "02n": "night/partly-clear.png",
+    "03d": "day/partly-clear.png",
+    "03n": "night/partly-clear.png",
+    "04d": "cloudy.png",
+    "04n": "cloudy.png",
+    "09d": "day/partly-clear-showers.png",
+    "09n": "night/partly-clear-showers.png",
+    "11d": "rainy-thunder.png",
+    "11n": "rainy-thunder.png",
+    "13d": "cloudy-snowy.png",
+    "13n": "cloudy-snowy.png",
+    "50d": "foggy.png",
+    "50n": "foggy.png"
+}
