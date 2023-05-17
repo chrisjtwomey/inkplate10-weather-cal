@@ -9,7 +9,6 @@ Display today's date and weather forecast using an Inkplate 10 that can last for
 - [Bill of Materials](#bill-of-materials)
 - [Setup](#setup)
 - [Firmware](#firmware)
-  - [Building with Arduino IDE](#building-with-arduino-ide)
   - [Building with PlatformIO](#building-with-platformio)
 - [License](#license)
 
@@ -29,7 +28,7 @@ Both a server and client and required. The main workload is in the server will a
 1. Wakes from deep sleep and attempts to connect to WiFi.
 2. Attempts to get current network time and update real-time clock.
 3. (Optional) Attempts to connect a MQTT topic to publish logs. This allows us to see what the ESP32 controller is doing without needing to monitor the serial connection.
-4. Attmept to download the PNG image that the server is hosting.
+4. Attempt to download the PNG image that the server is hosting.
 5. Write the downloaded PNG image to SD card.
 6. Read the PNG image back from SD card and write to the e-ink display.
 7. Returns to deep sleep until the next scheduled wake time (eg. 24 hours).
