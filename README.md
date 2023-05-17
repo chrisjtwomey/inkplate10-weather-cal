@@ -1,6 +1,6 @@
 # Inkplate 10 Weather Calendar
 
-Display today's date and weather forecast using an Inkplate 10 that can last for months on a single battery.
+Display today's date, weather forecast and a stylised map of your city using an Inkplate 10 that can last for months on a single battery.
 
 <img src=https://user-images.githubusercontent.com/5797356/223708925-131d7ecc-5e95-453a-b687-427b75d959dd.jpg width=800 />
 
