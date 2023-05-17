@@ -58,7 +58,7 @@ You can now use the map style to create a map ID that we can reference in our se
 1. In Google Maps Platform → `Map management` → `Create Map ID`.
 2. Give the Map ID a name and make sure `map type` is set to `static`, then click `Save`.
 3. Update the `associated map style` to the name of the map style created in the steps earlier.
-4. Copy the `Map ID` and update the `google.staticmaps_id` field in `config.yaml.
+4. Copy the `Map ID` and update the `google.staticmaps_id` field in `config.yaml`.
 
 ### Server setup
 
