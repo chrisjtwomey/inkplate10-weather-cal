@@ -16,7 +16,7 @@ Display today's date, weather forecast and a stylised map of your city using an 
 
 Back in late 2021, I came across a project called [MagInkCal](https://github.com/speedyg0nz/MagInkCal) that uses a Raspberry Pi Zero WH to retrieve events from a Google calendar and display them on an e-ink display. One of the drawbacks of the project however is power consumption and I thought of porting the project over to use the ESP32 platform instead. What resulted eventually was this project, though I decided to focus on more of a weather station aspect rather than Google calendar events.
 
-If you are looking for a solution for Raspberry Pi, I recommend taking a look at the author's other project [MagInkDash](https://github.com/speedyg0nz/MagInkDash).
+I recommend taking a look at the author's other project [MagInkDash](https://github.com/speedyg0nz/MagInkDash) which has a similar architecture to this.
 
 ## How it Works
 
