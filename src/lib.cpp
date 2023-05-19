@@ -276,45 +276,6 @@ void ensureQueue(char* logMsg) {
 }
 
 /**
-  Gets a reading of the battery voltage by a calibrated ADC.
-
-  @returns a float of the battery voltage.
-*/
-float getCalibratedBatteryVoltage() {
-    // calibration factor - adjust until correlates with actual readings
-    float calibration = 2.140;
-    // default voltage reference for esp32
-    float vref = 1100;
-
-    // get characterized voltage reference
-    esp_adc_cal_characteristics_t adcChars;
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12,
-                             vref, &adcChars);
-    vref = adcChars.vref;
-
-    uint8_t mcpRegsInt[22];
-    board.pinModeInternal(IO_INT_ADDR, mcpRegsInt, 9, INPUT);
-    int state = board.digitalReadInternal(IO_INT_ADDR, mcpRegsInt, 9);
-    board.pinModeInternal(IO_INT_ADDR, mcpRegsInt, 9, OUTPUT);
-
-    if (state) {
-        board.digitalWriteInternal(IO_INT_ADDR, mcpRegsInt, 9, LOW);
-    } else {
-        board.digitalWriteInternal(IO_INT_ADDR, mcpRegsInt, 9, HIGH);
-    }
-
-    delay(1);
-    int adc = analogRead(35);
-    if (state) {
-        board.pinModeInternal(IO_INT_ADDR, mcpRegsInt, 9, INPUT);
-    } else {
-        board.digitalWriteInternal(IO_INT_ADDR, mcpRegsInt, 9, LOW);
-    }
-
-    return (adc / 4095.0) * 3.3 * (1100 / vref) * calibration;
-}
-
-/**
   Check whether 5v USB power is detected.
 
   @returns a boolean whether 5v USB power is detected.

@@ -17,7 +17,7 @@ void setup() {
     board.rtcGetRtcData();
     time_t bootTime = board.rtcGetEpoch();
     setTime(bootTime);
-    
+
     logf(LOG_INFO, "boot count: %d", bootCount);
     logf(LOG_INFO, "boot time: %s", dateTime(bootTime, RFC3339).c_str());
 
@@ -134,12 +134,14 @@ void setup() {
 
     // Print some information about sleep and wake times.
     if (lastBootTime > 0) {
-        logf(LOG_INFO, "last boot time: %s", dateTime(lastBootTime, RFC3339).c_str());
+        logf(LOG_INFO, "last boot time: %s",
+             dateTime(lastBootTime, RFC3339).c_str());
     }
     lastBootTime = bootTime;
 
     if (lastSleepTime > 0) {
-        logf(LOG_INFO, "last sleep time: %s", dateTime(lastSleepTime, RFC3339).c_str());
+        logf(LOG_INFO, "last sleep time: %s",
+             dateTime(lastSleepTime, RFC3339).c_str());
     }
 
     if (targetWakeTime > 0) {
@@ -153,14 +155,8 @@ void setup() {
     }
 
     // Read battery voltage.
-    // TODO: might be worth investigating whether this readings are affected
-    // when connected to WiFi.
-    float bvoltCal = getCalibratedBatteryVoltage();
-    // Get inkplate's battery calculation for reference.
     float bvolt = board.readBattery();
-    logf(LOG_INFO, "battery voltage: %sv", String(bvoltCal, 2));
-    logf(LOG_DEBUG, "reference inkplate battery voltage: %sv",
-         String(bvolt, 2));
+    logf(LOG_DEBUG, "battery voltage: %sv", String(bvolt, 2));
 
     if (isVbusPresent()) {
         const char* bstat = (bvolt < 4.0) ? "charging" : "charged";
