@@ -20,7 +20,7 @@ I recommend taking a look at the author's other project [MagInkDash](https://git
 
 ## How it Works
 
-Both a server and client and required. The main workload is in the server will allows the client to save power by not generating the image itself. 
+Both a server and client and required. The main workload is in the server which allows the client to save power by not generating the image itself. The client can also be placed where it has access to your WiFi network.
 
 <img src=https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/ff903fe3-4576-41d1-92b5-3a374242759a width=800 />
 
@@ -49,8 +49,7 @@ Both a server and client and required. The main workload is in the server will a
 
 With a 2000mAh LiPo battery, the client could theoretically go 4 to 5 months without a recharge, possibly 6 months with a 3000mAh pack. The client takes a reading of the battery voltage on every boot and will try to publish it to the server logs (if MQTT is enabled). With this, we can plot the current voltage against a typical voltage curve for a 3.7v LiPo battery:
 
-<img src=https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/cc1db265-2312-449d-a8c4-9a53bed72a8e width=800 />
-
+<img width="800" src="https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/4a4fb9fd-9838-4120-ac80-4a6c1b408383">
 I will try to update this graph every few weeks as more voltage readings are taken and projected battery life becomes more accurate. 
 
 The current performance is poorer than expected, however the battery is a couple years old and has gone through a decent number of charge/discharge cycles; it's likely a newer cell would perform better. It's also possible the microcontroller is using more power than expected under deep sleep.
