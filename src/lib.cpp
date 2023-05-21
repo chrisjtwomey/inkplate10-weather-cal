@@ -310,7 +310,7 @@ esp_err_t configureTime(const char* ntpHost, const char* timezoneName) {
     // time_t nowTime = now();
     time_t nowTime = myTz.now();
     board.rtcSetEpoch(nowTime);
-    logf(LOG_DEBUG, "RTC synced to %s", dateTime(nowTime, RFC3339).c_str());
+    logf(LOG_INFO, "RTC synced to %s", dateTime(nowTime, RFC3339).c_str());
 
     return ESP_OK;
 }

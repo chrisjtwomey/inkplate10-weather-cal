@@ -19,28 +19,28 @@ void setup() {
     setTime(bootTime);
 
     logf(LOG_INFO, "boot count: %d", bootCount);
-    logf(LOG_INFO, "boot time: %s", dateTime(bootTime, RFC3339).c_str());
+    logf(LOG_DEBUG, "boot time: %s", dateTime(bootTime, RFC3339).c_str());
 
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_EXT0:
-            logf(LOG_INFO, "wakeup caused by external signal using RTC_IO.");
+            logf(LOG_DEBUG, "wakeup caused by external signal using RTC_IO.");
             board.rtcClearAlarmFlag();
             break;
         case ESP_SLEEP_WAKEUP_EXT1:
-            logf(LOG_INFO, "wakeup caused by external signal using RTC_CNTL.");
+            logf(LOG_DEBUG, "wakeup caused by external signal using RTC_CNTL.");
             break;
         case ESP_SLEEP_WAKEUP_TIMER:
-            logf(LOG_INFO, "wakeup caused by timer.");
+            logf(LOG_DEBUG, "wakeup caused by timer.");
             break;
         case ESP_SLEEP_WAKEUP_TOUCHPAD:
-            logf(LOG_INFO, "wakeup caused by touchpad.");
+            logf(LOG_DEBUG, "wakeup caused by touchpad.");
             break;
         case ESP_SLEEP_WAKEUP_ULP:
-            logf(LOG_INFO, "wakeup caused by ULP program.");
+            logf(LOG_DEBUG, "wakeup caused by ULP program.");
             break;
         default:
-            log(LOG_INFO, "wakeup caused by RST pin or power button");
+            log(LOG_DEBUG, "wakeup caused by RST pin or power button");
             break;
     }
 
@@ -134,7 +134,7 @@ void setup() {
 
     // Print some information about sleep and wake times.
     if (lastBootTime > 0) {
-        logf(LOG_INFO, "last boot time: %s",
+        logf(LOG_DEBUG, "last boot time: %s",
              dateTime(lastBootTime, RFC3339).c_str());
     }
     lastBootTime = bootTime;
@@ -151,12 +151,12 @@ void setup() {
     }
 
     if (driftSecs > 0) {
-        logf(LOG_INFO, "time drift: %d seconds", driftSecs);
+        logf(LOG_DEBUG, "time drift: %d seconds", driftSecs);
     }
 
     // Read battery voltage.
     float bvolt = board.readBattery();
-    logf(LOG_DEBUG, "battery voltage: %sv", String(bvolt, 2));
+    logf(LOG_INFO, "battery voltage: %sv", String(bvolt, 2));
 
     if (isVbusPresent()) {
         const char* bstat = (bvolt < 4.0) ? "charging" : "charged";
