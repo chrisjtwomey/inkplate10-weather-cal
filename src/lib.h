@@ -3,15 +3,14 @@
 #include <Inkplate.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include <cppQueue.h>
 #include <driver/rtc_io.h>
-#include <esp_adc_cal.h>
 #include <ezTime.h>
 #include <rom/rtc.h>
-#include <cppQueue.h>
 
 #include "MqttLogger.h"
 
-#define  CalendarYrToTm(Y)   ((Y) - 1970)
+#define CalendarYrToTm(Y) ((Y)-1970)
 // The number of seconds to sleep if RTC not configured correctly.
 #define DEEP_SLEEP_FALLBACK_SECONDS 120
 // set the log verbosity
