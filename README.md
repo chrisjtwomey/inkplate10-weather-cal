@@ -153,13 +153,13 @@ Change the source to match Arduino IDE's Sketch requirements :
 - You can then open the sketch in Arduino
 
 The following libraries should be installed in your Arduino IDE.  They are available in the IDE's Library Manager :
-- [InkplateLibrary](/https://github.com/SolderedElectronics/Inkplate-Arduino-library)
-- [Arduinojson](/https://arduinojson.org/?utm_source=meta&utm_medium=library.properties)
-- [MQTTLogger](/https://github.com/androbi-com/MqttLogger)
-- [Queue](/https://github.com/SMFSW/Queue)
-- [StreamUtils](/https://github.com/bblanchon/ArduinoStreamUtils)
-- [YAMLDuino](/https://github.com/tobozo/YAMLDuino)
-- [ezTime](/https://github.com/ropg/ezTime)
+- [InkplateLibrary](https://github.com/SolderedElectronics/Inkplate-Arduino-library)
+- [Arduinojson](https://arduinojson.org/?utm_source=meta&utm_medium=library.properties)
+- [MQTTLogger](https://github.com/androbi-com/MqttLogger)
+- [Queue](https://github.com/SMFSW/Queue)
+- [StreamUtils](https://github.com/bblanchon/ArduinoStreamUtils)
+- [YAMLDuino](https://github.com/tobozo/YAMLDuino)
+- [ezTime](https://github.com/ropg/ezTime)
 
 
 ## License
