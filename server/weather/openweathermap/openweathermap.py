@@ -16,24 +16,13 @@ class OpenWeatherMapService(WeatherService):
 
     def get_daily_summary(self):
         data = None
-
-        if self.mock:
-            import os, json
-
-            path = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                "samples/mock-sample-daily.json",
+        res = requests.get(
+            self.baseurl
+            + "/data/2.5/weather?lat={}&lon={}&appid={}&units={}".format(
+                self.lat, self.lon, self.apikey, self.units
             )
-            with open(path, encoding="utf8") as f:
-                data = json.load(f)
-        else:
-            res = requests.get(
-                self.baseurl
-                + "/data/2.5/weather?lat={}&lon={}&appid={}&units={}".format(
-                    self.lat, self.lon, self.apikey, self.units
-                )
-            )
-            data = res.json()
+        )
+        data = res.json()
 
         if self.units == "metric":
             units = "\N{DEGREE SIGN}C"
@@ -53,24 +42,13 @@ class OpenWeatherMapService(WeatherService):
 
     def get_hourly_forecast(self):
         data = None
-
-        if self.mock:
-            import os, json
-
-            path = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                "samples/mock-sample-hourly.json",
+        res = requests.get(
+            self.baseurl
+            + "/data/2.5/forecast?cnt={}&lat={}&lon={}&appid={}&units={}".format(
+                self.num_hours, self.lat, self.lon, self.apikey, self.units
             )
-            with open(path, encoding="utf8") as f:
-                data = json.load(f)
-        else:
-            res = requests.get(
-                self.baseurl
-                + "/data/2.5/forecast?cnt={}&lat={}&lon={}&appid={}&units={}".format(
-                    self.num_hours, self.lat, self.lon, self.apikey, self.units
-                )
-            )
-            data = res.json()
+        )
+        data = res.json()
 
         code = data["cod"]
         if int(code) != 200:
