@@ -85,21 +85,11 @@ class OpenWeatherMapService(WeatherService):
     def _get_location_coords(self, location):
         data = None
 
-        if self.mock:
-            import os, json
-
-            path = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                "samples/mock-sample-location.json",
-            )
-            with open(path, encoding="utf8") as f:
-                data = json.load(f)
-        else:
-            res = requests.get(
-                self.baseurl
-                + "/geo/1.0/direct?q={}&limit=1&appid={}".format(location, self.apikey)
-            )
-            data = res.json()
+        res = requests.get(
+            self.baseurl
+            + "/geo/1.0/direct?q={}&limit=1&appid={}".format(location, self.apikey)
+        )
+        data = res.json()
 
         if len(data) == 0 or len(data) > 1:
             raise ValueError("Unexpected response from weather api: {}".format(data))

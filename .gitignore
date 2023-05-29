@@ -98,3 +98,4 @@ workspace.code-workspace
 .vscode/launch.json
 .vscode/ipch
 .vscode/extensions.json
+.build
