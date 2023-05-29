@@ -51,9 +51,9 @@ catch {
     Exit
 }
 
-Write-Host -NoNewline "Renaming $TargetDir/main.cpp to $TargetDir/main.ino..."
+Write-Host -NoNewline "Renaming $TargetDir/main.cpp to $TargetDir/$SketchName.ino..."
 try {
-    Move-Item -Path "$TargetDir/main.cpp" -Destination "$TargetDir/main.ino" -errorAction stop
+    Move-Item -Path "$TargetDir/main.cpp" -Destination "$TargetDir/$SketchName.ino" -errorAction stop
     Write-Host -ForegroundColor green "done!"
 }
 catch {
