@@ -49,7 +49,8 @@ Both a server and client and required. The main workload is in the server which 
 
 With a 2000mAh LiPo battery, the client could theoretically go 4 to 5 months without a recharge, possibly 6 months with a 3000mAh pack. The client takes a reading of the battery voltage on every boot and will try to publish it to the server logs (if MQTT is enabled). With this, we can plot the current voltage against a typical voltage curve for a 3.7v LiPo battery:
 
-<img width="800" src="https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/bcef8e59-3e06-41b0-9bb2-95f7a0958737">
+<img width="800" src="https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/2d75a2cd-6615-4d18-bf1f-7d2d5763bade">
+
 I will try to update this graph every few weeks as more voltage readings are taken and projected battery life becomes more accurate. 
 
 The current performance is poorer than expected, however the battery is a couple years old and has gone through a decent number of charge/discharge cycles; it's likely a newer cell would perform better. It's also possible the microcontroller is using more power than expected under deep sleep.
