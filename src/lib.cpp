@@ -95,7 +95,7 @@ esp_err_t downloadFile(const char* url, int32_t size, const char* filePath) {
 }
 
 /**
-  Draw an image to the display.
+  Load an image to the display buffer.
 
   @param filePath the path of the file on disk.
   error.
@@ -104,14 +104,13 @@ esp_err_t downloadFile(const char* url, int32_t size, const char* filePath) {
   - ESP_ERR_EDL if download file fails.
   - ESP_ERR_EFILEW if writing file to filePath fails.
 */
-esp_err_t displayImage(const char* filePath) {
+esp_err_t loadImage(const char* filePath) {
     logf(LOG_INFO, "drawing image from path: %s", filePath);
 
     board.clearDisplay();
     if (!board.drawImage(filePath, 0, 0, false, true)) {
         return ESP_ERR_EDRAW;
     }
-    board.display();
 
     return ESP_OK;
 }
@@ -124,10 +123,21 @@ esp_err_t displayImage(const char* filePath) {
   error.
 */
 void displayMessage(const char* msg) {
+    board.clearDisplay();
+    // If previous image exists, load into board buffer.
+    esp_err_t err = loadImage(CALENDAR_RW_PATH);
+    if (err != ESP_OK) {
+        log(LOG_WARNING, "load previous image error");
+    }
+
+    int16_t x, y;
+    uint16_t w, h;
     board.setTextSize(4);
-    board.setTextColor(1, 0);
     board.setTextWrap(true);
-    board.setCursor(0, 0);
+    board.getTextBounds(msg, E_INK_WIDTH / 2, 0, &x, &y, &w, &h);
+    board.fillRect(x, y, E_INK_WIDTH, h, 0x8080);
+    board.setCursor(E_INK_WIDTH / 2 - w / 2, h * 0.2);
+    board.setTextColor(0xFFFF);
     board.print(msg);
     board.display();
 }

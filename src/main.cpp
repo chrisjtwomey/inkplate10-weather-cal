@@ -48,13 +48,7 @@ void setup() {
     esp_err_t err = ESP_OK;
 
     // Init storage.
-    if (board.sdCardInit()) {
-        // If previous image exists, load into board buffer.
-        err = displayImage(CALENDAR_RW_PATH);
-        if (err != ESP_OK) {
-            log(LOG_WARNING, "load previous calendar error");
-        }
-    } else {
+    if (!board.sdCardInit()) {
         const char* errMsg = "SD card init failure";
         log(LOG_ERROR, errMsg);
         displayMessage(errMsg);
@@ -191,11 +185,15 @@ void setup() {
             continue;
         }
 
-        err = displayImage(CALENDAR_RW_PATH);
+        err = loadImage(CALENDAR_RW_PATH);
         if (err != ESP_OK) {
-            errMsg = "image display error";
+            errMsg = "image load error";
             log(LOG_ERROR, errMsg);
+            continue;
         }
+
+        // Send buffer to eink display.
+        board.display();
     } while (err != ESP_OK && ++attempts <= calendarRetries);
 
     // If we were not successfully, print the error msg to the inkplate display.

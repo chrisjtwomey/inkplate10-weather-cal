@@ -24,7 +24,7 @@
 // The path on SD card where calendar images are downloaded to and read from.
 #define CALENDAR_RW_PATH "/calendar.png"
 // Guestimate file size for PNG image @ 1200x825
-#define CALENDAR_IMAGE_SIZE E_INK_WIDTH* E_INK_HEIGHT * 4 + 100
+#define CALENDAR_IMAGE_SIZE E_INK_WIDTH * E_INK_HEIGHT * 4 + 100
 
 // Enum of errors that might be encountered.
 #define ESP_ERR_ERRNO_BASE (0)
@@ -92,7 +92,7 @@ esp_err_t configureWiFi(const char* ssid, const char* pass, int retries);
 esp_err_t downloadFile(const char* url, int32_t size, const char* filePath);
 
 /**
-  Draw an image to the display.
+  Load an image to the display buffer.
 
   @param filePath the path of the file on disk.
   error.
@@ -101,7 +101,7 @@ esp_err_t downloadFile(const char* url, int32_t size, const char* filePath);
   - ESP_ERR_EDL if download file fails.
   - ESP_ERR_EFILEW if writing file to filePath fails.
 */
-esp_err_t displayImage(const char* filePath);
+esp_err_t loadImage(const char* filePath);
 
 /**
   Draw an message to the display. The error message is drawn in the top-left
