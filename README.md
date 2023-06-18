@@ -49,11 +49,23 @@ Both a server and client and required. The main workload is in the server which 
 
 With a 2000mAh LiPo battery, the client could theoretically go 4 to 5 months without a recharge, possibly 6 months with a 3000mAh pack. The client takes a reading of the battery voltage on every boot and will try to publish it to the server logs (if MQTT is enabled). With this, we can plot the current voltage against a typical voltage curve for a 3.7v LiPo battery:
 
-<img width="800" src="https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/2d75a2cd-6615-4d18-bf1f-7d2d5763bade">
-
-I will try to update this graph every few weeks as more voltage readings are taken and projected battery life becomes more accurate. 
+<img width="800" src="https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/dae1b40f-39d7-4685-a556-7cbf117b608e" />
 
 The current performance is poorer than expected, however the battery is a couple years old and has gone through a decent number of charge/discharge cycles; it's likely a newer cell would perform better. It's also possible the microcontroller is using more power than expected under deep sleep.
+
+**Update June 18 2023:**
+
+The first long-term battery performance run lasted **47 days**, which is very disappointing considering theoretical performance is 6+ months. After measuring active and sleeping power consumption, I've found a number of places where power is unneccessarily consumed:
+ - WiFi connects early and stays connected long after it's required - the WiFi radio is by far the largest consumer of power and minimising time using it is crucial.
+ - Code unnecessarily refreshes the display with previous day's downloaded image. This was intended for partial update support so if fatal errors occurred  it could be displayed on top of the previous day's calendar image. Code now only refreshes with previous image when there is indeed a fatal error.
+ - Code prioritised helpful logging over minimising awake time. This was helpful when tesing and developing but now it's better to turn off remote logging or sleep as soon as it's possible.
+ - Storing unnecessary data in RTC memory - while helpful for debugging/testing, it's no longer necessary.
+
+A number of changes have been made around optimising performance and minimising awake time:
+ - ~50% less awake time than before, average about 10-15 seconds over the previous ~20-25 seconds
+ - 100% less power consumption than before, due to only refreshing the display once and minimising WiFi radio time.
+
+A second series has been added to the graph above which will track the long-term power consumption on the same battery for comparison. Like the last time, I will update the graph every few weeks.
 
 ### Server (Raspberry Pi)
 1. Gets any relevant new data (ie. weather, maps).
