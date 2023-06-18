@@ -11,10 +11,9 @@
 #include "MqttLogger.h"
 
 #define CalendarYrToTm(Y) ((Y)-1970)
+#define SECONDS_IN_YEAR 86400 * 365
 // The number of seconds to sleep if RTC not configured correctly.
 #define DEEP_SLEEP_FALLBACK_SECONDS 120
-// set the log verbosity
-#define LOG_LEVEL LOG_DEBUG
 // log message entry history size
 #define LOG_QUEUE_MAX_ENTRIES 10
 // The file path on SD card to load config.
@@ -46,16 +45,6 @@
 #define LOG_LEVEL LOG_DEBUG
 #endif
 
-// The number of times we have booted (from off or from sleep).
-extern RTC_DATA_ATTR int bootCount;
-// RTC epoch of the last time we booted.
-extern RTC_DATA_ATTR time_t lastBootTime;
-// RTC epoch of the last time deep sleep was initiated.
-extern RTC_DATA_ATTR time_t lastSleepTime;
-// RTC epoch of the time in the future when we want to end deep sleep.
-extern RTC_DATA_ATTR time_t targetWakeTime;
-// The number of seconds between RTC epoch and NTP epoch.
-extern RTC_DATA_ATTR unsigned long driftSecs;
 // The remote logging instance.
 extern MqttLogger mqttLogger;
 // The log message queue.
@@ -144,6 +133,18 @@ time_t getWakeTime(const char* refreshTime);
 void sleep(const char* refreshTime);
 
 /**
+  Enter deep sleep.
+
+  @param seconds the number of seconds to sleep for.
+*/
+void sleep(const int seconds);
+
+/**
+  Enter deep sleep.
+*/
+void deepSleep();
+
+/**
   Connect to a MQTT broker for remote logging.
 
   @param broker the hostname of the MQTT broker.
@@ -189,19 +190,5 @@ const char* msgPrefix(uint16_t pri);
   @param msg the log message
 */
 void ensureQueue(char* msg);
-
-/**
-  Check whether 5v USB power is detected.
-
-  @returns a boolean whether 5v USB power is detected.
-*/
-bool isVbusPresent();
-
-/**
-  Gets a reading of the battery voltage by a calibrated ADC.
-
-  @returns a float of the battery voltage.
-*/
-float getCalibratedBatteryVoltage();
 
 #endif

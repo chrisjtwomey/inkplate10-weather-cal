@@ -1,16 +1,5 @@
 #include "lib.h"
 
-// The number of times we have booted (from off or from sleep).
-RTC_DATA_ATTR int bootCount = 0;
-// RTC epoch of the last time we booted.
-RTC_DATA_ATTR time_t lastBootTime = 0;
-// RTC epoch of the last time deep sleep was initiated.
-RTC_DATA_ATTR time_t lastSleepTime = 0;
-// RTC epoch of the time in the future when we want to end deep sleep.
-RTC_DATA_ATTR time_t targetWakeTime = 0;
-// The number of seconds between RTC epoch and NTP epoch.
-RTC_DATA_ATTR unsigned long driftSecs = 0;
-
 // remote mqtt logger
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -42,7 +31,7 @@ esp_err_t configureWiFi(const char* ssid, const char* pass, int retries) {
     int attempts = 0;
     while (attempts++ <= retries && WiFi.status() != WL_CONNECTED) {
         logf(LOG_DEBUG, "connection attempt #%d...", attempts);
-        delay(1000);
+        delay(500);
     }
 
     // If still not connected, error with timeout.
@@ -50,7 +39,7 @@ esp_err_t configureWiFi(const char* ssid, const char* pass, int retries) {
         return ESP_ERR_TIMEOUT;
     }
     // Print the IP address
-    logf(LOG_INFO, "IP address: %s", WiFi.localIP().toString());
+    logf(LOG_DEBUG, "IP address: %s", WiFi.localIP().toString());
 
     return ESP_OK;
 }
@@ -75,7 +64,7 @@ esp_err_t downloadFile(const char* url, int32_t size, const char* filePath) {
         return ESP_ERR_EDL;
     }
 
-    logf(LOG_INFO, "writing file to path %s", filePath);
+    logf(LOG_DEBUG, "writing file to path %s", filePath);
     SdFat sd = board.getSdFat();
 
     // Write image buffer to SD card
@@ -174,7 +163,6 @@ esp_err_t configureMQTT(const char* broker, int port, const char* topic,
     mqttLogger.setTopic(topic);
     mqttLogger.setMode(MqttLoggerMode::MqttAndSerial);
 
-    // Print the IP address
     logf(LOG_INFO, "connected to MQTT broker %s:%d", broker, port);
 
     return ESP_OK;
@@ -286,16 +274,6 @@ void ensureQueue(char* logMsg) {
 }
 
 /**
-  Check whether 5v USB power is detected.
-
-  @returns a boolean whether 5v USB power is detected.
-*/
-bool isVbusPresent() {
-    // TODO: determine USB power?
-    return false;
-}
-
-/**
   Connect to an NTP server and synchronize the on-board real-time clock.
 
   @param host the hostname of the NTP server (eg. pool.ntp.org).
@@ -320,7 +298,7 @@ esp_err_t configureTime(const char* ntpHost, const char* timezoneName) {
     // time_t nowTime = now();
     time_t nowTime = myTz.now();
     board.rtcSetEpoch(nowTime);
-    logf(LOG_INFO, "RTC synced to %s", dateTime(nowTime, RFC3339).c_str());
+    logf(LOG_DEBUG, "RTC synced to %s", dateTime(nowTime, RFC3339).c_str());
 
     return ESP_OK;
 }
@@ -364,27 +342,52 @@ time_t getWakeTime(const char* refreshTime) {
 }
 
 /**
-  Enter deep sleep.
+  Enter deep sleep with RTC alarm.
 
   @param refreshTime the time of the day to wake in HH:MM:SS format (eg.
   09:00:00). error.
 */
 void sleep(const char* refreshTime) {
-    targetWakeTime = getWakeTime(refreshTime);
-
-    log(LOG_NOTICE, "deep sleep initiated");
-    time_t rtcTime = board.rtcGetEpoch();
-    logf(LOG_DEBUG, "RTC time now is %s", dateTime(rtcTime, RFC3339).c_str());
     logf(LOG_DEBUG, "setting deep sleep RTC wakeup on pin %d", GPIO_NUM_39);
 
+    time_t targetWakeTime = getWakeTime(refreshTime);
     board.rtcSetAlarmEpoch(targetWakeTime, RTC_ALARM_MATCH_DHHMMSS);
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_39, 0);
 
-    logf(LOG_INFO, "waking at %s", dateTime(targetWakeTime, RFC3339).c_str());
-    log(LOG_NOTICE, "deep sleeping in 5 seconds");
-    delay(5000);
+    logf(LOG_DEBUG, "waking at %s", dateTime(targetWakeTime, RFC3339).c_str());
 
+    deepSleep();
+}
+
+/**
+  Enter deep sleep with RTC alarm.
+
+  @param seconds the number of seconds to sleep for.
+*/
+void sleep(const int seconds) {
+    logf(LOG_DEBUG, "setting deep sleep RTC wakeup on pin %d", GPIO_NUM_39);
+
+    time_t targetWakeTime = myTz.now() + seconds;
+    board.rtcSetAlarmEpoch(targetWakeTime, RTC_ALARM_MATCH_DHHMMSS);
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_39, 0);
+
+    logf(LOG_DEBUG, "waking at %s", dateTime(targetWakeTime, RFC3339).c_str());
+
+    deepSleep();
+}
+
+/**
+  Enter deep sleep.
+*/
+void deepSleep() {
+    log(LOG_NOTICE, "deep sleeping now");
+    WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
-    lastSleepTime = rtcTime;
+
+    //esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH,   ESP_PD_OPTION_OFF);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_OFF);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_XTAL,         ESP_PD_OPTION_OFF);
+
     esp_deep_sleep_start();
 }

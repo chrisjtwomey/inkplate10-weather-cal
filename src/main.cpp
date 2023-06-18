@@ -4,9 +4,11 @@
 #include <StreamUtils.h>
 
 #include "lib.h"
+#ifdef BATT_2000MAH
+#include "battery2000mah.h"
+#endif
 
 void setup() {
-    ++bootCount;
     Serial.begin(115200);
     // Init inkplate board.
     board.begin();
@@ -18,9 +20,7 @@ void setup() {
     time_t bootTime = board.rtcGetEpoch();
     setTime(bootTime);
 
-    logf(LOG_INFO, "boot count: %d", bootCount);
-    logf(LOG_DEBUG, "boot time: %s", dateTime(bootTime, RFC3339).c_str());
-
+    log(LOG_NOTICE, "##### Inkplate10 Weather Calendar wake up #####");
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_EXT0:
@@ -101,6 +101,32 @@ void setup() {
     const char* mqttLoggerTopic = mqttLoggerCfg["topic"];
     int mqttLoggerRetries = mqttLoggerCfg["retries"];
 
+    // Read battery voltage.
+    float bvolt = board.readBattery();
+    logf(LOG_INFO, "battery voltage: %sv", String(bvolt, 2));
+    if (bvolt <= 0.0) {
+        log(LOG_WARNING, "problem detecting battery voltage");
+    }
+
+#ifdef BATT_2000MAH
+    if (bvolt <= 0.0) {
+        log(LOG_WARNING, "problem detecting battery voltage");
+    } else {
+        // Get the battery percentage remaining.
+        int batteryRemainingPercent = getBatteryCapacity(bvolt);
+        logf(LOG_INFO, "approx battery capacity: %d%%", batteryRemainingPercent);
+
+        if (batteryRemainingPercent <= 1) {
+            log(LOG_NOTICE, "battery near empty! - sleeping until charged");
+            displayMessage("Battery empty, please charge!");
+            // Sleep instead of proceeding when battery is too low.
+            sleep(SECONDS_IN_YEAR);
+        } else if (batteryRemainingPercent <= 10) {
+            log(LOG_WARNING, "battery low, charge soon!");
+        }
+    } 
+#endif
+
     // Attempt to connect to WiFi.
     err = configureWiFi(wifiSSID, wifiPass, wifiRetries);
     if (err == ESP_ERR_TIMEOUT) {
@@ -108,6 +134,12 @@ void setup() {
         log(LOG_ERROR, errMsg);
         displayMessage(errMsg);
         sleep(calendarDailyRefreshTime);
+    }
+
+    // Attempt to synchronize clocks with network time.
+    err = configureTime(ntpHost, ntpTimezone);
+    if (err != ESP_OK) {
+        log(LOG_WARNING, "failed to synchronize RTC with network time");
     }
 
     if (mqttLoggerEnabled) {
@@ -118,57 +150,6 @@ void setup() {
             log(LOG_WARNING,
                 "failed to connect remote logging, fallback to serial");
         }
-    }
-
-    // Attempt to synchronize clocks with network time.
-    err = configureTime(ntpHost, ntpTimezone);
-    if (err != ESP_OK) {
-        log(LOG_WARNING, "failed to synchronize RTC with network time");
-    }
-
-    // Print some information about sleep and wake times.
-    if (lastBootTime > 0) {
-        logf(LOG_DEBUG, "last boot time: %s",
-             dateTime(lastBootTime, RFC3339).c_str());
-    }
-    lastBootTime = bootTime;
-
-    if (lastSleepTime > 0) {
-        logf(LOG_INFO, "last sleep time: %s",
-             dateTime(lastSleepTime, RFC3339).c_str());
-    }
-
-    if (targetWakeTime > 0) {
-        logf(LOG_INFO, "expected wake time: %s",
-             dateTime(targetWakeTime, RFC3339).c_str());
-        driftSecs = targetWakeTime - bootTime;
-    }
-
-    if (driftSecs > 0) {
-        logf(LOG_DEBUG, "time drift: %d seconds", driftSecs);
-    }
-
-    // Read battery voltage.
-    float bvolt = board.readBattery();
-    logf(LOG_INFO, "battery voltage: %sv", String(bvolt, 2));
-
-    if (isVbusPresent()) {
-        const char* bstat = (bvolt < 4.0) ? "charging" : "charged";
-        logf(LOG_INFO, "USB power present - battery %s", bstat);
-    } else if (bvolt > 0.0) {
-        if (bvolt < 3.1) {
-            log(LOG_NOTICE, "battery near empty! - sleeping until charged");
-            displayMessage("Battery empty, please charge!");
-            // Sleep instead of proceeding when battery is too low.
-            sleep(calendarDailyRefreshTime);
-        } else if (bvolt < 3.3) {
-            log(LOG_WARNING, "battery low, charge soon!");
-        } else {
-            const char* bstat = (bvolt < 3.6) ? "below" : "above";
-            logf(LOG_INFO, "battery approx %s 50%% capacity", bstat);
-        }
-    } else {
-        log(LOG_WARNING, "problem detecting battery voltage");
     }
 
     // Reset err state.
@@ -184,6 +165,13 @@ void setup() {
             log(LOG_ERROR, errMsg);
             continue;
         }
+
+        // Disconnect and turn off WiFi radio to save power.
+        // Remove the below lines if you want to stay connected
+        // and logging with MQTT, though more battery will be used.
+        log(LOG_INFO, "file download successful, disconnecting WiFi radio...");
+        WiFi.disconnect();
+        WiFi.mode(WIFI_OFF);
 
         err = loadImage(CALENDAR_RW_PATH);
         if (err != ESP_OK) {
