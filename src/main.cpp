@@ -13,13 +13,12 @@ void setup() {
     // Set board to portait mode.
     board.setRotation(1);
 
-    log(LOG_NOTICE, "##### Inkplate10 Weather Calendar wake up #####");
-
     // Set clock from RTC
     board.rtcGetRtcData();
     time_t bootTime = board.rtcGetEpoch();
     setTime(bootTime);
 
+    log(LOG_NOTICE, "##### Inkplate10 Weather Calendar wake up #####");
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_EXT0:
@@ -44,11 +43,19 @@ void setup() {
     }
 
     // Read battery voltage.
-    float bvolt = board.readBattery();
+    double bvolt = board.readBattery();
     logf(LOG_INFO, "battery voltage: %sv", String(bvolt, 2));
     // Get the battery percentage remaining.
     int batteryRemainingPercent = getBatteryCapacity(bvolt);
     logf(LOG_INFO, "approx battery capacity: %d%%", batteryRemainingPercent);
+
+    // Init storage.
+    if (!board.sdCardInit()) {
+        const char* errMsg = "SD card init failure";
+        log(LOG_ERROR, errMsg);
+        displayMessage(errMsg, batteryRemainingPercent);
+        sleep(CONFIG_DEFAULT_CALENDAR_DAILY_REFRESH_TIME);
+    }
 
     if (batteryRemainingPercent <= 1) {
         log(LOG_NOTICE, "battery near empty! - sleeping until charged");
@@ -61,14 +68,6 @@ void setup() {
 
     // Init err state.
     esp_err_t err = ESP_OK;
-
-    // Init storage.
-    if (!board.sdCardInit()) {
-        const char* errMsg = "SD card init failure";
-        log(LOG_ERROR, errMsg);
-        displayMessage(errMsg, batteryRemainingPercent);
-        sleep(CONFIG_DEFAULT_CALENDAR_DAILY_REFRESH_TIME);
-    }
 
     // Attempt to get config yaml file.
     File file = sd.open(CONFIG_FILE_PATH, FILE_READ);
@@ -166,6 +165,8 @@ void setup() {
     // If we were not successful, print the error msg to the inkplate display.
     if (err != ESP_OK) {
         displayMessage(errMsg, batteryRemainingPercent);
+        // Deep sleep until next refresh time
+        sleep(calendarDailyRefreshTime);
     }
     
     // Reset err state.

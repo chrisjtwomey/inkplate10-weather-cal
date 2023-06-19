@@ -149,12 +149,12 @@ void displayBatteryStatus(int batteryRemainingPercent, bool invert) {
 
     // epdBitmapBatteryFull
     int idx;
-    if (batteryRemainingPercent > 50 && batteryRemainingPercent <= 100) {
+    if (batteryRemainingPercent > 66 && batteryRemainingPercent <= 100) {
         idx = 0;
-    } else if (batteryRemainingPercent > 30 && batteryRemainingPercent <= 50) {
+    } else if (batteryRemainingPercent > 33 && batteryRemainingPercent <= 66) {
         // epdBitmapBatteryHalf
         idx = 1;
-    } else if (batteryRemainingPercent > 10 && batteryRemainingPercent <= 30) {
+    } else if (batteryRemainingPercent > 10 && batteryRemainingPercent <= 33) {
         // epdBitmapBatteryLow
         idx = 2;
     } else {
