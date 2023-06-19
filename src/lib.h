@@ -8,6 +8,8 @@
 #include <ezTime.h>
 #include <rom/rtc.h>
 
+#include "Merienda_Regular16pt7b.h"
+#include "Merienda_Regular12pt7b.h"
 #include "MqttLogger.h"
 
 #define CalendarYrToTm(Y) ((Y)-1970)
@@ -23,7 +25,7 @@
 // The path on SD card where calendar images are downloaded to and read from.
 #define CALENDAR_RW_PATH "/calendar.png"
 // Guestimate file size for PNG image @ 1200x825
-#define CALENDAR_IMAGE_SIZE E_INK_WIDTH * E_INK_HEIGHT * 4 + 100
+#define CALENDAR_IMAGE_SIZE E_INK_WIDTH* E_INK_HEIGHT * 4 + 100
 
 // Enum of errors that might be encountered.
 #define ESP_ERR_ERRNO_BASE (0)
@@ -53,6 +55,10 @@ extern cppQueue logQ;
 extern Inkplate board;
 // The timezone object to store localised time
 extern Timezone myTz;
+// Battery icon bitmap array.
+extern uint8_t* epdBitmapAll[4];
+extern uint8_t* epdBitmapAllInverted[4];
+extern const int batteryIconSize;
 
 /**
   Connect to a WiFi network in Station Mode.
@@ -93,13 +99,34 @@ esp_err_t downloadFile(const char* url, int32_t size, const char* filePath);
 esp_err_t loadImage(const char* filePath);
 
 /**
+  Load an image to the display buffer.
+
+  @param buf the byte array data
+  @returns the esp_err_t code:
+  - ESP_OK if successful.
+  - ESP_ERR_EDL if download file fails.
+  - ESP_ERR_EFILEW if writing file to filePath fails.
+*/
+esp_err_t loadImage(uint8_t* buf, int x, int y, int w, int h);
+
+/**
+  Draw the battery status to the display.
+
+  @param batteryRemainingPercent the percentage capacity remaining in the
+  battery. error.
+  @param invert flag to invert battery status due to black banner.
+*/
+void displayBatteryStatus(int batteryRemainingPercent, bool invert);
+
+/**
   Draw an message to the display. The error message is drawn in the top-left
   corner of the display. Error message will overlay previously drawn image.
 
   @param msg the message to display.
-  error.
+  @param batteryRemainingPercent the percentage remaining battery capacity for
+  battery status display. error.
 */
-void displayMessage(const char* msg);
+void displayMessage(const char* msg, int batteryRemainingPercent);
 
 /**
   Connect to an NTP server and synchronize the on-board real-time clock.

@@ -87,7 +87,6 @@ esp_err_t downloadFile(const char* url, int32_t size, const char* filePath) {
   Load an image to the display buffer.
 
   @param filePath the path of the file on disk.
-  error.
   @returns the esp_err_t code:
   - ESP_OK if successful.
   - ESP_ERR_EDL if download file fails.
@@ -96,12 +95,86 @@ esp_err_t downloadFile(const char* url, int32_t size, const char* filePath) {
 esp_err_t loadImage(const char* filePath) {
     logf(LOG_INFO, "drawing image from path: %s", filePath);
 
-    board.clearDisplay();
     if (!board.drawImage(filePath, 0, 0, false, true)) {
         return ESP_ERR_EDRAW;
     }
 
     return ESP_OK;
+}
+
+/**
+  Load an image to the display buffer.
+
+  @param buf the byte array buffer.
+  @returns the esp_err_t code:
+  - ESP_OK if successful.
+  - ESP_ERR_EDL if download file fails.
+  - ESP_ERR_EFILEW if writing file to filePath fails.
+*/
+esp_err_t loadImage(uint8_t* buf, int x, int y, int w, int h) {
+    log(LOG_DEBUG, "drawing image from byte array...");
+
+    if (!board.drawImage(buf, x, y, w, h, BLACK, WHITE)) {
+        return ESP_ERR_EDRAW;
+    }
+
+    return ESP_OK;
+}
+
+/**
+  Draw the battery status to the display.
+
+  @param batteryRemainingPercent the percentage capacity remaining in the
+  battery. error.
+*/
+void displayBatteryStatus(int batteryRemainingPercent, bool invert) {
+    // PS apologies for all the hackiness here...
+    char msg[4];
+    sprintf(msg, "%d%%", batteryRemainingPercent);
+    board.setFont(&Merienda_Regular12pt7b);
+    board.setTextSize(1);
+    if (invert) {
+        board.setTextColor(0xFF);
+    } else {
+        board.setTextColor(0x00);
+    }
+
+    int16_t tX, tY;
+    uint16_t tW, tH;
+    board.getTextBounds(msg, E_INK_HEIGHT * 0.9, batteryIconSize, &tX, &tY, &tW,
+                        &tH);
+    // who knows why 0.75 but that lines things up
+    board.setCursor(tX, tY + tH * 0.75);
+    board.print(msg);
+
+    // epdBitmapBatteryFull
+    int idx;
+    if (batteryRemainingPercent > 50 && batteryRemainingPercent <= 100) {
+        idx = 0;
+    } else if (batteryRemainingPercent > 30 && batteryRemainingPercent <= 50) {
+        // epdBitmapBatteryHalf
+        idx = 1;
+    } else if (batteryRemainingPercent > 10 && batteryRemainingPercent <= 30) {
+        // epdBitmapBatteryLow
+        idx = 2;
+    } else {
+        // epdBitmapBatteryEmpty
+        idx = 3;
+    }
+
+    uint8_t* buf;
+    if (invert) {
+        buf = epdBitmapAllInverted[idx];
+    } else {
+        buf = epdBitmapAll[idx];
+    }
+
+    // Draw battery icon bitmap.
+    esp_err_t err = loadImage(buf, tX - batteryIconSize, tY - tH / 2,
+                              batteryIconSize, batteryIconSize);
+    if (err != ESP_OK) {
+        log(LOG_WARNING, "Failed to draw epd_bitmap");
+    }
 }
 
 /**
@@ -111,7 +184,7 @@ esp_err_t loadImage(const char* filePath) {
   @param msg the message to display.
   error.
 */
-void displayMessage(const char* msg) {
+void displayMessage(const char* msg, int batteryRemainingPercent) {
     board.clearDisplay();
     // If previous image exists, load into board buffer.
     esp_err_t err = loadImage(CALENDAR_RW_PATH);
@@ -119,15 +192,22 @@ void displayMessage(const char* msg) {
         log(LOG_WARNING, "load previous image error");
     }
 
+    int cX = E_INK_HEIGHT / 2;
+    int cY = 16;  // 16pt font
     int16_t x, y;
     uint16_t w, h;
-    board.setTextSize(4);
+    board.setFont(&Merienda_Regular16pt7b);
+    board.setTextSize(1);
+    board.setTextColor(BLACK);
     board.setTextWrap(true);
-    board.getTextBounds(msg, E_INK_WIDTH / 2, 0, &x, &y, &w, &h);
-    board.fillRect(x, y, E_INK_WIDTH, h, 0x8080);
-    board.setCursor(E_INK_WIDTH / 2 - w / 2, h * 0.2);
+    board.getTextBounds(msg, 0, 0, &x, &y, &w, &h);
+    board.fillRect(0, 0, E_INK_HEIGHT, h * 1.5, 0x8080);
+    board.setCursor(cX - w / 2, cY + h / 2);
     board.setTextColor(0xFFFF);
     board.print(msg);
+
+    displayBatteryStatus(batteryRemainingPercent, true);
+
     board.display();
 }
 
@@ -384,10 +464,9 @@ void deepSleep() {
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
 
-    //esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH,   ESP_PD_OPTION_OFF);
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_OFF);
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
-    esp_sleep_pd_config(ESP_PD_DOMAIN_XTAL,         ESP_PD_OPTION_OFF);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_XTAL, ESP_PD_OPTION_OFF);
 
     esp_deep_sleep_start();
 }
