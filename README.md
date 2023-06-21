@@ -47,37 +47,10 @@ Both a server and client and required. The main workload is in the server which 
 
 #### Power Consumption
 
-With a 2000mAh LiPo battery, the client could theoretically go 4 to 5 months without a recharge, possibly 6 months with a 3000mAh pack. The client takes a reading of the battery voltage on every boot and will try to publish it to the server logs (if MQTT is enabled). With this, we can plot the current voltage against a typical voltage curve for a 3.7v LiPo battery:
-
-<img width="800" src="https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/dae1b40f-39d7-4685-a556-7cbf117b608e" />
-
-The current performance is poorer than expected, however the battery is a couple years old and has gone through a decent number of charge/discharge cycles; it's likely a newer cell would perform better. It's also possible the microcontroller is using more power than expected under deep sleep.
-
-**Update June 18 2023:**
-
-The first long-term battery performance run lasted **47 days**, which is very disappointing considering theoretical performance is 6+ months. After measuring active and sleeping power consumption, I've found a number of places where power is unneccessarily consumed:
- - WiFi connects early and stays connected long after it's required - the WiFi radio is by far the largest consumer of power and minimising time using it is crucial.
- - Code unnecessarily refreshes the display with previous day's downloaded image. This was intended for partial update support so if fatal errors occurred  it could be displayed on top of the previous day's calendar image. Code now only refreshes with previous image when there is indeed a fatal error.
- - Code prioritised helpful logging over minimising awake time. This was helpful when tesing and developing but now it's better to turn off remote logging or sleep as soon as it's possible.
- - Storing unnecessary data in RTC memory - while helpful for debugging/testing, it's no longer necessary.
-
-A number of changes have been made around optimising performance and minimising awake time:
- - ~50% less awake time than before, average about 10-15 seconds over the previous ~20-25 seconds
- - 100% less power consumption than before, due to only refreshing the display once and minimising WiFi radio time.
-
-A second series has been added to the graph above which will track the long-term power consumption on the same battery for comparison. Like the last time, I will update the graph every few weeks.
-
-### Server (Raspberry Pi)
-1. Gets any relevant new data (ie. weather, maps).
-2. Generates a HTML file using a Python HTML translator [Airium](https://pypi.org/project/airium/).
-3. [Chromedriver](https://chromedriver.chromium.org/downloads) is then used to turn that generated HTML file into PNG image that fits the dimensions of e-ink resolution.
-4. A [Flask](https://flask.palletsprojects.com/en/2.3.x/) server is then started to serve the generated PNG image to the client.
-5. (Optional) The server listens for client logs by subscribing to a MQTT topic using [Mosquitto](https://mosquitto.org/).
-6. Depending on configuration the server will either shutdown, run indefinitely, or shutdown after a certain number of times the image is served.
-7. A cronjob ensures the server is started at the next scheduled wake time of the client.
+See [doc/power-consumption.md](doc/power-consumption.md) for details on power consumption and battery performance.
 
 #### Features:
-See the [server](/server) for more features.
+See the [server/README.md](server/README.md) for more features.
 
 
 ## Bill of Materials
@@ -94,7 +67,7 @@ See the [server](/server) for more features.
 
 - **3000mAh LiPo battery pack ~€10**
 
-  Any Lithium-Ion/Polymer battery will do as long as they have a JST connector for hooking up to the Inkplate board. Some Inkplate 10's are sold with a 3000mAh battery which should give approximately 6 months of life. Here is [the battery I used](https://cdn-shop.adafruit.com/datasheets/LiIon2000mAh37V.pdf). See section on [power consumption](#power-consumption) for more info on real-world calculations.
+  Any Lithium-Ion/Polymer battery will do as long as they have a JST connector for hooking up to the Inkplate board. Some Inkplate 10's are sold with a 3000mAh battery which should give approximately 6 months of life. Here is [the battery I used](https://cdn-shop.adafruit.com/datasheets/LiIon2000mAh37V.pdf). See section on [power consumption](doc/power-consumption.md) for more info on real-world calculations.
 
 - **CR2032 3V coin cell ~€1**
 
@@ -141,7 +114,7 @@ Likely parameters you'll need to change is
 - `ntp.timezone` - the timezone you live in (in "Olson" format), otherwise the client might not wake at the expected time.  
 - `mqtt_logger.broker` - the hostname or IP address of your server (likely the same server as the image host).
 
-See the [server](/server) for info on server setup.
+See the [server/README.md](server/README.md) for info on server setup.
 
 ## Firmware
 
