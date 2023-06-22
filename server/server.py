@@ -143,9 +143,11 @@ def main():
 
     start_wait_dt = dt.datetime.now()
     diff = dt.datetime.now() - start_wait_dt
-    while (enable_max_serves and server_num_serves < server_max_serves) and (
-        enable_wait and diff.seconds < server_alive_seconds
-    ):
+    while True:
+        if (enable_max_serves and server_num_serves < server_max_serves) or (
+        enable_wait and diff.seconds < server_alive_seconds):
+            break
+        
         time.sleep(1)
         diff = dt.datetime.now() - start_wait_dt
 
