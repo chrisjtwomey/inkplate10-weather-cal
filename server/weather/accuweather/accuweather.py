@@ -5,7 +5,7 @@ from ..service import WeatherService
 
 
 class AccuweatherService(WeatherService):
-    def __init__(self, apikey, location, num_hours=6, metric=True, mock=False):
+    def __init__(self, apikey, location, num_hours=6, metric=True):
         super().__init__(
             apikey,
             "http://dataservice.accuweather.com",

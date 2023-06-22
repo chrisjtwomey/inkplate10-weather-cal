@@ -4,7 +4,7 @@ from ..service import WeatherService
 
 
 class OpenWeatherMapService(WeatherService):
-    def __init__(self, apikey, location, num_hours=6, metric=True, mock=False):
+    def __init__(self, apikey, location, num_hours=6, metric=True):
         super().__init__(
             apikey,
             "https://api.openweathermap.org",
@@ -15,25 +15,13 @@ class OpenWeatherMapService(WeatherService):
         self.lat, self.lon = self._get_location_coords(location)
 
     def get_daily_summary(self):
-        data = None
-
-        if self.mock:
-            import os, json
-
-            path = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                "samples/mock-sample-daily.json",
+        res = requests.get(
+            self.baseurl
+            + "/data/2.5/weather?lat={}&lon={}&appid={}&units={}".format(
+                self.lat, self.lon, self.apikey, self.units
             )
-            with open(path, encoding="utf8") as f:
-                data = json.load(f)
-        else:
-            res = requests.get(
-                self.baseurl
-                + "/data/2.5/weather?lat={}&lon={}&appid={}&units={}".format(
-                    self.lat, self.lon, self.apikey, self.units
-                )
-            )
-            data = res.json()
+        )
+        data = res.json()
 
         if self.units == "metric":
             units = "\N{DEGREE SIGN}C"
@@ -52,25 +40,13 @@ class OpenWeatherMapService(WeatherService):
         return forecast
 
     def get_hourly_forecast(self):
-        data = None
-
-        if self.mock:
-            import os, json
-
-            path = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                "samples/mock-sample-hourly.json",
+        res = requests.get(
+            self.baseurl
+            + "/data/2.5/forecast?cnt={}&lat={}&lon={}&appid={}&units={}".format(
+                self.num_hours, self.lat, self.lon, self.apikey, self.units
             )
-            with open(path, encoding="utf8") as f:
-                data = json.load(f)
-        else:
-            res = requests.get(
-                self.baseurl
-                + "/data/2.5/forecast?cnt={}&lat={}&lon={}&appid={}&units={}".format(
-                    self.num_hours, self.lat, self.lon, self.apikey, self.units
-                )
-            )
-            data = res.json()
+        )
+        data = res.json()
 
         code = data["cod"]
         if int(code) != 200:
@@ -105,23 +81,11 @@ class OpenWeatherMapService(WeatherService):
         return forecasts
 
     def _get_location_coords(self, location):
-        data = None
-
-        if self.mock:
-            import os, json
-
-            path = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                "samples/mock-sample-location.json",
-            )
-            with open(path, encoding="utf8") as f:
-                data = json.load(f)
-        else:
-            res = requests.get(
-                self.baseurl
-                + "/geo/1.0/direct?q={}&limit=1&appid={}".format(location, self.apikey)
-            )
-            data = res.json()
+        res = requests.get(
+            self.baseurl
+            + "/geo/1.0/direct?q={}&limit=1&appid={}".format(location, self.apikey)
+        )
+        data = res.json()
 
         if len(data) == 0 or len(data) > 1:
             raise ValueError("Unexpected response from weather api: {}".format(data))
