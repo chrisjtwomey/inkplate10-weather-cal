@@ -31,7 +31,7 @@ esp_err_t configureWiFi(const char* ssid, const char* pass, int retries) {
     int attempts = 0;
     while (attempts++ <= retries && WiFi.status() != WL_CONNECTED) {
         logf(LOG_DEBUG, "connection attempt #%d...", attempts);
-        delay(500);
+        delay(1000);
     }
 
     // If still not connected, error with timeout.
@@ -464,9 +464,9 @@ void deepSleep() {
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
 
-    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_OFF);
-    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
-    esp_sleep_pd_config(ESP_PD_DOMAIN_XTAL, ESP_PD_OPTION_OFF);
+#if defined(HAS_SDCARD)
+    board.sdCardSleep();
+#endif
 
     esp_deep_sleep_start();
 }

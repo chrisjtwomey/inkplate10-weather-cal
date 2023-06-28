@@ -1,7 +1,9 @@
 #include <ArduinoJson.h>
 #include <ArduinoYaml.h>
-#include <SdFat.h>
 #include <StreamUtils.h>
+#if defined(HAS_SDCARD)
+#include <SdFat.h>
+#endif
 
 #include "lib.h"
 #include "battery.h"
@@ -49,6 +51,7 @@ void setup() {
     int batteryRemainingPercent = getBatteryCapacity(bvolt);
     logf(LOG_INFO, "approx battery capacity: %d%%", batteryRemainingPercent);
 
+#if defined(HAS_SDCARD)
     // Init storage.
     if (!board.sdCardInit()) {
         const char* errMsg = "SD card init failure";
@@ -56,6 +59,7 @@ void setup() {
         displayMessage(errMsg, batteryRemainingPercent);
         sleep(CONFIG_DEFAULT_CALENDAR_DAILY_REFRESH_TIME);
     }
+#endif
 
     if (batteryRemainingPercent <= 1) {
         log(LOG_NOTICE, "battery near empty! - sleeping until charged");
@@ -69,6 +73,7 @@ void setup() {
     // Init err state.
     esp_err_t err = ESP_OK;
 
+#if defined(HAS_SDCARD)
     // Attempt to get config yaml file.
     File file = sd.open(CONFIG_FILE_PATH, FILE_READ);
     if (!file) {
@@ -114,6 +119,9 @@ void setup() {
     const char* mqttLoggerClientID = mqttLoggerCfg["clientId"];
     const char* mqttLoggerTopic = mqttLoggerCfg["topic"];
     int mqttLoggerRetries = mqttLoggerCfg["retries"];
+#else
+    #include "config.h"
+#endif
 
     // Attempt to connect to WiFi.
     err = configureWiFi(wifiSSID, wifiPass, wifiRetries);
@@ -144,10 +152,13 @@ void setup() {
     err = ESP_FAIL;
     const char* errMsg;
     int attempts = 0;
+#if defined(HAS_SDCARD)
+    const char* imagePath = CALENDAR_RW_PATH;
+
     do {
         logf(LOG_DEBUG, "calendar download attempt #%d", attempts + 1);
 
-        err = downloadFile(calendarUrl, CALENDAR_IMAGE_SIZE, CALENDAR_RW_PATH);
+        err = downloadFile(calendarUrl, CALENDAR_IMAGE_SIZE, imagePath);
         if (err != ESP_OK) {
             errMsg = "file download error";
             log(LOG_ERROR, errMsg);
@@ -168,6 +179,9 @@ void setup() {
         // Deep sleep until next refresh time
         sleep(calendarDailyRefreshTime);
     }
+#else
+    const char* imagePath = calendarUrl;
+#endif
     
     // Reset err state.
     err = ESP_FAIL;
@@ -176,7 +190,7 @@ void setup() {
         logf(LOG_DEBUG, "calendar draw attempt #%d", attempts + 1);
 
         board.clearDisplay();
-        err = loadImage(CALENDAR_RW_PATH);
+        err = loadImage(imagePath);
         if (err != ESP_OK) {
             errMsg = "image load error";
             log(LOG_ERROR, errMsg);

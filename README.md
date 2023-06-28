@@ -29,21 +29,22 @@ Both a server and client and required. The main workload is in the server which 
 2. Attempts to get current network time and update real-time clock.
 3. (Optional) Attempts to connect a MQTT topic to publish logs. This allows us to see what the ESP32 controller is doing without needing to monitor the serial connection.
 4. Attempt to download the PNG image that the server is hosting.
-5. Write the downloaded PNG image to SD card.
+5. (Optional) Write the downloaded PNG image to SD card.
 6. Read the PNG image back from SD card and write to the e-ink display.
 7. Returns to deep sleep until the next scheduled wake time (eg. 24 hours).
 
 #### Features:
   - Ultra-low power consumption:
-    - approx 21µA in deep sleep
-    - approx 240mA awake
-    - approx 30 seconds awake time daily
+    - approx 24µA in deep sleep
+    - approx 120mA awake
+    - approx 10-20 seconds awake time daily
+    - **1 - 2 years+** of battery life using a 2000mAh cell.
   - Real-time clock for precise sleep/wake times.
   - Daylight savings time handled automatically.
   - Can publish to a MQTT topic for remote-logging.
   - Renders messages on the e-ink display for critical errors (eg. battery low, wifi connect timeout etc.).
-  - Stores calendar images on SD card.
-  - Reconfigure client by updating YAML file on SD card and reboot - easy!
+  - Optional: stores calendar images on SD card.
+  - Optional: reconfigure client by updating YAML file on SD card and reboot - easy!
 
 #### Power Consumption
 
@@ -61,7 +62,9 @@ See the [server/README.md](server/README.md) for more features.
 
   If you want to use a more generic e-ink display or you just want to do a DIY build, there is a [branch](https://github.com/chrisjtwomey/inkplate10-weather-cal/tree/gxepd2) that's designed to work with GXEPD2, but it's likely missing fixes and features from the main branch.
   
-- **2 GB microSD card ~€5**
+- **Optional: 2 GB microSD card ~€5**
+
+  **Note: microSD cards are now no longer required and disabled by default. Use build flag `HAS_SDCARD` to re-enable**
   
   Whatever is the cheapest microSD card you can find, you will not likely need more than few hundred kilobytes of storage. It will be mainly used by Inkplate to cache downloaded images from the server until it needs to refresh the next day. The config file for the code will also need to be stored here.
 
@@ -83,7 +86,53 @@ See the [server/README.md](server/README.md) for more features.
 
 ## Setup
 
-Place `config.yaml` in the root directory of an SD card and connect it to your Inkplate 10 board.
+### Option #1: using config header file _(recommended for E-Radionica Inkplate10)_
+
+**Note: The old _E-Radionica_ version of Inkplate10 is missing hardware to control power to the SD card module which results in up to 2mA power consumption during deep sleep, therefore it's recommended you use this option to preserve battery life. See https://github.com/SolderedElectronics/Inkplate-Arduino-library/issues/209.**
+
+Update `config.h` with the:
+```
+// Assign config values.
+const char* calendarUrl = "http://localhost:8080/calendar.png";
+const char* calendarDailyRefreshTime = "09:00:00";
+const int calendarRetries = 3;  // number of times to retry draw/download
+
+// Wifi config.
+const char* wifiSSID = "XXXX";
+const char* wifiPass = "XXXX";
+const int wifiRetries = 6;  // number of times to retry WiFi connection
+
+// NTP config.
+const char* ntpHost =
+    "pool.ntp.org";  // the time server host (keep as pool.ntp.org if in doubt)
+const char* ntpTimezone = "Europe/Dublin";
+
+// Remote logging config.
+bool mqttLoggerEnabled =
+    false;  // set to true for remote logging to a MQTT broker
+const char* mqttLoggerBroker = "localhost";  // the broker host
+const int mqttLoggerPort = 1883;
+const char* mqttLoggerClientID = "inkplate10-weather-client";
+const char* mqttLoggerTopic = "mqtt/inkplate10-weather-client";
+const int mqttLoggerRetries = 3;  // number of times to retry MQTT connection
+```
+
+Make sure to update: 
+- `wifiSSID` - the SSID if your WiFi network.
+- `wifiPass` - the WiFi password.
+- `calendarUrl` - the hostname or IP address of your server which the client will attempt to download the image from.
+- `calendarDailyRefreshTime` - the time you want the client to wake each day, in `HH:MM:SS` format.
+- `ntpTimezone` - the timezone you live in (in "Olson" format), otherwise the client might not wake at the expected time.  
+- `mqttLoggerBroker` - the hostname or IP address of your server (likely the same server as the image host).
+
+
+### Option #2: Using a microSD card _(recommended for SolderedElectronics Inkplate10)_
+
+**Note: The new/current _SolderedElectronics_ version of Inkplate10 has a MOSFET to control power to the SD card during deep sleep, making this option viable for battery life. https://github.com/SolderedElectronics/Inkplate-Arduino-library/issues/209**
+
+**Note: Use build flag `HAS_SDCARD` to enable SD card usage.**
+
+Insert an SD card into your Inkplate board and place a new file `config.yaml` in the root directory:
 
 ```
 calendar:
@@ -106,7 +155,7 @@ mqtt_logger:
   retries: 3
 ```
 
-Likely parameters you'll need to change is 
+Make sure to update: 
 - `wifi.ssid` - the SSID if your WiFi network.
 - `wifi.pass` - the WiFi password.
 - `calendar.url` - the hostname or IP address of your server which the client will attempt to download the image from.
