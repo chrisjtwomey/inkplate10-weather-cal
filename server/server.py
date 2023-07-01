@@ -14,7 +14,8 @@ from utils import get_prop, get_prop_by_keys
 from views.calendar import CalendarPage
 from google.api import GoogleAPIService
 from werkzeug.serving import make_server
-from flask import Flask, send_file, abort
+from flask import Flask, make_response, send_file, abort
+from datetime import datetime, timedelta
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 log = None
@@ -23,10 +24,11 @@ app = Flask(__name__)
 # number of times served
 server_num_serves = 0
 server_max_serves = 1
+server_refresh_times = []
 
 
 def main():
-    global log, server_max_serves
+    global log, server_max_serves, server_refresh_times
 
     config_file = open(os.path.join(cwd, "config.yaml"))
     config = yaml.safe_load(config_file)
@@ -68,6 +70,7 @@ def main():
         config, "server", "aliveSeconds", default=60
     )
     server_max_serves = get_prop_by_keys(config, "server", "maxServes", default=1)
+    server_refresh_times = get_prop_by_keys(config, "server", "refresh_times", default=["09:00:00"])
 
     image_width = get_prop_by_keys(config, "image", "width", default=825)
     image_height = get_prop_by_keys(config, "image", "height", default=1200)
@@ -144,8 +147,8 @@ def main():
     start_wait_dt = dt.datetime.now()
     diff = dt.datetime.now() - start_wait_dt
     while True:
-        if (enable_max_serves and server_num_serves < server_max_serves) or (
-        enable_wait and diff.seconds < server_alive_seconds):
+        if (enable_max_serves and server_num_serves >= server_max_serves) or (
+        enable_wait and diff.seconds > server_alive_seconds):
             break
         
         time.sleep(1)
@@ -198,6 +201,30 @@ def get_client_mqtt_logging(host, port, topic):
 
     return None
 
+def get_next_refresh_time():
+    global server_refresh_times
+
+    def get_timestamp(day, refresh_time):
+        dt = datetime.combine(day, datetime.strptime(refresh_time, '%H:%M:%S').time())
+        # dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp())
+
+    now = int(datetime.now().timestamp())
+    today = datetime.today()
+
+    idx = 0
+    ts = 0
+    for refresh_time in server_refresh_times:
+        ts = get_timestamp(today, refresh_time)
+        if ts > now:
+            break
+        idx += 1
+
+    if idx >= len(server_refresh_times):
+        idx = 0
+
+    return server_refresh_times[idx]
+
 
 class ServerThread(threading.Thread):
     def __init__(self, app, port, max_serves=1):
@@ -217,8 +244,8 @@ class ServerThread(threading.Thread):
         self.server.shutdown()
 
 
-@app.route("/calendar.png")
-def serve_cal_png():
+@app.route("/download.png")
+def serve_img_png():
     global server_num_serves, server_max_serves
     """
     Returns the calendar image directly through send_file
@@ -238,12 +265,15 @@ def serve_cal_png():
     if server_max_serves > 0:
         log.info(f"Served {server_num_serves}/{server_max_serves} times")
 
-    return send_file(
+    rsp = make_response(send_file(
         stream,
         mimetype="image/png",
         as_attachment=True,
         download_name=os.path.basename(path),
-    )
+    ))
+    rsp.headers["X-Next-Refresh"] = get_next_refresh_time()
+
+    return rsp
 
 
 if __name__ == "__main__":

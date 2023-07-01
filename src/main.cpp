@@ -1,12 +1,21 @@
-#include <ArduinoJson.h>
-#include <ArduinoYaml.h>
-#include <StreamUtils.h>
-#if defined(HAS_SDCARD)
-#include <SdFat.h>
+#include <Arduino.h>
+#include <Inkplate.h>
+#include <ezTime.h>
+
+#include "battery.h"
+#include "defaults.h"
+#include "display_utils.h"
+#include "error_utils.h"
+#include "log_utils.h"
+#include "network_utils.h"
+#include "sleep_utils.h"
+#include "time_utils.h"
+#if defined(USE_SDCARD)
+#include "file_utils.h"
 #endif
 
-#include "lib.h"
-#include "battery.h"
+// inkplate10 board driver
+Inkplate board(INKPLATE_3BIT);
 
 void setup() {
     Serial.begin(115200);
@@ -14,7 +23,6 @@ void setup() {
     board.begin();
     // Set board to portait mode.
     board.setRotation(1);
-
     // Set clock from RTC
     board.rtcGetRtcData();
     time_t bootTime = board.rtcGetEpoch();
@@ -51,21 +59,22 @@ void setup() {
     int batteryRemainingPercent = getBatteryCapacity(bvolt);
     logf(LOG_INFO, "approx battery capacity: %d%%", batteryRemainingPercent);
 
-#if defined(HAS_SDCARD)
+#if defined(USE_SDCARD)
     // Init storage.
     if (!board.sdCardInit()) {
         const char* errMsg = "SD card init failure";
         log(LOG_ERROR, errMsg);
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(CONFIG_DEFAULT_CALENDAR_DAILY_REFRESH_TIME);
+        sleep(board.rtcGetEpoch() + SECONDS_IN_DAY);
     }
 #endif
 
     if (batteryRemainingPercent <= 1) {
         log(LOG_NOTICE, "battery near empty! - sleeping until charged");
-        displayMessage("Battery empty, please charge!", batteryRemainingPercent);
+        displayMessage("Battery empty, please charge!",
+                       batteryRemainingPercent);
         // Sleep instead of proceeding when battery is too low.
-        sleep(SECONDS_IN_YEAR);
+        sleep(board.rtcGetEpoch() + SECONDS_IN_YEAR);
     } else if (batteryRemainingPercent <= 10) {
         log(LOG_WARNING, "battery low, charge soon!");
     }
@@ -73,14 +82,14 @@ void setup() {
     // Init err state.
     esp_err_t err = ESP_OK;
 
-#if defined(HAS_SDCARD)
+#if defined(USE_SDCARD)
     // Attempt to get config yaml file.
     File file = sd.open(CONFIG_FILE_PATH, FILE_READ);
     if (!file) {
         const char* errMsg = "Failed to open config file";
         logf(LOG_ERROR, errMsg);
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(CONFIG_DEFAULT_CALENDAR_DAILY_REFRESH_TIME);
+        sleep(FALLBACK_REFRESH_TIME);
     }
 
     // Attempt to parse yaml file.
@@ -91,36 +100,33 @@ void setup() {
         const char* errMsg = "Failed to load config from file";
         logf(LOG_ERROR, "failed to deserialize YAML: %s", dse.c_str());
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(CONFIG_DEFAULT_CALENDAR_DAILY_REFRESH_TIME);
+        sleep(FALLBACK_REFRESH_TIME);
     }
     file.close();
 
     // Assign config values.
-    JsonObject calendarCfg = doc["calendar"];
-    const char* calendarUrl = calendarCfg["url"];
-    const char* calendarDailyRefreshTime = calendarCfg["daily_refresh_time"];
-    int calendarRetries = calendarCfg["retries"];
+    JsonObject serverCfg = doc["server"];
+    serverURL = serverCfg["url"];
+    serverRetries = serverCfg["retries"];
 
     // Wifi config.
     JsonObject wifiCfg = doc["wifi"];
-    const char* wifiSSID = wifiCfg["ssid"];
-    const char* wifiPass = wifiCfg["pass"];
-    int wifiRetries = wifiCfg["retries"];
+    wifiSSID = wifiCfg["ssid"];
+    wifiPass = wifiCfg["pass"];
+    wifiRetries = wifiCfg["retries"];
 
     // NTP config.
-    const char* ntpHost = doc["ntp"]["host"];
-    const char* ntpTimezone = doc["ntp"]["timezone"];
+    ntpHost = doc["ntp"]["host"];
+    ntpTimezone = doc["ntp"]["timezone"];
 
     // Remote logging config.
     JsonObject mqttLoggerCfg = doc["mqtt_logger"];
-    bool mqttLoggerEnabled = mqttLoggerCfg["enabled"];
-    const char* mqttLoggerBroker = mqttLoggerCfg["broker"];
-    int mqttLoggerPort = mqttLoggerCfg["port"];
-    const char* mqttLoggerClientID = mqttLoggerCfg["clientId"];
-    const char* mqttLoggerTopic = mqttLoggerCfg["topic"];
-    int mqttLoggerRetries = mqttLoggerCfg["retries"];
-#else
-    #include "config.h"
+    mqttLoggerEnabled = mqttLoggerCfg["enabled"];
+    mqttLoggerBroker = mqttLoggerCfg["broker"];
+    mqttLoggerPort = mqttLoggerCfg["port"];
+    mqttLoggerClientID = mqttLoggerCfg["clientId"];
+    mqttLoggerTopic = mqttLoggerCfg["topic"];
+    mqttLoggerRetries = mqttLoggerCfg["retries"];
 #endif
 
     // Attempt to connect to WiFi.
@@ -129,7 +135,7 @@ void setup() {
         const char* errMsg = "wifi connect timeout";
         log(LOG_ERROR, errMsg);
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(calendarDailyRefreshTime);
+        sleep(board.rtcGetEpoch() + 60);
     }
 
     // Attempt to synchronize clocks with network time.
@@ -152,19 +158,33 @@ void setup() {
     err = ESP_FAIL;
     const char* errMsg;
     int attempts = 0;
-#if defined(HAS_SDCARD)
-    const char* imagePath = CALENDAR_RW_PATH;
 
+    int32_t defaultLen = E_INK_WIDTH * E_INK_HEIGHT * 8 + 100;
+    uint8_t *buf = 0;
+    // Default to a known refresh time.
+    // (len("XX:XX:XX") = 8) + 1 = 9
+    char nextRefreshTime[9] = FALLBACK_REFRESH_TIME;
     do {
         logf(LOG_DEBUG, "calendar download attempt #%d", attempts + 1);
 
-        err = downloadFile(calendarUrl, CALENDAR_IMAGE_SIZE, imagePath);
-        if (err != ESP_OK) {
+        buf = downloadFile(serverURL, nextRefreshTime, &defaultLen);
+        if (!buf) {
             errMsg = "file download error";
             log(LOG_ERROR, errMsg);
             continue;
         }
-    } while (err != ESP_OK && ++attempts <= calendarRetries);
+        err = ESP_OK;
+
+        logf(LOG_INFO, "next refresh time: %s", nextRefreshTime);
+#if defined(USE_SDCARD)
+        err = writeFile(buf, defaultLen, CALENDAR_RW_PATH);
+        if (err != ESP_OK) {
+            errMsg = "file write error";
+            log(LOG_ERROR, errMsg);
+            continue;
+        }
+#endif
+    } while (err != ESP_OK && ++attempts <= serverRetries);
 
     // Disconnect and turn off WiFi radio to save power.
     // Remove the below lines if you want to stay connected
@@ -177,12 +197,9 @@ void setup() {
     if (err != ESP_OK) {
         displayMessage(errMsg, batteryRemainingPercent);
         // Deep sleep until next refresh time
-        sleep(calendarDailyRefreshTime);
+        sleep(nextRefreshTime);
     }
-#else
-    const char* imagePath = calendarUrl;
-#endif
-    
+
     // Reset err state.
     err = ESP_FAIL;
     attempts = 0;
@@ -190,7 +207,11 @@ void setup() {
         logf(LOG_DEBUG, "calendar draw attempt #%d", attempts + 1);
 
         board.clearDisplay();
-        err = loadImage(imagePath);
+#if defined(USE_SDCARD)
+        err = loadImage(CALENDAR_RW_PATH);
+#else
+        err = loadImage(buf, defaultLen);
+#endif
         if (err != ESP_OK) {
             errMsg = "image load error";
             log(LOG_ERROR, errMsg);
@@ -201,7 +222,7 @@ void setup() {
 
         // Send buffer to eink display.
         board.display();
-    } while (err != ESP_OK && ++attempts <= calendarRetries);
+    } while (err != ESP_OK && ++attempts <= serverRetries);
 
     // If we were not successful, print the error msg to the inkplate display.
     if (err != ESP_OK) {
@@ -209,7 +230,7 @@ void setup() {
     }
 
     // Deep sleep until next refresh time
-    sleep(calendarDailyRefreshTime);
+    sleep(nextRefreshTime);
 }
 
 void loop() {}

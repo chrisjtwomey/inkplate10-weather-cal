@@ -1,0 +1,33 @@
+# This is an example config.yaml to place at the root directory
+# of your SD card. The values in these parameters are just examples
+# so be sure to update them to suit your own setup.
+#
+# These parameters override what is set in config.h if SD card is enabled.
+server:
+  # The URL on the server which the client will attempt to download the first image from.
+  url: http://localhost:8080/download.png
+  # The number of times to attempt downloading or drawing the server image.
+  retries: 3
+wifi:
+  ssid: XXXX
+  pass: XXXX
+  # The number of times to attempt WiFi connection before timeout.
+  retries: 6
+ntp:
+  # The time server host (keep as pool.ntp.org if in doubt).
+  host: pool.ntp.org
+  # The timezone you live in ("Olson" format).
+  timezone: Europe/Dublin
+mqtt_logger:
+  # Set to true to send publish logs to an MQTT broker.
+  enabled: false
+  # The MQTT broker to publish logs to.
+  broker: localhost
+  # The port of the MQTT broker.
+  port: 1883
+  # The unique identifier for this project in your MQTT broker.
+  clientId: inkplate10-weather-calendar
+  # The name of the MQTT topic to publish to.
+  topic: mqtt/inkplate10-weather-calendar
+  # The number of times to attempt MQTT connection before timeout.
+  retries: 3

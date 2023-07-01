@@ -64,7 +64,7 @@ See the [server/README.md](server/README.md) for more features.
   
 - **Optional: 2 GB microSD card ~€5**
 
-  **Note: microSD cards are now no longer required and disabled by default. Use build flag `HAS_SDCARD` to re-enable**
+  **Note: microSD cards are now no longer required and disabled by default. Use build flag `USE_SDCARD` to re-enable**
   
   Whatever is the cheapest microSD card you can find, you will not likely need more than few hundred kilobytes of storage. It will be mainly used by Inkplate to cache downloaded images from the server until it needs to refresh the next day. The config file for the code will also need to be stored here.
 
@@ -130,7 +130,7 @@ Make sure to update:
 
 **Note: The new/current _SolderedElectronics_ version of Inkplate10 has a MOSFET to control power to the SD card during deep sleep, making this option viable for battery life. https://github.com/SolderedElectronics/Inkplate-Arduino-library/issues/209**
 
-**Note: Use build flag `HAS_SDCARD` to enable SD card usage.**
+**Note: Use build flag `USE_SDCARD` to enable SD card usage.**
 
 Insert an SD card into your Inkplate board and place a new file `config.yaml` in the root directory:
 
