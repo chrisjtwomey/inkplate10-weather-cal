@@ -94,10 +94,15 @@ void displayMessage(const char* msg, int batteryRemainingPercent) {
     board.setTextColor(BLACK);
     board.setTextWrap(true);
     board.getTextBounds(msg, 0, 0, &x, &y, &w, &h);
-    board.fillRect(0, 0, E_INK_HEIGHT, h * 1.5, 0x8080);
-    board.setCursor(cX - w / 2, cY + h / 2);
+    board.fillRect(0, 0, E_INK_HEIGHT, h * 2.5, 0x8080);
+    board.setCursor(cX - w / 2, cY + h * 1.5);
     board.setTextColor(0xFFFF);
     board.print(msg);
+
+    String nowFmt = nowTzFmt();
+    board.setFont(&Merienda_Regular12pt7b);
+    board.setCursor(12, 24);
+    board.print(nowFmt);
 
     displayBatteryStatus(batteryRemainingPercent, true);
 

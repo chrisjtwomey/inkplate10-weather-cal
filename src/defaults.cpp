@@ -14,6 +14,8 @@
 char serverURL[] = "http://localhost:8080/download.png";
 // The number of times to attempt downloading or drawing the server image.
 int serverRetries = 3;
+// Fallback time to refresh.
+char serverDefaultRefreshTime[9] = "08:45:00";
 
 // Wifi config.
 char wifiSSID[] = "XXXX";

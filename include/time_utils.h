@@ -7,8 +7,6 @@
 #define SECONDS_IN_DAY 86400
 #define SECONDS_IN_YEAR SECONDS_IN_DAY * 365
 
-// Fallback time to refresh.
-#define FALLBACK_REFRESH_TIME "09:00:00"
 // The number of seconds to sleep if RTC not configured correctly.
 #define FALLBACK_SLEEP_SECONDS 120
 

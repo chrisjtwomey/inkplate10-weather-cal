@@ -14,10 +14,17 @@
 #include "file_utils.h"
 #endif
 
+RTC_DATA_ATTR int bootCount = 0;
+// Default to a known refresh time.
+// (len("XX:XX:XX") = 8) + 1 = 9
+RTC_DATA_ATTR char nextRefreshTime[9];
+
 // inkplate10 board driver
 Inkplate board(INKPLATE_3BIT);
 
 void setup() {
+    ++bootCount;
+
     Serial.begin(115200);
     // Init inkplate board.
     board.begin();
@@ -28,7 +35,7 @@ void setup() {
     time_t bootTime = board.rtcGetEpoch();
     setTime(bootTime);
 
-    log(LOG_NOTICE, "##### Inkplate10 Weather Calendar wake up #####");
+    logf(LOG_NOTICE, "##### Inkplate10 Weather Calendar boot #%d #####", bootCount);
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_EXT0:
@@ -89,7 +96,7 @@ void setup() {
         const char* errMsg = "Failed to open config file";
         logf(LOG_ERROR, errMsg);
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(FALLBACK_REFRESH_TIME);
+        sleep(serverDefaultRefreshTime);
     }
 
     // Attempt to parse yaml file.
@@ -100,7 +107,7 @@ void setup() {
         const char* errMsg = "Failed to load config from file";
         logf(LOG_ERROR, "failed to deserialize YAML: %s", dse.c_str());
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(FALLBACK_REFRESH_TIME);
+        sleep(serverDefaultRefreshTime);
     }
     file.close();
 
@@ -108,6 +115,7 @@ void setup() {
     JsonObject serverCfg = doc["server"];
     serverURL = serverCfg["url"];
     serverRetries = serverCfg["retries"];
+    serverDefaultRefreshTime = serverCfg["default_refresh_time"];
 
     // Wifi config.
     JsonObject wifiCfg = doc["wifi"];
@@ -161,9 +169,6 @@ void setup() {
 
     int32_t defaultLen = E_INK_WIDTH * E_INK_HEIGHT * 8 + 100;
     uint8_t *buf = 0;
-    // Default to a known refresh time.
-    // (len("XX:XX:XX") = 8) + 1 = 9
-    char nextRefreshTime[9] = FALLBACK_REFRESH_TIME;
     do {
         logf(LOG_DEBUG, "calendar download attempt #%d", attempts + 1);
 
