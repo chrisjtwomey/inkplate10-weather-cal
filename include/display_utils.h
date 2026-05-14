@@ -57,4 +57,24 @@ void displayBatteryStatus(int batteryRemainingPercent, bool invert);
   battery status display. error.
 */
 void displayMessage(const char* msg, int batteryRemainingPercent);
+
+/**
+  Save the raw PNG calendar bytes to SPIFFS so displayMessage can restore
+  the image on the next boot, preserving it behind any error banner.
+
+  @param buf  pointer to the PNG bytes.
+  @param len  byte count.
+  @returns true on success.
+*/
+bool saveCalendarCache(const uint8_t* buf, int32_t len);
+
+/**
+  Load the cached calendar PNG from SPIFFS into the display buffer.
+  Called at the start of displayMessage so the banner overlays the calendar.
+
+  @returns true if the file existed and decoded successfully; false on any
+  failure (first boot, SPIFFS not mounted, etc.) — the caller gracefully
+  falls back to a white background.
+*/
+bool loadCalendarCache();
 #endif

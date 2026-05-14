@@ -178,17 +178,55 @@ h4.numcircle, #icon-container.numcircle {
   width: 60%;
 }
 
-#hourly-forecasts .forecast-hour {
+#forecast-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+#forecast-table tr {
+  border: none;
+}
+
+#forecast-table td {
+  border: none;
+  padding: 0.3rem;
   text-align: center;
-  font-size: 5vw;
-  font-family: "Merienda-Regular";
 }
 
-.hourly-forecasts-forecast>tr {
-  padding: 0 1vw;
+.forecast-cell {
+  vertical-align: middle;
+  min-height: 80px;
 }
 
-.hourly-forecast-icon {
-  width: 80%;
-  margin: 0 auto !important;
+.forecast-icon {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.forecast-icon img {
+  width: 90%;
+  height: auto;
+  max-height: 110px;
+}
+
+.forecast-hour {
+  font-size: 3.5vw;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.forecast-temp {
+  font-size: 3vw;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.precip-canvas {
+  display: block;
+  width: 100%;
+  height: 120px;
 }

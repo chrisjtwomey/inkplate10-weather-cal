@@ -1,10 +1,8 @@
 #include "file_utils.h"
 #include <Inkplate.h>
-#include <Inkplate.h>
 #include <ArduinoJson.h>
 #include <ArduinoYaml.h>
 #include <StreamUtils.h>
-#include <SdFat.h>
 
 #include "log_utils.h"
 
@@ -24,14 +22,17 @@ extern Inkplate board;
 
 esp_err_t writeFile(uint8_t* buf, int32_t size, const char* filePath) {
     logf(LOG_DEBUG, "writing file to path %s", filePath);
-    SdFat sd = board.getSdFat();
+    SdFat &sd = board.getSdFat();
 
-    // Write image buffer to SD card
+    // Write image buffer to SD card.
+    // Use SdFile (not File) and raw SdFat open flags rather than FILE_WRITE —
+    // FS.h redefines FILE_WRITE to "w" (const char*) which is incompatible.
     if (sd.exists(filePath)) {
         sd.remove(filePath);
     }
 
-    File sdfile = sd.open(filePath, FILE_WRITE);
+    SdFile sdfile;
+    sdfile.open(&sd, filePath, O_WRITE | O_CREAT | O_TRUNC);
     if (!sdfile) {
         return ESP_ERR_EFILEW;
     }

@@ -2,6 +2,8 @@
 #include <Inkplate.h>
 #include <ezTime.h>
 
+#include <SPIFFS.h>
+#include "backoff.h"
 #include "battery.h"
 #include "defaults.h"
 #include "display_utils.h"
@@ -15,9 +17,13 @@
 #endif
 
 RTC_DATA_ATTR int bootCount = 0;
-// Default to a known refresh time.
-// (len("XX:XX:XX") = 8) + 1 = 9
-RTC_DATA_ATTR time_t nextRefreshTime;
+// Seconds-until-next-refresh as dictated by the server's
+// X-Next-Refresh-Seconds header. Zero-init on cold boot; preserved across
+// deep-sleep cycles. When 0, falls back to serverDefaultRefreshSeconds.
+RTC_DATA_ATTR uint32_t nextRefreshSeconds;
+// Exponential back-off step. Incremented on each failed boot (download or
+// draw). Reset to 0 on full success. Zero-init on cold reset.
+RTC_DATA_ATTR int serverBackoffStep;
 
 // inkplate10 board driver
 Inkplate board(INKPLATE_3BIT);
@@ -28,11 +34,15 @@ void setup() {
     Serial.begin(115200);
     // Init inkplate board.
     board.begin();
+    // Init SPIFFS for calendar image cache (preserves calendar behind banners).
+    if (!SPIFFS.begin(true)) {
+        log(LOG_WARNING, "SPIFFS mount failed - calendar cache unavailable");
+    }
     // Set board to portait mode.
     board.setRotation(1);
     // Set clock from RTC
-    board.rtcGetRtcData();
-    time_t bootTime = board.rtcGetEpoch();
+    board.rtc.getRtcData();
+    time_t bootTime = board.rtc.getEpoch();
     setTime(bootTime);
 
     logf(LOG_NOTICE, "##### Inkplate10 Weather Calendar boot #%d #####", bootCount);
@@ -40,7 +50,7 @@ void setup() {
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_EXT0:
             logf(LOG_DEBUG, "wakeup caused by external signal using RTC_IO.");
-            board.rtcClearAlarmFlag();
+            board.rtc.clearAlarmFlag();
             break;
         case ESP_SLEEP_WAKEUP_EXT1:
             logf(LOG_DEBUG, "wakeup caused by external signal using RTC_CNTL.");
@@ -72,16 +82,16 @@ void setup() {
         const char* errMsg = "SD card init failure";
         log(LOG_ERROR, errMsg);
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(board.rtcGetEpoch() + SECONDS_IN_DAY);
+        sleep(board.rtc.getEpoch() + SECONDS_IN_DAY);
     }
 #endif
 
-    if (batteryRemainingPercent <= 1) {
-        log(LOG_NOTICE, "battery near empty! - sleeping until charged");
-        displayMessage("Battery empty, please charge!",
+    if (batteryRemainingPercent <= 5) {
+        log(LOG_NOTICE, "battery critical! - sleeping until charged");
+        displayMessage("Battery critical, please charge!",
                        batteryRemainingPercent);
         // Sleep instead of proceeding when battery is too low.
-        sleep(board.rtcGetEpoch() + SECONDS_IN_YEAR);
+        sleep(board.rtc.getEpoch() + SECONDS_IN_YEAR);
     } else if (batteryRemainingPercent <= 10) {
         log(LOG_WARNING, "battery low, charge soon!");
     }
@@ -96,7 +106,7 @@ void setup() {
         const char* errMsg = "Failed to open config file";
         logf(LOG_ERROR, errMsg);
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(serverDefaultRefreshTime);
+        sleep_for(serverDefaultRefreshSeconds);
     }
 
     // Attempt to parse yaml file.
@@ -107,7 +117,7 @@ void setup() {
         const char* errMsg = "Failed to load config from file";
         logf(LOG_ERROR, "failed to deserialize YAML: %s", dse.c_str());
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(serverDefaultRefreshTime);
+        sleep_for(serverDefaultRefreshSeconds);
     }
     file.close();
 
@@ -115,7 +125,7 @@ void setup() {
     JsonObject serverCfg = doc["server"];
     serverURL = serverCfg["url"];
     serverRetries = serverCfg["retries"];
-    serverDefaultRefreshTime = serverCfg["default_refresh_time"];
+    serverDefaultRefreshSeconds = serverCfg["default_refresh_seconds"];
 
     // Wifi config.
     JsonObject wifiCfg = doc["wifi"];
@@ -143,7 +153,7 @@ void setup() {
         const char* errMsg = "wifi connect timeout";
         log(LOG_ERROR, errMsg);
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep(board.rtcGetEpoch() + 60);
+        sleep(board.rtc.getEpoch() + 60);
     }
 
     // Attempt to synchronize clocks with network time.
@@ -172,7 +182,7 @@ void setup() {
     do {
         logf(LOG_DEBUG, "calendar download attempt #%d", attempts + 1);
 
-        buf = downloadFile(serverURL, &nextRefreshTime, &defaultLen);
+        buf = downloadFile(serverURL, &nextRefreshSeconds, &defaultLen);
         if (!buf) {
             errMsg = "file download error";
             log(LOG_ERROR, errMsg);
@@ -180,7 +190,8 @@ void setup() {
         }
         err = ESP_OK;
 
-        logf(LOG_INFO, "next refresh time: %s", dateTime(nextRefreshTime, RFC3339).c_str());
+        logf(LOG_INFO, "next refresh in %u seconds",
+             nextRefreshSeconds ? nextRefreshSeconds : serverDefaultRefreshSeconds);
 #if defined(USE_SDCARD)
         err = writeFile(buf, defaultLen, CALENDAR_RW_PATH);
         if (err != ESP_OK) {
@@ -198,11 +209,13 @@ void setup() {
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
 
-    // If we were not successful, print the error msg to the inkplate display.
+    // If we were not successful, back off before retrying.
     if (err != ESP_OK) {
         displayMessage(errMsg, batteryRemainingPercent);
-        // Deep sleep until next refresh time
-        sleep(nextRefreshTime);
+        serverBackoffStep++;
+        logf(LOG_NOTICE, "server unreachable (back-off step %d): sleeping %u s",
+             serverBackoffStep, computeBackoffSeconds(serverBackoffStep));
+        sleep_for(computeBackoffSeconds(serverBackoffStep));
     }
 
     // Reset err state.
@@ -229,13 +242,36 @@ void setup() {
         board.display();
     } while (err != ESP_OK && ++attempts <= serverRetries);
 
-    // If we were not successful, print the error msg to the inkplate display.
+    // Draw failure: persistent local problem (corrupt image, rendering bug).
+    // Back off to conserve battery — won't self-heal without a reflash.
     if (err != ESP_OK) {
         displayMessage(errMsg, batteryRemainingPercent);
+        serverBackoffStep++;
+        logf(LOG_NOTICE, "draw failed (back-off step %d): sleeping %u s",
+             serverBackoffStep, computeBackoffSeconds(serverBackoffStep));
+        sleep_for(computeBackoffSeconds(serverBackoffStep));
     }
 
-    // Deep sleep until next refresh time
-    sleep(nextRefreshTime);
+    // Cache the drawn image so displayMessage can overlay it as a backdrop.
+    if (saveCalendarCache(buf, defaultLen)) {
+        log(LOG_DEBUG, "calendar cache saved to SPIFFS");
+    } else {
+        log(LOG_WARNING, "failed to save calendar cache to SPIFFS");
+    }
+
+    if (nextRefreshSeconds > 0) {
+        // Server told us exactly when to come back — reset back-off and sleep.
+        serverBackoffStep = 0;
+        sleep_for(nextRefreshSeconds);
+    } else {
+        // Server returned an image but no valid refresh time. We don't know
+        // when to come back, so back off rather than picking an arbitrary
+        // interval. Back-off resets the moment the server provides a header.
+        serverBackoffStep++;
+        logf(LOG_NOTICE, "no refresh schedule from server (back-off step %d): sleeping %u s",
+             serverBackoffStep, computeBackoffSeconds(serverBackoffStep));
+        sleep_for(computeBackoffSeconds(serverBackoffStep));
+    }
 }
 
 void loop() {}

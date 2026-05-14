@@ -1,0 +1,14 @@
+[
+  {"EpochDateTime": 1747900800, "WeatherIcon": 1,  "RealFeelTemperature": {"Value": 16, "Unit": "C"}, "Wind": {"Speed": {"Value": 10, "Unit": "km/h"}}, "RelativeHumidity": 60, "RainProbability": 10},
+  {"EpochDateTime": 1747904400, "WeatherIcon": 3,  "RealFeelTemperature": {"Value": 17, "Unit": "C"}, "Wind": {"Speed": {"Value": 11, "Unit": "km/h"}}, "RelativeHumidity": 58, "RainProbability": 20},
+  {"EpochDateTime": 1747908000, "WeatherIcon": 4,  "RealFeelTemperature": {"Value": 18, "Unit": "C"}, "Wind": {"Speed": {"Value": 12, "Unit": "km/h"}}, "RelativeHumidity": 55, "RainProbability": 30},
+  {"EpochDateTime": 1747911600, "WeatherIcon": 6,  "RealFeelTemperature": {"Value": 18, "Unit": "C"}, "Wind": {"Speed": {"Value": 14, "Unit": "km/h"}}, "RelativeHumidity": 55, "RainProbability": 40},
+  {"EpochDateTime": 1747915200, "WeatherIcon": 7,  "RealFeelTemperature": {"Value": 17, "Unit": "C"}, "Wind": {"Speed": {"Value": 15, "Unit": "km/h"}}, "RelativeHumidity": 60, "RainProbability": 60},
+  {"EpochDateTime": 1747918800, "WeatherIcon": 12, "RealFeelTemperature": {"Value": 16, "Unit": "C"}, "Wind": {"Speed": {"Value": 16, "Unit": "km/h"}}, "RelativeHumidity": 70, "RainProbability": 70},
+  {"EpochDateTime": 1747922400, "WeatherIcon": 13, "RealFeelTemperature": {"Value": 15, "Unit": "C"}, "Wind": {"Speed": {"Value": 18, "Unit": "km/h"}}, "RelativeHumidity": 75, "RainProbability": 80},
+  {"EpochDateTime": 1747926000, "WeatherIcon": 13, "RealFeelTemperature": {"Value": 14, "Unit": "C"}, "Wind": {"Speed": {"Value": 20, "Unit": "km/h"}}, "RelativeHumidity": 80, "RainProbability": 85},
+  {"EpochDateTime": 1747929600, "WeatherIcon": 18, "RealFeelTemperature": {"Value": 13, "Unit": "C"}, "Wind": {"Speed": {"Value": 22, "Unit": "km/h"}}, "RelativeHumidity": 85, "RainProbability": 90},
+  {"EpochDateTime": 1747933200, "WeatherIcon": 18, "RealFeelTemperature": {"Value": 12, "Unit": "C"}, "Wind": {"Speed": {"Value": 22, "Unit": "km/h"}}, "RelativeHumidity": 88, "RainProbability": 90},
+  {"EpochDateTime": 1747936800, "WeatherIcon": 7,  "RealFeelTemperature": {"Value": 11, "Unit": "C"}, "Wind": {"Speed": {"Value": 20, "Unit": "km/h"}}, "RelativeHumidity": 90, "RainProbability": 60},
+  {"EpochDateTime": 1747940400, "WeatherIcon": 7,  "RealFeelTemperature": {"Value": 10, "Unit": "C"}, "Wind": {"Speed": {"Value": 18, "Unit": "km/h"}}, "RelativeHumidity": 92, "RainProbability": 40}
+]

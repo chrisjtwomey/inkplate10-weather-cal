@@ -10,20 +10,20 @@
 extern Inkplate board;
 
 /**
-  Enter deep sleep with RTC alarm.
-
-  @param refreshTime the time of the day to wake in HH:MM:SS format (eg.
-  09:00:00). error.
+  Enter deep sleep for `seconds` from now. The external RTC alarm fires
+  exactly `seconds` later — no timezone math, no DST handling on the client.
 */
-void sleep(const char* refreshTime) { 
-  time_t targetWakeTime = getWakeTime(refreshTime);
-  sleep(targetWakeTime);
+void sleep_for(uint32_t seconds) {
+    time_t targetWakeTime = board.rtc.getEpoch() + (time_t)seconds;
+    logf(LOG_DEBUG, "sleeping for %u seconds (RTC alarm at epoch %ld)",
+         seconds, (long)targetWakeTime);
+    sleep(targetWakeTime);
 }
 
 void sleep(time_t targetWakeTime) {
     logf(LOG_DEBUG, "setting deep sleep RTC wakeup on pin %d", GPIO_NUM_39);
 
-    board.rtcSetAlarmEpoch(targetWakeTime, RTC_ALARM_MATCH_DHHMMSS);
+    board.rtc.setAlarmEpoch(targetWakeTime, RTC_ALARM_MATCH_DHHMMSS);
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_39, 0);
 
     logf(LOG_DEBUG, "waking at %s", dateTime(targetWakeTime, RFC3339).c_str());

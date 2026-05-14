@@ -1,0 +1,14 @@
+{
+  "Headline": {"Text": "Pleasant Tuesday"},
+  "DailyForecasts": [
+    {
+      "Date": "2026-05-19T07:00:00+01:00",
+      "RealFeelTemperature": {
+        "Minimum": {"Value": 8.6, "Unit": "C"},
+        "Maximum": {"Value": 18.2, "Unit": "C"}
+      },
+      "Day": {"Icon": 3, "IconPhrase": "Partly sunny"},
+      "Night": {"Icon": 34, "IconPhrase": "Mostly clear"}
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 #ifndef __DEFAULTS_H__
 #define __DEFAULTS_H__
+#include <stdint.h>
 /**
  * Manually define config params.
  *
@@ -14,6 +15,9 @@
 extern char serverURL[];
 // The number of times to attempt downloading or drawing the server image.
 extern int serverRetries;
+// Fallback seconds-until-next-refresh when the server has not yet dictated
+// a value (e.g. cold boot, or every server contact has failed so far).
+extern uint32_t serverDefaultRefreshSeconds;
 
 // Wifi config.
 extern char wifiSSID[];

@@ -1,0 +1,14 @@
+{
+  "weather": [{"id": 802, "main": "Clouds", "description": "scattered clouds", "icon": "03d"}],
+  "main": {
+    "temp": 14.2,
+    "feels_like": 13.5,
+    "temp_min": 11.0,
+    "temp_max": 17.8,
+    "humidity": 64
+  },
+  "wind": {"speed": 3.4, "deg": 220},
+  "dt": 1747900800,
+  "name": "Cork",
+  "cod": 200
+}

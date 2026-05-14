@@ -1,5 +1,6 @@
 #include "display_utils.h"
 #include <Inkplate.h>
+#include <SPIFFS.h>
 #include "icon/icons_32x32.h"
 #include "font/Merienda_Regular12pt7b.h"
 #include "font/Merienda_Regular16pt7b.h"
@@ -8,6 +9,32 @@
 
 // The Inkplate board driver instance.
 extern Inkplate board;
+
+#define CALENDAR_CACHE_PATH "/calendar.png"
+
+bool saveCalendarCache(const uint8_t* buf, int32_t len) {
+    File f = SPIFFS.open(CALENDAR_CACHE_PATH, FILE_WRITE);
+    if (!f) {
+        log(LOG_WARNING, "saveCalendarCache: failed to open file");
+        return false;
+    }
+    size_t written = f.write(buf, (size_t)len);
+    f.close();
+    return (int32_t)written == len;
+}
+
+bool loadCalendarCache() {
+    File f = SPIFFS.open(CALENDAR_CACHE_PATH, FILE_READ);
+    if (!f || f.size() == 0) return false;
+    int32_t len = (int32_t)f.size();
+    uint8_t* buf = (uint8_t*)ps_malloc(len);
+    if (!buf) { f.close(); return false; }
+    f.read(buf, len);
+    f.close();
+    bool ok = board.image.drawPngFromBuffer(buf, len, 0, 0, false, true);
+    free(buf);
+    return ok;
+}
 
 /**
   Load an image to the display buffer.
@@ -21,7 +48,7 @@ extern Inkplate board;
 esp_err_t loadImage(const char* filePath) {
     logf(LOG_INFO, "drawing image from path: %s", filePath);
 
-    if (!board.drawImage(filePath, 0, 0, false, true)) {
+    if (!board.image.drawPngFromSd(filePath, 0, 0, false, true)) {
         return ESP_ERR_EDRAW;
     }
 
@@ -41,7 +68,7 @@ esp_err_t loadImage(const char* filePath) {
 esp_err_t loadImage(uint8_t* buf, int32_t len) {
     log(LOG_INFO, "drawing image from buffer");
 
-    if (!board.drawPngFromBuffer(buf, len, 0, 0, false, true)) {
+    if (!board.image.drawPngFromBuffer(buf, len, 0, 0, false, true)) {
         return ESP_ERR_EDRAW;
     }
 
@@ -60,7 +87,7 @@ esp_err_t loadImage(uint8_t* buf, int32_t len) {
 esp_err_t loadImage(uint8_t* buf, int x, int y, int w, int h) {
     log(LOG_DEBUG, "drawing image from byte array...");
 
-    if (!board.drawImage(buf, x, y, w, h, BLACK, WHITE)) {
+    if (!board.image.draw(buf, x, y, w, h, BLACK, WHITE)) {
         return ESP_ERR_EDRAW;
     }
 
@@ -75,15 +102,12 @@ esp_err_t loadImage(uint8_t* buf, int x, int y, int w, int h) {
   error.
 */
 void displayMessage(const char* msg, int batteryRemainingPercent) {
-    board.clearDisplay();
-
-#if defined(USE_SDCARD)
-    // If previous image exists, load into board buffer.
-    esp_err_t err = loadImage(CALENDAR_RW_PATH);
-    if (err != ESP_OK) {
-        log(LOG_WARNING, "load previous image error");
-    }
-#endif
+    // Restore the cached calendar so the banner overlays it rather than
+    // replacing the whole screen with white. drawPngFromBuffer writes every
+    // pixel of the full-size PNG, so no board.clearDisplay() is needed before
+    // or after — it either fills the buffer with the calendar, or the buffer
+    // stays as-is (white from board.begin()) if no cache exists yet.
+    loadCalendarCache();
 
     int cX = E_INK_HEIGHT / 2;
     int cY = 16;  // 16pt font
