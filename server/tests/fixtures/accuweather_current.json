@@ -1,0 +1,16 @@
+[
+  {
+    "WeatherIcon": 3,
+    "RealFeelTemperature": {
+      "Metric": {"Value": 14.7, "Unit": "C"},
+      "Imperial": {"Value": 58.5, "Unit": "F"}
+    },
+    "Wind": {
+      "Speed": {
+        "Metric": {"Value": 12.4, "Unit": "km/h"},
+        "Imperial": {"Value": 7.7, "Unit": "mph"}
+      }
+    },
+    "RelativeHumidity": 64
+  }
+]

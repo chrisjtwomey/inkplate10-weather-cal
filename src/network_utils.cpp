@@ -5,6 +5,7 @@
 
 #include "error_utils.h"
 #include "log_utils.h"
+#include "refresh_header.h"
 
 /**
   Connect to a WiFi network in Station Mode.
@@ -54,7 +55,7 @@ esp_err_t configureWiFi(const char* ssid, const char* pass, int retries) {
   - ESP_OK if successful.
   - ESP_ERR_TIMEOUT if number of retries is exceeded without success.
 */
-uint8_t* downloadFile(const char* url, time_t* nextRefresh, int32_t* defaultLen) {
+uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* defaultLen) {
     logf(LOG_INFO, "downloading file at URL %s", url);
 
     bool sleep = WiFi.getSleep();
@@ -65,7 +66,7 @@ uint8_t* downloadFile(const char* url, time_t* nextRefresh, int32_t* defaultLen)
     http.getStream().setTimeout(5);
 
     const char* headersToCollect[] = {
-        "X-Next-Refresh",
+        "X-Next-Refresh-Seconds",
     };
     const size_t numberOfHeaders = 1;
     http.collectHeaders(headersToCollect, numberOfHeaders);
@@ -89,18 +90,20 @@ uint8_t* downloadFile(const char* url, time_t* nextRefresh, int32_t* defaultLen)
         return buffer;
     }
 
-    if (http.hasHeader("X-Next-Refresh")) {
-        // Get the next refresh header value from the server.
-        // We use this to determine when to wake up next.
-        String headerVal = http.header("X-Next-Refresh");
-        *nextRefresh = headerVal.toInt();
-        // const char* headerValPtr = headerVal.c_str();
-        // strcpy(nextRefresh, headerValPtr);
-
-        
-        logf(LOG_DEBUG, "received header X-Next-Refresh: %d", *nextRefresh);
+    if (http.hasHeader("X-Next-Refresh-Seconds")) {
+        // Server is authoritative for *when* to refresh next; we just count
+        // down. No timezone math on the client.
+        String headerVal = http.header("X-Next-Refresh-Seconds");
+        uint32_t parsed = 0;
+        if (parseRefreshTime(headerVal.c_str(), &parsed)) {
+            *nextRefreshSeconds = parsed;
+            logf(LOG_DEBUG, "received header X-Next-Refresh-Seconds: %u", parsed);
+        } else {
+            logf(LOG_WARNING, "X-Next-Refresh-Seconds value '%s' is malformed, ignoring",
+                 headerVal.c_str());
+        }
     } else {
-        logf(LOG_WARNING, "header X-Next-Refresh not found in response");
+        logf(LOG_WARNING, "header X-Next-Refresh-Seconds not found in response");
     }
 
     int32_t total = http.getSize();

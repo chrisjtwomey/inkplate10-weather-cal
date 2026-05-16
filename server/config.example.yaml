@@ -1,0 +1,38 @@
+---
+server:
+  port: 8080
+  # IANA timezone in which refresh_times are interpreted (e.g. Europe/Dublin,
+  # Europe/London, America/New_York). Handles DST transitions automatically.
+  # If omitted, the server's OS-level timezone is used (UTC in Docker by
+  # default, which is rarely what you want).
+  timezone: Europe/Dublin
+  # Times of day (HH:MM:SS, in the timezone above) at which the calendar
+  # image is regenerated (weather fetched, image rendered).
+  regen_times:
+  - "09:00:00"
+  - "15:00:00"
+  - "21:00:00"
+  # Times of day the server tells clients to wake and re-download the image.
+  # Defaults to regen_times if omitted. Set this independently to pre-generate
+  # before clients arrive (e.g. regen at 08:55, refresh_times at 09:00).
+  refresh_times:
+  - "09:00:00"
+  - "15:00:00"
+  - "21:00:00"
+weather:
+  service: accuweather
+  apikey: XXXX
+  num_hourly_forecasts: 6
+  metric: true
+google:
+  apikey: XXXX
+  staticmaps_mapid: XXXX
+location: Dublin
+image:
+  width: 825
+  height: 1200
+mqtt:
+  enabled: false
+  host: localhost
+  port: 1883
+  topic: mqtt/eink-cal-client

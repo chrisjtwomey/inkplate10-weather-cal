@@ -75,17 +75,84 @@ cd inkplate10-weather-cal
 python3 -m pip install -r requirements.txt
 ```
 
+Create your local config from the template (kept out of git):
+```
+cp server/config.example.yaml server/config.yaml
+```
+Then edit `server/config.yaml` and fill in your API keys, map ID, and location.
+
 Run the server manually:
 ```
 python3 server.py
 ```
 
-Run the server 9am each day:
+For development — render the PNG once and exit without starting the HTTP
+server or scheduler:
 ```
-crontab -e
+python3 server.py --once
 ```
-Add this line:
+The generated image lands at `server/views/calendar.png`.
+
+The server runs as a long-running process: it generates the calendar image at
+startup and then on two independent schedules:
+
+- **`server.regen_times`** — when the image is regenerated (weather fetched, calendar rendered).
+- **`server.refresh_times`** — when the server tells clients to wake and download.
+
+Both default to `["09:00:00", "15:00:00", "21:00:00"]`. Set them independently to pre-generate before clients arrive — for example, `regen_times` at 08:55 and `refresh_times` at 09:00 guarantees a fresh image is ready when the Inkplate wakes.
+
+Send `SIGTERM` (Ctrl-C) for a clean shutdown.
+
+Both schedules are interpreted in the server's local timezone (configured via `server.timezone`).
+
+### Telling the client when to wake next
+
+Each response to `GET /calendar.png` includes an `X-Next-Refresh-Seconds`
+header: an integer number of seconds from now until the next scheduled
+refresh, computed from `server.refresh_times` in the configured timezone.
+The Inkplate client treats this as authoritative — it simply sets its RTC
+alarm to "wake `N` seconds from now" and doesn't need its own timezone
+awareness for scheduling.
+
+```sh
+$ curl -sI http://localhost:8080/calendar.png | grep -i x-next-refresh
+x-next-refresh-seconds: 17602
 ```
-0 9 * * * /usr/bin/python3 /path/to/server.py
+
+All daylight-saving / timezone math happens server-side. If the client is
+unreachable when a refresh fires, it'll still wake on its next scheduled
+attempt using the last seconds value it received (or the firmware's built-in
+fallback on cold boot).
+
+### Configuration via environment variables
+
+Any yaml key can be overridden by an env var named after its path, upper-cased
+and joined with `_`. For example:
+
+| YAML key                  | Env var                    |
+|---                        |---                         |
+| `weather.apikey`          | `WEATHER_APIKEY`           |
+| `google.apikey`           | `GOOGLE_APIKEY`            |
+| `google.staticmaps_mapid` | `GOOGLE_STATICMAPS_MAPID`  |
+| `location`                | `LOCATION`                 |
+| `server.port`             | `SERVER_PORT`              |
+| `server.regen_times`      | `SERVER_REGEN_TIMES` (comma-separated, e.g. `08:55:00,14:55:00,20:55:00`) |
+| `server.refresh_times`    | `SERVER_REFRESH_TIMES` (comma-separated, e.g. `09:00:00,15:00:00,21:00:00`) |
+| `mqtt.enabled`            | `MQTT_ENABLED` (`true`/`false`) |
+
+The Docker image ships with a default `config.yaml` (the example with
+placeholders), so a real run needs only the secrets:
+
 ```
-`/path/to/server.py` should be updated to whatever the absolute path is to where `server.py` is on your filesystem.
+docker run --rm -p 8080:8080 \
+  -e TZ=Europe/Dublin \
+  -e WEATHER_APIKEY=... \
+  -e GOOGLE_APIKEY=... \
+  -e GOOGLE_STATICMAPS_MAPID=... \
+  -e LOCATION=Cork \
+  weather-cal-server
+```
+
+To change many keys at once (e.g. a different `refresh_times` schedule)
+mount your own yaml on top of the baked-in default:
+`-v "$(pwd)/server/config.yaml:/app/config.yaml:ro"`.

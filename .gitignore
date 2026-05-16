@@ -88,6 +88,12 @@ workspace.code-workspace
 **/*.bmp
 **/*/samples
 
+# local config (copy from server/config.example.yaml — contains API keys)
+server/config.yaml
+
+# local firmware defaults (copy from src/defaults.example.cpp — contains WiFi credentials)
+src/defaults.cpp
+
 # mac junk
 .DS_Store
 

@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest>=7.4
+responses>=0.24
+freezegun>=1.4
+beautifulsoup4>=4.12

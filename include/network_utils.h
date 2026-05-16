@@ -25,5 +25,12 @@ esp_err_t configureWiFi(const char* ssid, const char* pass, int retries);
   - ESP_OK if successful.
   - ESP_ERR_TIMEOUT if number of retries is exceeded without success.
 */
-uint8_t* downloadFile(const char* url, time_t* nextRefresh, int32_t* size);
+/**
+  Download a file at the given URL.
+
+  If the server sends the X-Next-Refresh-Seconds header, its integer value
+  (seconds until the next refresh) is written to `*nextRefreshSeconds`. On a
+  missing or malformed header value the out-param is left unmodified.
+*/
+uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* size);
 #endif

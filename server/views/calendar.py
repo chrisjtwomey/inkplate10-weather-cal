@@ -1,4 +1,5 @@
 import datetime as dt
+from airium import Airium
 from .page import Page
 
 
@@ -14,6 +15,8 @@ class CalendarPage(Page):
         self,
         **kwargs,
     ):
+        self.airium = Airium()
+
         map_url = kwargs["map_url"]
         daily_summary = kwargs["daily_summary"]
         hourly_forecasts = kwargs["hourly_forecasts"]
@@ -86,123 +89,94 @@ class CalendarPage(Page):
 
                 with a.div(klass="bg-container"):
                     with a.div(id="bottom-banner", klass="container"):
-                        with a.div(id="hourly-forecasts"):
-                            with a.table():
-                                with a.thead(klass="forecast-hour"):
-                                    with a.tr():
-                                        for forecast in hourly_forecasts:
-                                            with a.td(klass="hour"):
-                                                hour = ""
-                                                try:
-                                                    hour = forecast["dt"].strftime(
-                                                        "%-I"
-                                                    )
-                                                except ValueError as ve:
-                                                    # platform-specific formatting error
-                                                    self.log.warning(str(ve))
-                                                    hour = forecast["dt"].strftime("%I")
+                        with a.table(id="forecast-table"):
+                            # Icon row
+                            with a.tr():
+                                for forecast in hourly_forecasts:
+                                    with a.td(klass="forecast-cell"):
+                                        with a.div(klass="forecast-icon"):
+                                            a.img(src=forecast["icon"])
 
-                                                a(
-                                                    hour
-                                                    + forecast["dt"]
-                                                    .strftime("%p")
-                                                    .lower()
-                                                )
+                            # Hour row
+                            with a.tr():
+                                for forecast in hourly_forecasts:
+                                    hour = ""
+                                    try:
+                                        hour = forecast["dt"].strftime("%-I")
+                                    except ValueError as ve:
+                                        hour = forecast["dt"].strftime("%I")
+                                    hour = hour + forecast["dt"].strftime("%p").lower()
 
-                                with a.tbody(klass="hourly-forecasts-forecast"):
-                                    with a.tr():
-                                        for forecast in hourly_forecasts:
-                                            with a.td():
-                                                with a.div(
-                                                    klass="hourly-forecast-icon fc-icon"
-                                                ):
-                                                    a.img(src=forecast["icon"])
+                                    with a.td(klass="forecast-cell"):
+                                        with a.div(klass="forecast-hour"):
+                                            a(hour)
 
-                        a.canvas(id="rain-temp-chart", height="100")
+                            # Temperature row
+                            with a.tr():
+                                for forecast in hourly_forecasts:
+                                    with a.td(klass="forecast-cell"):
+                                        with a.div(klass="forecast-temp"):
+                                            a(str(forecast["temperature"]["value"]) + "°")
+
+                            # Precipitation bar row
+                            with a.tr():
+                                for forecast in hourly_forecasts:
+                                    precip = forecast["rain_probability"]
+                                    with a.td(klass="forecast-cell"):
+                                        a.canvas(
+                                            klass="precip-canvas",
+                                            data_precip=str(precip),
+                                        )
 
                 with a.script():
                     a("""
-                        Chart.defaults.scale.gridLines.display = false;
-                        Chart.defaults.scale.gridLines.color = "rgba(0, 0, 0, 0.3)";
-                        Chart.defaults.scale.gridLines.lineWidth = 2;
-                        Chart.defaults.scale.ticks.display = false;
-                        Chart.defaults.scale.ticks.max = 100;
-                        Chart.defaults.global.legend.display = false;
-                        Chart.defaults.global.defaultFontColor = "#000";
-                        Chart.defaults.global.animation.duration = 0;
+                        window.onload = function() {
+                            var bars = document.querySelectorAll('.precip-canvas');
+                            bars.forEach(function(canvas) {
+                                var pct  = parseInt(canvas.getAttribute('data_precip'), 10);
+                                var w    = canvas.parentElement.offsetWidth || 80;
+                                var h    = 120;
+                                canvas.width  = w;
+                                canvas.height = h;
 
-                        // Wait until the fonts are all loaded
-                        document.fonts.ready.then(() => {{
-                            var ctx = document.getElementById('rain-temp-chart').getContext('2d');
-                            var chart = new Chart(ctx, {{
-                                type: 'bar',
-                                data: {{
-                                    labels: {0},
-                                    datasets: [{{
-                                        data: {1},
-                                        backgroundColor: 'rgb(0, 0, 0)',
-                                        borderColor: 'rgb(0, 0, 0)',
-                                        datalabels: {{
-                                            display: 'auto',
-                                            align: 'top',
-                                            anchor: 'end',
-                                            clamp: 'true',
-                                            backgroundColor: "#FFF",
-                                            borderRadius: 4,
-                                            font: {{
-                                                family: 'Merienda-Regular',
-                                                size: 32
-                                            }},
-                                            display: function(context) {{
-                                                var index = context.dataIndex;
-                                                var value = context.dataset.data[index];
+                                var barH = Math.max(2, Math.round(h * pct / 100));
+                                var pad  = Math.round(w * 0.1);
+                                var barW = w - pad * 2;
 
-                                                return value > 0;
-                                            }},
-                                            formatter: function(value, context) {{
-                                                return value + "%";
-                                            }}
-                                        }},
-                                        borderWidth: 3,
-                                        stack: 'combined',
-                                        rough: {{
-                                            roughness: 4,
-                                            bowing: 0.2,
-                                            fillStyle: 'zigzag',
-                                            fillWeight: 1.5,
-                                            hachureAngle: 45,
-                                            hachureGap: 12
-                                        }}
-                                    }}, {{
-                                        data: {2},
-                                        backgroundColor: 'rgba(0, 0, 0, 0)',
-                                        borderColor: 'rgb(0, 0, 0)',
-                                        datalabels: {{
-                                            display: 'auto',
-                                            align: 'top',
-                                            anchor: 'start',
-                                            offset: 12,
-                                            backgroundColor: "#FFF",
-                                            borderRadius: 4,
-                                            font: {{
-                                                family: 'Merienda-Regular',
-                                                size: 32
-                                            }},
-                                            formatter: function(value, context) {{
-                                                return value + "°C";
-                                            }}
-                                        }},
-                                        rough: {{
-                                            roughness: 1,
-                                            bowing: 0.1,
-                                            fillWeight: 1.5,
-                                            hachureAngle: 45,
-                                            hachureGap: 12
-                                        }},
-                                        type: 'line'
-                                    }}]
-                                }},
-                                plugins: [ChartDataLabels, ChartRough]
-                            }});
-                        }});
-                    """.format(hours, precip_percents, temps))
+                                var rc = rough.canvas(canvas);
+                                rc.rectangle(pad, h - barH, barW, barH, {
+                                    fill:         'black',
+                                    fillStyle:    'zigzag',
+                                    hachureAngle: 45,
+                                    hachureGap:   8,
+                                    roughness:    1.5,
+                                    bowing:       1.5,
+                                    strokeWidth:  1.5
+                                });
+
+                                var ctx      = canvas.getContext('2d');
+                                // Match ~3vw font size used in the rest of the table
+                                var fontSize = Math.max(14, Math.round(w * 0.18));
+                                ctx.font      = 'bold ' + fontSize + 'px Merienda-Regular, sans-serif';
+                                ctx.textAlign = 'center';
+
+                                // Place label inside bar if there's room, above bar otherwise
+                                var labelY   = h - barH / 2 + fontSize * 0.35;
+                                var inBar    = barH > fontSize + 8;
+                                if (!inBar) {
+                                    // above the bar, black text
+                                    labelY = h - barH - 6;
+                                    ctx.fillStyle = '#000';
+                                    ctx.fillText(pct + '%', w / 2, labelY);
+                                } else {
+                                    // inside bar — stroke in black first for outline, fill white
+                                    ctx.strokeStyle = '#000';
+                                    ctx.lineWidth   = 3;
+                                    ctx.lineJoin    = 'round';
+                                    ctx.strokeText(pct + '%', w / 2, labelY);
+                                    ctx.fillStyle = '#fff';
+                                    ctx.fillText(pct + '%', w / 2, labelY);
+                                }
+                            });
+                        };
+                    """)

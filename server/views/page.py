@@ -5,7 +5,7 @@ from PIL import Image
 from airium import Airium
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import WebDriverException
 
 
@@ -35,12 +35,18 @@ class Page:
         html_fp = os.path.join(cwd, "html", self.name + ".html")
         png_fp = os.path.join(cwd, self.name + ".png")
 
+        os.makedirs(os.path.dirname(html_fp), exist_ok=True)
         with open(html_fp, "wb") as f:
             f.write(bytes(self.airium))
             f.close()
 
         driver = self._get_chromedriver()
         driver.get("file://" + html_fp)
+        # Wait until window.onload has fired (rough.js drawn) or up to 10s
+        from selenium.webdriver.support.ui import WebDriverWait
+        WebDriverWait(driver, 10).until(
+            lambda d: d.execute_script("return document.readyState") == "complete"
+        )
         sleep(1)
         driver.get_screenshot_as_file(png_fp)
         driver.quit()
@@ -57,17 +63,33 @@ class Page:
         opts.add_argument("--hide-scrollbars")
         opts.add_argument("--window-size={},{}".format(self.image_width, self.image_height))
         opts.add_argument("--force-device-scale-factor=1")
+        # Required in containers: Chromium can't set up its sandbox without
+        # extra kernel capabilities, and /dev/shm defaults to 64MB which it
+        # exhausts immediately (manifests as "DevToolsActivePort doesn't exist").
+        opts.add_argument("--no-sandbox")
+        opts.add_argument("--disable-dev-shm-usage")
+        opts.add_argument("--disable-gpu")
 
-        driver = None
-        try:
-            driver = webdriver.Chrome(ChromeDriverManager().install(), options=opts)
-        except Exception as e:
-            self.log.warning(e)
-            try:
-                driver = webdriver.Chrome(options=opts)
-            except WebDriverException as wde:
-                raise wde 
+        # In Docker we have apt-installed chromium + matching chromium-driver.
+        # Selenium 4.10+'s Selenium Manager only auto-discovers google-chrome,
+        # so we point at the binary explicitly via binary_location and pass an
+        # explicit Service for the system driver. Outside Docker (no system
+        # driver), fall through to Selenium Manager's bootstrap.
+        opts.binary_location = os.environ.get("CHROME_BIN", "/usr/bin/chromium")
+        if os.path.exists("/usr/bin/chromedriver"):
+            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=opts)
+        else:
+            driver = webdriver.Chrome(options=opts)
 
         driver.set_window_rect(width=self.image_width, height=self.image_height)
+        driver.execute_cdp_cmd(
+            "Emulation.setDeviceMetricsOverride",
+            {
+                "mobile": False,
+                "width": self.image_width,
+                "height": self.image_height,
+                "deviceScaleFactor": 1,
+            },
+        )
 
         return driver

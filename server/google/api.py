@@ -1,7 +1,9 @@
 import time
 import requests
 from PIL import Image
-from googlemaps import Client, timezone
+from googlemaps import Client
+from googlemaps.geocoding import geocode
+from googlemaps.timezone import timezone
 
 
 class GoogleAPIService:
@@ -16,7 +18,23 @@ class GoogleAPIService:
 
     def get_static_map_url(self, map_id, location):
         svc = self.StaticMapService(self.apikey, map_id)
-        return svc.get_url(location)
+        return svc.get_url(self._get_location_center(location))
+
+    def _get_location_center(self, location):
+        # Use coordinates for a stable map center even when place-name geocoding shifts.
+        if isinstance(location, (list, tuple)) and len(location) == 2:
+            return "{:.6f},{:.6f}".format(float(location[0]), float(location[1]))
+
+        if isinstance(location, str):
+            try:
+                geocode_result = geocode(self.client, location)
+                if len(geocode_result) > 0:
+                    point = geocode_result[0]["geometry"]["location"]
+                    return "{:.6f},{:.6f}".format(point["lat"], point["lng"])
+            except Exception:
+                pass
+
+        return location
 
     class StaticMapService:
         DEFAULT_ZOOM = 10

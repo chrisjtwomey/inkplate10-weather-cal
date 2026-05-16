@@ -1,0 +1,13 @@
+{
+  "cod": "200",
+  "message": 0,
+  "cnt": 6,
+  "list": [
+    {"dt": 1747900800, "weather": [{"icon": "01d"}], "main": {"feels_like": 16, "humidity": 60}, "wind": {"speed": 3.1}, "pop": 0.1},
+    {"dt": 1747911600, "weather": [{"icon": "03d"}], "main": {"feels_like": 17, "humidity": 58}, "wind": {"speed": 3.4}, "pop": 0.3},
+    {"dt": 1747922400, "weather": [{"icon": "09d"}], "main": {"feels_like": 15, "humidity": 75}, "wind": {"speed": 4.2}, "pop": 0.7},
+    {"dt": 1747933200, "weather": [{"icon": "09n"}], "main": {"feels_like": 12, "humidity": 88}, "wind": {"speed": 4.0}, "pop": 0.9},
+    {"dt": 1747944000, "weather": [{"icon": "04n"}], "main": {"feels_like": 10, "humidity": 92}, "wind": {"speed": 3.5}, "pop": 0.4},
+    {"dt": 1747954800, "weather": [{"icon": "02d"}], "main": {"feels_like": 11, "humidity": 80}, "wind": {"speed": 2.8}, "pop": 0.2}
+  ]
+}

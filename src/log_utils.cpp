@@ -143,16 +143,19 @@ void ensureQueue(char* logMsg) {
         // populate log queue while no mqtt connection
         logQ.push(logMsg);
     } else {
-        // send queued logs once we are connected.
+        // flush queued logs using a separate buffer so logMsg is not
+        // overwritten — logQ.pop() copies into whatever pointer you pass it, so we can't pass logMsg directly since 
+        // it's also the current message to log.
         if (logQ.getCount() > 0) {
+            char queuedMsg[100];
             mqttLogger.setMode(MqttLoggerMode::MqttOnly);
             while (!logQ.isEmpty()) {
-                logQ.pop(logMsg);
-                mqttLogger.println(logMsg);
+                logQ.pop(queuedMsg);
+                mqttLogger.println(queuedMsg);
             }
             mqttLogger.setMode(MqttLoggerMode::MqttAndSerial);
         }
     }
-    // print/send the current log
+    // print/send the current log (logMsg is unaffected by the flush above)
     mqttLogger.println(logMsg);
 }
