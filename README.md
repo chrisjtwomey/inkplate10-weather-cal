@@ -88,9 +88,9 @@ See [server/README.md](server/README.md) for full server documentation.
 
 ## Setup
 
-### Server
+### Running via Docker
 
-See [server/README.md](server/README.md) for full details. Run with Docker — no cloning or building required:
+See [server/README.md](server/README.md) for full details:
 
 ```sh
 docker run -d --restart unless-stopped \
@@ -117,6 +117,62 @@ docker run -d --restart unless-stopped -p 8080:8080 \
 `SERVER_TIMEZONE` controls when the daily refresh times fire. Any config key from `server/config.example.yaml` can be overridden via env var — see [server/README.md](server/README.md) for the full mapping table.
 
 The server regenerates the calendar image at startup and then at each time in `server.refresh_times` (default 09:00, 15:00, 21:00). The response to `GET /calendar.png` includes an `X-Next-Refresh-Seconds` header telling the client exactly how long to sleep — DST and timezone handling stay entirely server-side.
+
+### Running locally
+
+The server uses Selenium + Chrome to render the HTML template into a PNG. In Docker, Chromium is installed automatically. When running locally, you may need to point `CHROME_BIN` at your browser:
+
+#### macOS 
+
+`/usr/bin/chromium` doesn't exist, so `CHROME_BIN` is required:
+
+```sh
+export CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# or, if using Chromium via Homebrew:
+# export CHROME_BIN="/Applications/Chromium.app/Contents/MacOS/Chromium"
+```
+If Chrome isn't installed: `brew install --cask google-chrome`
+
+#### Linux 
+
+Works out of the box if Chromium is at `/usr/bin/chromium` (the default):
+
+```sh
+sudo apt install chromium chromium-driver   # Debian/Ubuntu
+```
+If using Google Chrome instead:
+```sh
+export CHROME_BIN="/usr/bin/google-chrome"
+```
+
+#### Windows
+
+`/usr/bin/chromium` doesn't exist, so `CHROME_BIN` is required:
+
+```powershell
+$env:CHROME_BIN = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+```
+
+> **Note:** Selenium Manager may emit warnings about `chromedriver` version mismatches or `/usr/bin/chromium` not existing. These are harmless — set `CHROME_BIN` as above and they will go away.
+
+#### Run once (template development)
+
+Regenerates the calendar PNG and exits — no HTTP server, no scheduler:
+
+```sh
+cd server && python3 server.py --once
+# Output: server/views/calendar.png
+```
+
+#### Run as a daemon
+
+Starts the full HTTP server and regeneration scheduler:
+
+```sh
+cd server && python3 server.py
+```
+
+The server listens on the port configured in `config.yaml` (default `8080`) and serves the calendar image at `GET /calendar.png`.
 
 ### Client (Firmware)
 
@@ -211,15 +267,6 @@ A suite of native (host-side) unit tests covers pure logic — back-off timing, 
 
 ```sh
 pio test -e native
-```
-
-### Iterating on the server calendar template
-
-To regenerate the PNG once without starting the full server (useful for tweaking the HTML/CSS layout):
-
-```sh
-cd server && python3 server.py --once
-# Output: server/views/calendar.png
 ```
 
 ## License
