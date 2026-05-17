@@ -1,5 +1,5 @@
 """
-HTML structure check for `CalendarPage.template()`.
+HTML structure check for `TodayPage.template()`.
 
 We feed mock weather data into the template, then serialize the underlying
 `airium` document and assert its structure with BeautifulSoup. Selenium /
@@ -13,7 +13,7 @@ import pytest
 from bs4 import BeautifulSoup
 from freezegun import freeze_time
 
-from views.calendar import CalendarPage
+from views.today import TodayPage
 from weather.mock.mock import MockWeatherService
 
 
@@ -24,9 +24,9 @@ HEIGHT = 1200
 
 @pytest.fixture
 def rendered_html():
-    """Render the calendar template at a fixed wall-clock and return the HTML."""
+    """Render the today template at a fixed wall-clock and return the HTML."""
     with freeze_time("2026-05-19 09:00:00"):
-        page = CalendarPage(WIDTH, HEIGHT)
+        page = TodayPage(WIDTH, HEIGHT)
         weather = MockWeatherService(num_hours=NUM_HOURS, metric=True)
         page.template(
             map_url="https://example.test/staticmap?center=51.9,-8.5",
@@ -81,22 +81,23 @@ def test_forecast_table_has_one_cell_per_hour_per_row(rendered_html):
     assert len(rows) == 5, f"expected 5 rows (icon/hour/temp/wind/precip); got {len(rows)}"
     for row in rows:
         cells = row.find_all("td")
-        assert len(cells) == NUM_HOURS
+        assert len(cells) == NUM_HOURS + 1  # +1 for the legend cell
 
-    # Each cell in row 0 (icons) holds an <img>.
-    for cell in rows[0].find_all("td"):
+    # Each data cell in row 0 (icons) holds an <img>; skip the first (legend) cell.
+    for cell in rows[0].find_all("td")[1:]:
         assert cell.find("img") is not None
 
-    # Each cell in row 3 (wind) holds a rotated arrow <img> and a speed <span>.
-    for cell in rows[3].find_all("td"):
+    # Each data cell in row 3 (wind) holds a rotated arrow <img> and a speed <span>;
+    # skip the first (legend) cell.
+    for cell in rows[3].find_all("td")[1:]:
         arrow = cell.find("img", class_="wind-arrow")
         assert arrow is not None
         assert "rotate" in (arrow.get("style") or "")
         assert cell.find("span", class_="wind-speed") is not None
 
-    # Each cell in row 4 (precip) holds a <canvas> with a data_precip attribute
-    # that's a parseable integer percentage.
-    for cell in rows[4].find_all("td"):
+    # Each data cell in row 4 (precip) holds a <canvas> with a data_precip attribute;
+    # skip the first (legend) cell.
+    for cell in rows[4].find_all("td")[1:]:
         canvas = cell.find("canvas")
         assert canvas is not None
         pct = int(canvas["data_precip"])
@@ -121,7 +122,7 @@ def test_local_stylesheet_link_present(rendered_html):
 def test_repeated_template_calls_do_not_stack_content():
     """
     Regression for the overnight-accumulation bug: calling template() twice on
-    the same CalendarPage used to append a second full page worth of HTML to
+    the same TodayPage used to append a second full page worth of HTML to
     the airium buffer, producing a double-date PNG. The fix resets self.airium
     at the top of template(); this test locks that in.
     """
@@ -132,7 +133,7 @@ def test_repeated_template_calls_do_not_stack_content():
         hourly_forecasts=weather.get_hourly_forecast(),
     )
 
-    page = CalendarPage(WIDTH, HEIGHT)
+    page = TodayPage(WIDTH, HEIGHT)
     with freeze_time("2026-05-16 09:00:00"):
         page.template(**kwargs)
         page.template(**kwargs)  # second call simulates scheduled regen

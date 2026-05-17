@@ -77,3 +77,43 @@ class MockWeatherService:
             })
 
         return forecasts
+
+    def get_5day_forecast(self):
+        rng = random.Random(self._seed + 2)
+        today = dt.datetime.now().date()
+        temp_unit = "\N{DEGREE SIGN}C" if self.units == "metric" else "\N{DEGREE SIGN}F"
+        speed_unit = "kmh" if self.units == "metric" else "mph"
+        temp_range = (-5, 35) if self.units == "metric" else (23, 95)
+
+        forecasts = []
+        for i in range(5):
+            day = today + dt.timedelta(days=i)
+            day_dt = dt.datetime.combine(day, dt.time(0, 0))
+            temp_min = rng.randint(temp_range[0], temp_range[1] - 5)
+            temp_max = rng.randint(temp_min + 1, temp_range[1])
+            sunrise_h = rng.randint(6, 7)
+            sunrise_m = rng.randint(0, 59)
+            sunset_h = rng.randint(20, 21)
+            sunset_m = rng.randint(0, 59)
+
+            forecasts.append({
+                "dt": day_dt,
+                "icon": rng.choice(_DAY_ICONS),
+                "temperature": {
+                    "unit": temp_unit,
+                    "min": temp_min,
+                    "max": temp_max,
+                },
+                "wind": {
+                    "unit": speed_unit,
+                    "value": rng.randint(0, 80),
+                    "direction_degrees": rng.randint(0, 359),
+                },
+                "rain_probability": rng.randint(0, 100),
+                "uv_index": rng.randint(0, 11),
+                "sunrise": f"{sunrise_h:02d}:{sunrise_m:02d}",
+                "sunset": f"{sunset_h:02d}:{sunset_m:02d}",
+                "hours_of_sun": round(rng.uniform(0, 12), 1),
+            })
+
+        return forecasts

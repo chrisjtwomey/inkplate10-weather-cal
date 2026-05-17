@@ -15,7 +15,8 @@ import logging.config
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 from utils import get_prop, get_prop_by_keys
-from views.calendar import CalendarPage
+from views.today import TodayPage
+from views.daily import DailyPage
 from google.api import GoogleAPIService
 from werkzeug.serving import make_server
 from flask import Flask, make_response, send_file, abort
@@ -29,7 +30,7 @@ app = Flask(__name__)
 server_regen_times = []    # when the server regenerates the calendar image
 server_refresh_times = []  # when the server tells clients to wake and refresh
 server_tz = None
-# Serialises calendar.png writes (regenerate) against reads (serve handler).
+# Serialises today.png/daily.png writes (regenerate) against reads (serve handlers).
 regen_lock = threading.Lock()
 shutdown_event = threading.Event()
 
@@ -228,19 +229,27 @@ def main():
         log.error(f"not a supported weather service: {cfg.weather_service}")
         sys.exit(1)
 
-    page = CalendarPage(cfg.image_width, cfg.image_height)
+    today_page = TodayPage(cfg.image_width, cfg.image_height)
+    daily_page = DailyPage(cfg.image_width, cfg.image_height)
 
     def regenerate():
         with regen_lock:
-            log.info("Regenerating calendar image")
+            log.info("Regenerating images")
             daily_summary = weather_svc.get_daily_summary()
             hourly_forecasts = weather_svc.get_hourly_forecast()
-            page.template(
+            today_page.template(
                 map_url=map_url,
                 daily_summary=daily_summary,
                 hourly_forecasts=hourly_forecasts,
             )
-            page.save()
+            today_page.save()
+            five_day_forecasts = weather_svc.get_5day_forecast()
+            daily_page.template(
+                map_url=map_url,
+                daily_summary=daily_summary,
+                daily_forecasts=five_day_forecasts,
+            )
+            daily_page.save()
             log.info("Regeneration complete")
 
     regenerate()
@@ -392,19 +401,33 @@ class ServerThread(threading.Thread):
         self.server.shutdown()
 
 
+@app.route("/today.png")
+def serve_today_png():
+    """Returns the today (hourly forecast) image."""
+    return _serve_png(os.path.join(cwd, "views/today.png"))
+
+
 @app.route("/calendar.png")
-def serve_img_png():
-    """
-    Returns the calendar image directly through send_file
-    """
+def serve_calendar_png():
+    """Backward-compat alias for /today.png — existing devices use this URL."""
+    return _serve_png(os.path.join(cwd, "views/today.png"))
 
-    path = os.path.join(cwd, "views/calendar.png")
 
+@app.route("/daily.png")
+def serve_daily_png():
+    """Returns the daily (5-day forecast) image."""
+    return _serve_png(os.path.join(cwd, "views/daily.png"))
+
+
+def _serve_png(path):
+    """
+    Serve a PNG file, blocking while any regeneration is in progress so we
+    never serve a partial write.
+    """
     if not os.path.exists(path):
         log.error(f"{path}: no such file exists")
         abort(404)
 
-    # Block while a regeneration is mid-write so we never serve a partial PNG.
     with regen_lock:
         with open(path, "rb") as f:
             stream = io.BytesIO(f.read())
@@ -416,7 +439,6 @@ def serve_img_png():
         download_name=os.path.basename(path),
     ))
     rsp.headers["X-Next-Refresh-Seconds"] = str(get_next_refresh_seconds())
-
     return rsp
 
 

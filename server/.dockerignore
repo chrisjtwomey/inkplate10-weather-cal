@@ -1,7 +1,9 @@
 config.yaml
-views/calendar.png
+views/today.png
+views/daily.png
 # only the generated html, not the whole dir (which holds styles.css, fonts, icons)
-views/html/calendar.html
+views/html/today.html
+views/html/daily.html
 __pycache__/
 **/__pycache__/
 *.pyc

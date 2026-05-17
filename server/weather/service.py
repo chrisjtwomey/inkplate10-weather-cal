@@ -28,6 +28,9 @@ class WeatherService:
 
         return f"icon/{icon_map[icon_key]}"
 
+    def get_5day_forecast(self):
+        raise NotImplementedError("get_5day_forecast not implemented")
+
     def get_daily_summary(self):
         raise NotImplementedError("get_current_conditions not implemented")
 

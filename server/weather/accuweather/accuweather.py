@@ -85,6 +85,75 @@ class AccuweatherService(WeatherService):
 
         return forecasts
 
+    def get_5day_forecast(self):
+        is_metric = self.units == "metric"
+        path = (
+            f"{self.baseurl}/forecasts/v1/daily/5day/{self.location_key}"
+            f"?apikey={self.apikey}&metric={is_metric}&details=true"
+        )
+        res = requests.get(path)
+
+        if res.status_code == 403:
+            raise PermissionError(
+                "AccuWeather 5-day endpoint returned 403 — "
+                "this endpoint may require a plan upgrade"
+            )
+
+        data = res.json()
+        if not data.get("DailyForecasts"):
+            raise ValueError("Unexpected response from weather api: {}".format(data))
+
+        temp_unit = (
+            "\N{DEGREE SIGN}C" if self.units == "metric" else "\N{DEGREE SIGN}F"
+        )
+        speed_unit = "kmh" if self.units == "metric" else "mph"
+
+        forecasts = []
+        for entry in data["DailyForecasts"]:
+            # UV index from AirAndPollen list
+            uv_index = None
+            for ap in entry.get("AirAndPollen", []):
+                if ap.get("Name") == "UVIndex":
+                    uv_index = ap.get("Value")
+                    break
+
+            # Sunrise / sunset as "HH:MM" strings
+            sunrise = None
+            sunset = None
+            sun = entry.get("Sun", {})
+            if sun.get("Rise"):
+                try:
+                    sunrise = datetime.fromisoformat(sun["Rise"]).strftime("%H:%M")
+                except (ValueError, TypeError):
+                    pass
+            if sun.get("Set"):
+                try:
+                    sunset = datetime.fromisoformat(sun["Set"]).strftime("%H:%M")
+                except (ValueError, TypeError):
+                    pass
+
+            forecasts.append({
+                "dt": datetime.fromtimestamp(entry["EpochDate"]),
+                "icon": self.get_icon(entry["Day"]["Icon"]),
+                "temperature": {
+                    "unit": temp_unit,
+                    "min": round(entry["RealFeelTemperature"]["Minimum"]["Value"]),
+                    "max": round(entry["RealFeelTemperature"]["Maximum"]["Value"]),
+                },
+                "wind": {
+                    "unit": speed_unit,
+                    "value": entry["Day"]["Wind"]["Speed"]["Value"],
+                    "direction_degrees": entry["Day"]["Wind"].get("Direction", {}).get("Degrees", 0),
+                },
+                "rain_probability": round(entry["Day"].get("PrecipitationProbability", 0)),
+                "uv_index": uv_index,
+                "sunrise": sunrise,
+                "sunset": sunset,
+                "hours_of_sun": entry.get("Day", {}).get("HoursOfSun"),
+            })
+
+        return forecasts
+
     def _get_current_conditions(self):
         path = f"{self.baseurl}/currentconditions/v1/{self.location_key}?apikey={self.apikey}&details=true"
         res = requests.get(path)

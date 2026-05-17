@@ -3,13 +3,13 @@ from airium import Airium
 from .page import Page
 
 
-class CalendarPage(Page):
+class TodayPage(Page):
     def __init__(
         self,
         width,
         height,
     ):
-        super().__init__("calendar", width, height)
+        super().__init__("today", width, height)
 
     def template(
         self,
@@ -55,7 +55,7 @@ class CalendarPage(Page):
                     name="viewport",
                     content="width=device-width, initial-scale=1",
                 )
-                a.title(_t="Calendar")
+                a.title(_t="Today")
                 a.link(rel="stylesheet", href="styles.css")
                 a.script(type="text/javascript", src="https://unpkg.com/chart.js@2.8.0")
                 a.script(type="text/javascript", src="https://unpkg.com/roughjs@3.1.0/dist/rough.js")
