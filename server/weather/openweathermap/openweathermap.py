@@ -70,7 +70,8 @@ class OpenWeatherMapService(WeatherService):
                 },
                 "wind": {
                     "unit": speed_units,
-                    "real": entry["wind"]["speed"],
+                    "value": entry["wind"]["speed"],
+                    "direction_degrees": entry["wind"].get("deg", 0),
                 },
                 "humidity": entry["main"]["humidity"],
                 "rain_probability": round(entry["pop"] * 100),

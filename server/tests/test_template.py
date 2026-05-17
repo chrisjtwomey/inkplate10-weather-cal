@@ -78,7 +78,7 @@ def test_forecast_table_has_one_cell_per_hour_per_row(rendered_html):
     assert table is not None
 
     rows = table.find_all("tr")
-    assert len(rows) == 4, f"expected 4 rows (icon/hour/temp/precip); got {len(rows)}"
+    assert len(rows) == 5, f"expected 5 rows (icon/hour/temp/wind/precip); got {len(rows)}"
     for row in rows:
         cells = row.find_all("td")
         assert len(cells) == NUM_HOURS
@@ -87,9 +87,16 @@ def test_forecast_table_has_one_cell_per_hour_per_row(rendered_html):
     for cell in rows[0].find_all("td"):
         assert cell.find("img") is not None
 
-    # Each cell in row 3 (precip) holds a <canvas> with a data_precip attribute
-    # that's a parseable integer percentage.
+    # Each cell in row 3 (wind) holds a rotated arrow <img> and a speed <span>.
     for cell in rows[3].find_all("td"):
+        arrow = cell.find("img", class_="wind-arrow")
+        assert arrow is not None
+        assert "rotate" in (arrow.get("style") or "")
+        assert cell.find("span", class_="wind-speed") is not None
+
+    # Each cell in row 4 (precip) holds a <canvas> with a data_precip attribute
+    # that's a parseable integer percentage.
+    for cell in rows[4].find_all("td"):
         canvas = cell.find("canvas")
         assert canvas is not None
         pct = int(canvas["data_precip"])

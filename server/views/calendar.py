@@ -61,7 +61,7 @@ class CalendarPage(Page):
             with a.body():
                 with a.div(klass="bg-container"):
                     with a.div(id="top-banner", klass="container"):
-                        with a.div():
+                        with a.div(id="date-banner"):
                             a.h3(
                                 id="date",
                                 klass="numcircle text-center",
@@ -97,9 +97,9 @@ class CalendarPage(Page):
                                         with a.div(klass="forecast-icon"):
                                             a.img(src=forecast["icon"])
 
-                            # Hour row
+                            # Hour row — show every second label to stay readable at distance
                             with a.tr():
-                                for forecast in hourly_forecasts:
+                                for i, forecast in enumerate(hourly_forecasts):
                                     hour = ""
                                     try:
                                         hour = forecast["dt"].strftime("%-I")
@@ -109,24 +109,53 @@ class CalendarPage(Page):
 
                                     with a.td(klass="forecast-cell"):
                                         with a.div(klass="forecast-hour"):
-                                            a(hour)
+                                            show_hour = len(hourly_forecasts) <= 6 or i % 2 == 0
+                                            a(hour if show_hour else "")
 
-                            # Temperature row
+                            # Temperature row — hide repeated adjacent values
+                            prev_temp = None
                             with a.tr():
                                 for forecast in hourly_forecasts:
+                                    temp_val = forecast["temperature"]["value"]
                                     with a.td(klass="forecast-cell"):
                                         with a.div(klass="forecast-temp"):
-                                            a(str(forecast["temperature"]["value"]) + "°")
+                                            a(str(temp_val) + "°" if temp_val != prev_temp else "")
+                                    prev_temp = temp_val
 
-                            # Precipitation bar row
+                            # Wind direction and speed row — hide repeated adjacent speeds
+                            prev_wind_speed = None
                             with a.tr():
                                 for forecast in hourly_forecasts:
+                                    deg = forecast["wind"]["direction_degrees"]
+                                    speed_val = forecast["wind"]["value"]
+                                    speed = str(round(speed_val))
+                                    # Scale arrow between 2.5vw–6vw based on speed (normalised to km/h)
+                                    speed_kmh = speed_val if forecast["wind"]["unit"] == "kmh" else speed_val * 1.609
+                                    arrow_size = round(2.5 + 2.5 * min(speed_kmh / 80.0, 1.0) ** 0.5, 2)
+                                    with a.td(klass="forecast-cell"):
+                                        with a.div(klass="forecast-wind"):
+                                            a.img(
+                                                src="icon/wind-arrow.png",
+                                                klass="wind-arrow",
+                                                style=f"transform: rotate({(deg + 180) % 360}deg); width: {arrow_size}vw; height: {arrow_size}vw;",
+                                            )
+                                            a.span(klass="wind-speed", _t=speed if speed != prev_wind_speed else "")
+                                    prev_wind_speed = speed
+
+                            # Precipitation bar row — hide repeated adjacent labels, and only on even columns
+                            prev_precip = None
+                            with a.tr():
+                                for i, forecast in enumerate(hourly_forecasts):
                                     precip = forecast["rain_probability"]
+                                    show_even = len(hourly_forecasts) <= 6 or i % 2 == 0
+                                    show_label = show_even and precip != prev_precip
                                     with a.td(klass="forecast-cell"):
                                         a.canvas(
                                             klass="precip-canvas",
                                             data_precip=str(precip),
+                                            data_show_label="true" if show_label else "false",
                                         )
+                                    prev_precip = precip
 
                 with a.script():
                     a("""
@@ -140,7 +169,7 @@ class CalendarPage(Page):
                                 canvas.height = h;
 
                                 var barH = Math.max(2, Math.round(h * pct / 100));
-                                var pad  = Math.round(w * 0.1);
+                                var pad  = Math.round(w * 0.05);
                                 var barW = w - pad * 2;
 
                                 var rc = rough.canvas(canvas);
@@ -148,34 +177,25 @@ class CalendarPage(Page):
                                     fill:         'black',
                                     fillStyle:    'zigzag',
                                     hachureAngle: 45,
-                                    hachureGap:   8,
-                                    roughness:    1.5,
-                                    bowing:       1.5,
-                                    strokeWidth:  1.5
+                                    hachureGap:   5,
+                                    roughness:    1,
+                                    bowing:       1,
+                                    strokeWidth:  2
                                 });
 
                                 var ctx      = canvas.getContext('2d');
                                 // Match ~3vw font size used in the rest of the table
-                                var fontSize = Math.max(14, Math.round(w * 0.18));
+                                var fontSize = Math.max(14, Math.round(w * 0.19));
                                 ctx.font      = 'bold ' + fontSize + 'px Merienda-Regular, sans-serif';
                                 ctx.textAlign = 'center';
 
-                                // Place label inside bar if there's room, above bar otherwise
-                                var labelY   = h - barH / 2 + fontSize * 0.35;
-                                var inBar    = barH > fontSize + 8;
-                                if (!inBar) {
-                                    // above the bar, black text
-                                    labelY = h - barH - 6;
+                                // Always render label above bar, except >= 80% where it would clip
+                                var showLabel = canvas.getAttribute('data_show_label') !== 'false';
+                                var label  = pct + '%';
+                                if (showLabel && pct < 80) {
+                                    var labelY = h - barH - 6;
                                     ctx.fillStyle = '#000';
-                                    ctx.fillText(pct + '%', w / 2, labelY);
-                                } else {
-                                    // inside bar — stroke in black first for outline, fill white
-                                    ctx.strokeStyle = '#000';
-                                    ctx.lineWidth   = 3;
-                                    ctx.lineJoin    = 'round';
-                                    ctx.strokeText(pct + '%', w / 2, labelY);
-                                    ctx.fillStyle = '#fff';
-                                    ctx.fillText(pct + '%', w / 2, labelY);
+                                    ctx.fillText(label, w / 2, labelY);
                                 }
                             });
                         };

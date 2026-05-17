@@ -32,7 +32,7 @@ body {
   width: 100%;
   padding: 0 !important;
   margin: 0 auto !important;
-  background-color: white;
+  background-color: transparent;
 }
 
 .container {
@@ -74,36 +74,62 @@ h4.numcircle, #icon-container.numcircle {
 }
 
 #top-banner {
-  height: 20vh;
+  height: 0;
+  position: relative;
 }
 
-#top-banner .numcircle, #top-banner #month {
-  float: left;
+#date-banner {
+  position: absolute;
+  top: 2vw;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: none;
+  padding: 0;
+}
+
+#date-banner #date {
+  outline: 3vw solid rgba(255, 255, 255, 1);
+  outline-offset: 0px;
+  position: relative;
+  z-index: 2;
+}
+
+#date-banner #month {
+  background: rgba(255, 255, 255, 1);
+  border-radius: 3vw;
+  padding: 4vw 4vw 4vw 7vw;
+  line-height: 1.2;
+  font-size: 10vw;
+  margin: 0;
+  margin-left: -5vw
 }
 
 #top-banner #temp {
   position: absolute;
-  top: 20vh;
-  right: 2vw;
+  top: 22vh;
+  left: 5vw;
+  outline: 2vw solid rgba(255, 255, 255, 1);
+  outline-offset: 0px;
+  z-index: 1;
 }
 
 #top-banner #icon-container {
   position: absolute;
-  top: 32vh;
-  right: 2vw;
+  top: 35.5vh;
+  left: 5vw;
+  outline: 2vw solid rgba(255, 255, 255, 1);
+  outline-offset: 0px;
+  z-index: 1;
 }
 
-#top-banner #month {
-  margin: auto 0;
-  vertical-align: middle;
-  line-height: 20vh;
-  font-size: 10vw;
-}
+
 
 #map-container {
   position: relative;
   overflow: hidden;
-  height: 400px;
+  height: calc(20vh + 400px);
   z-index: -1;
 }
 
@@ -181,7 +207,7 @@ h4.numcircle, #icon-container.numcircle {
 #forecast-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 1rem;
+  margin-top: 0.2vh;
 }
 
 #forecast-table tr {
@@ -190,12 +216,12 @@ h4.numcircle, #icon-container.numcircle {
 
 #forecast-table td {
   border: none;
-  padding: 0.3rem;
+  padding: 0.3rem 0;
   text-align: center;
 }
 
 .forecast-cell {
-  vertical-align: middle;
+  vertical-align: top;
   min-height: 80px;
 }
 
@@ -214,14 +240,33 @@ h4.numcircle, #icon-container.numcircle {
 }
 
 .forecast-hour {
-  font-size: 3.5vw;
+  font-size: 2.8vw;
   font-weight: 700;
   line-height: 1.2;
+  padding-bottom: 1.5vh;
 }
 
 .forecast-temp {
-  font-size: 3vw;
+  font-size: 2.7vw;
   font-weight: 600;
+  line-height: 1.2;
+  padding-bottom: 0.8vh;
+}
+
+.forecast-wind {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5vh;
+}
+
+.wind-arrow {
+  display: block;
+}
+
+.wind-speed {
+  font-size: 2.5vw;
+  font-weight: 400;
   line-height: 1.2;
 }
 

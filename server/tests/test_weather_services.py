@@ -79,6 +79,7 @@ def test_accuweather_hourly_forecast_returns_requested_count(accuweather_endpoin
     assert first["temperature"]["unit"] == "\N{DEGREE SIGN}C"
     assert first["temperature"]["value"] == 16
     assert first["wind"]["unit"] == "kmh"
+    assert first["wind"]["direction_degrees"] == 270
     assert first["humidity"] == 60
     assert first["rain_probability"] == 10
     assert first["icon"] == "icon/day/clear.png"               # Icon=1 -> clear day
@@ -138,6 +139,7 @@ def test_openweathermap_hourly_forecast_parses(openweathermap_endpoints):
     assert isinstance(first["dt"], datetime)
     assert first["temperature"]["value"] == 16   # round(16)
     assert first["humidity"] == 60
+    assert first["wind"]["direction_degrees"] == 250
     assert first["rain_probability"] == 10       # round(0.1 * 100)
     assert first["icon"] == "icon/day/clear.png" # "01d" -> clear
 

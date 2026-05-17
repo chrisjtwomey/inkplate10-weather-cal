@@ -75,6 +75,7 @@ class AccuweatherService(WeatherService):
                 "wind": {
                     "unit": speed_units,
                     "value": entry["Wind"]["Speed"]["Value"],
+                    "direction_degrees": entry["Wind"].get("Direction", {}).get("Degrees", 0),
                 },
                 "humidity": entry["RelativeHumidity"],
                 "rain_probability": round(entry["RainProbability"]),

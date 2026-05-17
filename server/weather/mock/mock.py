@@ -70,6 +70,7 @@ class MockWeatherService:
                 "wind": {
                     "unit": speed_unit,
                     "value": rng.randint(0, 80),
+                    "direction_degrees": rng.randint(0, 359),
                 },
                 "humidity": rng.randint(30, 100),
                 "rain_probability": rng.randint(0, 100),
