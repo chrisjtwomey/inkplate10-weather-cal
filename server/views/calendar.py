@@ -65,7 +65,7 @@ class CalendarPage(Page):
                             a.h3(
                                 id="date",
                                 klass="numcircle text-center",
-                                _t=now_date.day,
+                                _t=str(now_date.day),
                             )
 
                             a.h3(
