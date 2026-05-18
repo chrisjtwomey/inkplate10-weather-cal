@@ -24,8 +24,9 @@ NUM_COLS_BASE = 5
 @pytest.fixture
 def mock_forecasts():
     """Five-day forecast from the mock service (always has UV + sun data)."""
-    weather = MockWeatherService(metric=True)
-    return weather.get_5day_forecast()
+    with freeze_time("2026-05-19 09:00:00"):
+        weather = MockWeatherService(metric=True)
+        return weather.get_5day_forecast()
 
 
 @pytest.fixture

@@ -67,7 +67,7 @@ def test_fall_back_eve_delta_is_12_real_hours():
     """
     now = datetime(2026, 10, 24, 22, 0, 0, tzinfo=DUB)
     nxt, _ = _next_wake(WAKE_SCHEDULE, DUB, now=now)
-    assert nxt.utcoffset().total_seconds() == 0           # GMT post-fall-back
+    assert nxt.utcoffset() == timedelta(0)                # GMT post-fall-back
     assert real_seconds_until(now, nxt) == 12 * 3600
 
 
@@ -78,7 +78,7 @@ def test_spring_forward_eve_delta_is_10_real_hours():
     """
     now = datetime(2027, 3, 27, 22, 0, 0, tzinfo=DUB)
     nxt, _ = _next_wake(WAKE_SCHEDULE, DUB, now=now)
-    assert nxt.utcoffset().total_seconds() == 3600        # IST post-spring-forward
+    assert nxt.utcoffset() == timedelta(hours=1)          # IST post-spring-forward
     assert real_seconds_until(now, nxt) == 10 * 3600
 
 

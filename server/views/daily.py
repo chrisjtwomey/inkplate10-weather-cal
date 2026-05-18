@@ -14,10 +14,14 @@ class DailyPage(Page):
         daily_summary = kwargs["daily_summary"]
         daily_forecasts = kwargs["daily_forecasts"]
 
+        # Drop any days already in the past (API sometimes returns yesterday)
+        now_date = dt.date.today()
+        daily_forecasts = [f for f in daily_forecasts if f["dt"].date() >= now_date]
+
         # Compute week-wide min/max for scaling temperature range bars
         week_min = min(f["temperature"]["min"] for f in daily_forecasts)
         week_max = max(f["temperature"]["max"] for f in daily_forecasts)
-        # Guard against all-same values to avoid division by zero in JS
+        # Guard against all-same values to avoid division by zero
         if week_max == week_min:
             week_max = week_min + 1
 
@@ -32,9 +36,7 @@ class DailyPage(Page):
         )
 
         a = self.airium
-        now = dt.datetime.now()
-        self.log.info("Time synchronised to %s", now)
-        now_date = now.date()
+        self.log.info("Rendering daily page for %s", now_date)
 
         a("<!DOCTYPE html>")
         with a.html(lang="en"):
