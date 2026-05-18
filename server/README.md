@@ -91,19 +91,24 @@ server or scheduler:
 ```
 python3 server.py --once
 ```
-The generated image lands at `server/views/calendar.png`.
+The generated images land at `server/views/today.png` and `server/views/daily.png`.
 
-The server runs as a long-running process: it generates the calendar image at
-startup and then on two independent schedules:
+The server runs as a long-running process: it generates all images at startup,
+then regenerates each image shortly before its next scheduled client wake.
 
-- **`server.regen_times`** — when the image is regenerated (weather fetched, calendar rendered).
-- **`server.refresh_times`** — when the server tells clients to wake and download.
+The schedule is configured via `display_schedule` — a mapping of
+`HH:MM:SS` wake times (in `server.timezone`) to the image the client should
+fetch at that wake. The server regenerates that image `server.regen_lead_seconds`
+seconds (default 120) before the wake so a fresh image is always ready.
 
-Both default to `["09:00:00", "15:00:00", "21:00:00"]`. Set them independently to pre-generate before clients arrive — for example, `regen_times` at 08:55 and `refresh_times` at 09:00 guarantees a fresh image is ready when the Inkplate wakes.
+```yaml
+display_schedule:
+  "09:00:00": today.png
+  "15:00:00": daily.png
+  "21:00:00": today.png
+```
 
 Send `SIGTERM` (Ctrl-C) for a clean shutdown.
-
-Both schedules are interpreted in the server's local timezone (configured via `server.timezone`).
 
 ### Telling the client when to wake next
 
@@ -126,8 +131,8 @@ fallback on cold boot).
 
 ### Configuration via environment variables
 
-Any yaml key can be overridden by an env var named after its path, upper-cased
-and joined with `_`. For example:
+Most scalar YAML keys can be overridden by an env var named after their path,
+upper-cased and joined with `_`. For example:
 
 | YAML key                  | Env var                    |
 |---                        |---                         |
@@ -136,23 +141,55 @@ and joined with `_`. For example:
 | `google.staticmaps_mapid` | `GOOGLE_STATICMAPS_MAPID`  |
 | `location`                | `LOCATION`                 |
 | `server.port`             | `SERVER_PORT`              |
-| `server.regen_times`      | `SERVER_REGEN_TIMES` (comma-separated, e.g. `08:55:00,14:55:00,20:55:00`) |
-| `server.refresh_times`    | `SERVER_REFRESH_TIMES` (comma-separated, e.g. `09:00:00,15:00:00,21:00:00`) |
+| `server.timezone`         | `SERVER_TIMEZONE`          |
+| `server.regen_lead_seconds` | `SERVER_REGEN_LEAD_SECONDS` |
 | `mqtt.enabled`            | `MQTT_ENABLED` (`true`/`false`) |
 
-The Docker image ships with a default `config.yaml` (the example with
-placeholders), so a real run needs only the secrets:
+> **Note:** `display_schedule` is a YAML mapping and cannot be set via a
+> single environment variable. Use a mounted `config.yaml` (see below) to
+> customise the wake schedule.
 
-```
+The Docker image ships with a default `config.yaml` (the example with
+placeholders), so a minimal run needs only the secrets:
+
+```sh
 docker run --rm -p 8080:8080 \
-  -e TZ=Europe/Dublin \
   -e WEATHER_APIKEY=... \
   -e GOOGLE_APIKEY=... \
   -e GOOGLE_STATICMAPS_MAPID=... \
   -e LOCATION=Cork \
+  -e SERVER_TIMEZONE=Europe/Dublin \
   weather-cal-server
 ```
 
-To change many keys at once (e.g. a different `refresh_times` schedule)
-mount your own yaml on top of the baked-in default:
-`-v "$(pwd)/server/config.yaml:/app/config.yaml:ro"`.
+### Mounting a custom config.yaml
+
+To customise `display_schedule` or any other setting that cannot be expressed
+as an environment variable, mount your own config file over the default one
+baked into the image:
+
+```sh
+docker run --rm -p 8080:8080 \
+  -v "$(pwd)/config.yaml:/app/config.yaml:ro" \
+  weather-cal-server
+```
+
+Or in a Compose file:
+
+```yaml
+services:
+  eink-cal-server:
+    image: weather-cal-server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+```
+
+Copy `config.example.yaml` as a starting point:
+
+```sh
+cp config.example.yaml config.yaml
+# edit config.yaml with your API keys, location, and schedule
+```
+
