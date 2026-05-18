@@ -49,10 +49,6 @@ class DailyPage(Page):
                 a.title(_t="Daily Forecast")
                 a.link(rel="stylesheet", href="styles.css")
                 a.link(rel="stylesheet", href="daily.css")
-                a.script(
-                    type="text/javascript",
-                    src="https://unpkg.com/roughjs@3.1.0/dist/rough.js",
-                )
 
             with a.body():
                 # ── Top half: same as today page ─────────────────────────────
@@ -117,26 +113,23 @@ class DailyPage(Page):
 
                                 # Temperature range bar
                                 with a.td(klass="day-temp-cell"):
+                                    span = week_max - week_min
+                                    left_pct  = round((forecast["temperature"]["min"] - week_min) / span * 100, 1)
+                                    right_pct = round((1 - (forecast["temperature"]["max"] - week_min) / span) * 100, 1)
                                     with a.div(klass="temp-range"):
-                                        a.span(
-                                            klass="temp-high",
-                                            _t=str(forecast["temperature"]["max"])
-                                            + temp_unit,
-                                        )
-                                        a.canvas(
-                                            klass="temp-bar",
-                                            data_min=str(
-                                                forecast["temperature"]["min"]
-                                            ),
-                                            data_max=str(
-                                                forecast["temperature"]["max"]
-                                            ),
-                                            data_week_min=str(week_min),
-                                            data_week_max=str(week_max),
-                                        )
                                         a.span(
                                             klass="temp-low",
                                             _t=str(forecast["temperature"]["min"])
+                                            + temp_unit,
+                                        )
+                                        with a.div(klass="temp-bar-track"):
+                                            a.div(
+                                                klass="temp-bar-pill",
+                                                style=f"left:{left_pct}%;right:{right_pct}%",
+                                            )
+                                        a.span(
+                                            klass="temp-high",
+                                            _t=str(forecast["temperature"]["max"])
                                             + temp_unit,
                                         )
 
@@ -220,41 +213,4 @@ class DailyPage(Page):
                                                     _t=f"{forecast['hours_of_sun']:.1f}h ☀",
                                                 )
 
-                with a.script():
-                    a("""
-                        window.onload = function() {
 
-                            // ── Temperature range bars ──────────────────────────────────
-                            var tempBars = document.querySelectorAll('.temp-bar');
-                            tempBars.forEach(function(canvas) {
-                                var w       = canvas.offsetWidth  || 160;
-                                var h       = canvas.offsetHeight || 18;
-                                canvas.width  = w;
-                                canvas.height = h;
-
-                                var dayMin  = parseInt(canvas.getAttribute('data_min'),      10);
-                                var dayMax  = parseInt(canvas.getAttribute('data_max'),      10);
-                                var wkMin   = parseInt(canvas.getAttribute('data_week_min'), 10);
-                                var wkMax   = parseInt(canvas.getAttribute('data_week_max'), 10);
-                                var span    = wkMax - wkMin;
-
-                                var x1   = Math.round((dayMin - wkMin) / span * w);
-                                var x2   = Math.round((dayMax - wkMin) / span * w);
-                                var barW = Math.max(x2 - x1, 4);
-                                var barH = Math.round(h * 0.55);
-                                var barY = Math.round((h - barH) / 2);
-
-                                var rc = rough.canvas(canvas);
-                                rc.rectangle(x1, barY, barW, barH, {
-                                    fill:        'black',
-                                    fillStyle:    'zigzag',
-                                    hachureAngle: 45,
-                                    hachureGap:   5,
-                                    roughness:    1,
-                                    bowing:       1,
-                                    strokeWidth:  2
-                                });
-                            });
-
-                        };
-                    """)

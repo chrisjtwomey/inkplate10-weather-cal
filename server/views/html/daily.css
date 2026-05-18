@@ -89,10 +89,22 @@
   font-weight: 700;
 }
 
-.temp-bar {
+.temp-bar-track {
   flex: 1;
-  height: 18px;
-  display: block;
+  position: relative;
+  height: 4px;
+  background: #ccc;
+  border-radius: 2px;
+}
+
+.temp-bar-pill {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 10px;
+  background: #222;
+  border-radius: 5px;
+  min-width: 4px;
 }
 
 /* ── Precipitation cell ────────────────────────────────────── */
