@@ -99,7 +99,7 @@ uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* de
         uint32_t parsed = 0;
         if (parseRefreshTime(headerVal.c_str(), &parsed)) {
             *nextRefreshSeconds = parsed;
-            logf(LOG_DEBUG, "received header X-Next-Refresh-Seconds: %u", parsed);
+            logf(LOG_INFO, "received header X-Next-Refresh-Seconds: %u", parsed);
         } else {
             logf(LOG_WARNING, "X-Next-Refresh-Seconds value '%s' is malformed, ignoring",
                  headerVal.c_str());
@@ -111,7 +111,7 @@ uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* de
     if (nextURL && nextURLSize > 0 && http.hasHeader("X-Next-URL")) {
         String nextURLVal = http.header("X-Next-URL");
         strlcpy(nextURL, nextURLVal.c_str(), nextURLSize);
-        logf(LOG_DEBUG, "received header X-Next-URL: %s", nextURL);
+        logf(LOG_INFO, "received header X-Next-URL: %s", nextURL);
     }
 
     int32_t total = http.getSize();
