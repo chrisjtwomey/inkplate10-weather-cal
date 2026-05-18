@@ -24,6 +24,9 @@ RTC_DATA_ATTR uint32_t nextRefreshSeconds;
 // Exponential back-off step. Incremented on each failed boot (download or
 // draw). Reset to 0 on full success. Zero-init on cold reset.
 RTC_DATA_ATTR int serverBackoffStep;
+// Next URL to fetch as directed by the server's X-Next-URL header.
+// Empty string on cold boot → falls back to serverURL from config.
+RTC_DATA_ATTR char nextServerURL[256];
 
 // inkplate10 board driver
 Inkplate board(INKPLATE_3BIT);
@@ -182,7 +185,9 @@ void setup() {
     do {
         logf(LOG_DEBUG, "calendar download attempt #%d", attempts + 1);
 
-        buf = downloadFile(serverURL, &nextRefreshSeconds, &defaultLen);
+        const char* fetchURL = (nextServerURL[0] != '\0') ? nextServerURL : serverURL;
+        buf = downloadFile(fetchURL, &nextRefreshSeconds, &defaultLen,
+                           nextServerURL, sizeof(nextServerURL));
         if (!buf) {
             errMsg = "file download error";
             log(LOG_ERROR, errMsg);
