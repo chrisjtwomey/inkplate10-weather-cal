@@ -234,16 +234,19 @@ def main():
     today_page = TodayPage(cfg.image_width, cfg.image_height)
     daily_page = DailyPage(cfg.image_width, cfg.image_height)
 
-    def regenerate(image_name=None):
+    def regenerate(image_name=None, force_refresh=False):
         """Regenerate one or both page images.
 
-        image_name: 'today.png', 'daily.png', or None to regenerate both.
+        image_name:    'today.png', 'daily.png', or None to regenerate both.
+        force_refresh: if True, bypass any cached weather data before fetching.
         """
         regen_today = image_name is None or image_name == "today.png"
         regen_daily = image_name is None or image_name == "daily.png"
         with regen_lock:
             label = image_name if image_name else "all images"
             log.info(f"Regenerating {label}")
+            if force_refresh:
+                weather_svc.invalidate_forecast_cache()
             daily_summary = weather_svc.get_daily_summary()
             if regen_today:
                 hourly_forecasts = weather_svc.get_hourly_forecast()
@@ -296,7 +299,7 @@ def main():
         if shutdown_event.wait(wait_seconds):
             break
         try:
-            regenerate(image_name=next_image)
+            regenerate(image_name=next_image, force_refresh=True)
         except Exception:
             log.exception("Scheduled regeneration failed; will retry at next regen time")
 

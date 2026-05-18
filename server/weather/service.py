@@ -28,6 +28,10 @@ class WeatherService:
 
         return f"icon/{icon_map[icon_key]}"
 
+    def invalidate_forecast_cache(self):
+        """No-op for services that don't cache."""
+        pass
+
     def get_5day_forecast(self):
         raise NotImplementedError("get_5day_forecast not implemented")
 

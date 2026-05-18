@@ -1,3 +1,6 @@
+# AccuWeather response cache
+server/weather/accuweather/.cache.json
+
 # Byte-compiled / optimized / DLL files
 **/*__pycache__/
 *.py[cod]

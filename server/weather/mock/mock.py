@@ -1,5 +1,6 @@
 import random
 import datetime as dt
+from ..service import WeatherService
 
 
 # Icons available in server/views/html/icon/
@@ -23,10 +24,15 @@ _NIGHT_ICONS = [
 ]
 
 
-class MockWeatherService:
+class MockWeatherService(WeatherService):
     def __init__(self, num_hours=6, metric=True):
-        self.num_hours = num_hours
-        self.units = "metric" if metric else "imperial"
+        super().__init__(
+            apikey=None,
+            baseurl=None,
+            service_name="mock",
+            num_hours=num_hours,
+            metric=metric,
+        )
         self._seed = random.randint(0, 9999)
 
     def get_daily_summary(self):
