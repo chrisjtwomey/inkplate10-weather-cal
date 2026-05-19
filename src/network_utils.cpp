@@ -55,7 +55,8 @@ esp_err_t configureWiFi(const char* ssid, const char* pass, int retries) {
   - ESP_OK if successful.
   - ESP_ERR_TIMEOUT if number of retries is exceeded without success.
 */
-uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* defaultLen) {
+uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* defaultLen,
+                      char* nextURL, size_t nextURLSize) {
     logf(LOG_INFO, "downloading file at URL %s", url);
 
     bool sleep = WiFi.getSleep();
@@ -67,8 +68,9 @@ uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* de
 
     const char* headersToCollect[] = {
         "X-Next-Refresh-Seconds",
+        "X-Next-URL",
     };
-    const size_t numberOfHeaders = 1;
+    const size_t numberOfHeaders = 2;
     http.collectHeaders(headersToCollect, numberOfHeaders);
 
     // Connect with HTTP
@@ -97,13 +99,19 @@ uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* de
         uint32_t parsed = 0;
         if (parseRefreshTime(headerVal.c_str(), &parsed)) {
             *nextRefreshSeconds = parsed;
-            logf(LOG_DEBUG, "received header X-Next-Refresh-Seconds: %u", parsed);
+            logf(LOG_INFO, "received header X-Next-Refresh-Seconds: %u", parsed);
         } else {
             logf(LOG_WARNING, "X-Next-Refresh-Seconds value '%s' is malformed, ignoring",
                  headerVal.c_str());
         }
     } else {
         logf(LOG_WARNING, "header X-Next-Refresh-Seconds not found in response");
+    }
+
+    if (nextURL && nextURLSize > 0 && http.hasHeader("X-Next-URL")) {
+        String nextURLVal = http.header("X-Next-URL");
+        strlcpy(nextURL, nextURLVal.c_str(), nextURLSize);
+        logf(LOG_INFO, "received header X-Next-URL: %s", nextURL);
     }
 
     int32_t total = http.getSize();

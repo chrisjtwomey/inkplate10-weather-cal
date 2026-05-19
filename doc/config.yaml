@@ -5,7 +5,8 @@
 # These parameters override what is set in config.h if SD card is enabled.
 server:
   # The URL on the server which the client will attempt to download the first image from.
-  url: http://localhost:8080/calendar.png
+  # Use /today.png for the hourly forecast page, or /daily.png for the 5-day forecast page.
+  url: http://localhost:8080/today.png
   # The number of times to attempt downloading or drawing the server image.
   retries: 3
 wifi:

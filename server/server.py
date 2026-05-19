@@ -15,7 +15,8 @@ import logging.config
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 from utils import get_prop, get_prop_by_keys
-from views.calendar import CalendarPage
+from views.today import TodayPage
+from views.daily import DailyPage
 from google.api import GoogleAPIService
 from werkzeug.serving import make_server
 from flask import Flask, make_response, send_file, abort
@@ -26,10 +27,10 @@ cwd = os.path.dirname(os.path.realpath(__file__))
 log = logging.getLogger("server")
 
 app = Flask(__name__)
-server_regen_times = []    # when the server regenerates the calendar image
-server_refresh_times = []  # when the server tells clients to wake and refresh
+server_display_schedule = []  # sorted (time_str, url_path) tuples; drives both regen and client wakes
+server_regen_lead_seconds = 120  # seconds before wake time at which the server regenerates the image
 server_tz = None
-# Serialises calendar.png writes (regenerate) against reads (serve handler).
+# Serialises today.png/daily.png writes (regenerate) against reads (serve handlers).
 regen_lock = threading.Lock()
 shutdown_event = threading.Event()
 
@@ -44,8 +45,8 @@ class ServerConfig:
     # is enforced by the validation logic in validate_config(), not here.
     port: Any
     timezone: Any             # tzinfo / ZoneInfo
-    regen_times: Any          # list[str] of HH:MM:SS strings
-    refresh_times: Any        # list[str] of HH:MM:SS strings
+    display_schedule: Any        # sorted (time_str, url_path) tuples; drives both regen and client wakes
+    regen_lead_seconds: Any    # int; seconds before wake time to regenerate the image
     image_width: Any
     image_height: Any
     weather_service: Any      # one of _SUPPORTED_WEATHER_SERVICES
@@ -99,17 +100,19 @@ def validate_config(config: dict) -> ServerConfig:
 
     # ---- server ----
     port = get_prop_by_keys(config, "server", "port", default=8080)
+    regen_lead_seconds = get_prop_by_keys(config, "server", "regen_lead_seconds", default=120)
+    if not isinstance(regen_lead_seconds, int) or regen_lead_seconds < 0:
+        _err("server.regen_lead_seconds must be a non-negative integer (seconds)")
 
-    refresh_times = get_prop_by_keys(config, "server", "refresh_times", default=["09:00:00"])
-    if not refresh_times:
-        _err("server.refresh_times must contain at least one HH:MM:SS entry")
-    _validate_time_list("server.refresh_times", refresh_times)
-
-    regen_times = get_prop_by_keys(config, "server", "regen_times", default=None, required=False)
-    if not regen_times:
-        regen_times = refresh_times  # default: regenerate on the same schedule
-    else:
-        _validate_time_list("server.regen_times", regen_times)
+    raw_schedule = get_prop_by_keys(config, "display_schedule",
+                                    default={"09:00:00": "today.png"})
+    if not isinstance(raw_schedule, dict) or not raw_schedule:
+        _err("display_schedule must be a non-empty mapping of HH:MM:SS times to image filenames")
+    _validate_time_list("display_schedule", list(raw_schedule.keys()))
+    display_schedule = sorted(
+        [(str(t).strip(), str(p).strip()) for t, p in raw_schedule.items()],
+        key=lambda x: x[0],
+    )
 
     tz = datetime.now().astimezone().tzinfo  # default: system local tz
     tz_name = get_prop_by_keys(config, "server", "timezone", default=None)
@@ -135,8 +138,8 @@ def validate_config(config: dict) -> ServerConfig:
     return ServerConfig(
         port=port,
         timezone=tz,
-        regen_times=regen_times,
-        refresh_times=refresh_times,
+        display_schedule=display_schedule,
+        regen_lead_seconds=regen_lead_seconds,
         image_width=image_width,
         image_height=image_height,
         weather_service=weather_service,
@@ -155,7 +158,7 @@ def validate_config(config: dict) -> ServerConfig:
 
 
 def main():
-    global log, server_regen_times, server_refresh_times, server_tz
+    global log, server_display_schedule, server_regen_lead_seconds, server_tz
 
     parser = argparse.ArgumentParser(description="Inkplate weather calendar server")
     parser.add_argument(
@@ -180,8 +183,8 @@ def main():
     cfg = validate_config(config)
 
     # Set module-level state used by the request handler and scheduler.
-    server_refresh_times = cfg.refresh_times
-    server_regen_times = cfg.regen_times
+    server_display_schedule = cfg.display_schedule
+    server_regen_lead_seconds = cfg.regen_lead_seconds
     server_tz = cfg.timezone
 
     # Align the process timezone so Python's logging timestamps (which use
@@ -192,8 +195,8 @@ def main():
         time.tzset()
 
     log.info(f"timezone: {server_tz}")
-    log.info(f"regen_times (image regeneration schedule): {server_regen_times}")
-    log.info(f"refresh_times (client wake schedule):      {server_refresh_times}")
+    log.info(f"display_schedule: {server_display_schedule}")
+    log.info(f"regen_lead_seconds: {server_regen_lead_seconds}")
 
     gapi = GoogleAPIService(cfg.google_apikey)
     map_url = gapi.get_static_map_url(cfg.staticmaps_mapid, cfg.location)
@@ -228,19 +231,39 @@ def main():
         log.error(f"not a supported weather service: {cfg.weather_service}")
         sys.exit(1)
 
-    page = CalendarPage(cfg.image_width, cfg.image_height)
+    today_page = TodayPage(cfg.image_width, cfg.image_height)
+    daily_page = DailyPage(cfg.image_width, cfg.image_height)
 
-    def regenerate():
+    def regenerate(image_name=None, force_refresh=False):
+        """Regenerate one or both page images.
+
+        image_name:    'today.png', 'daily.png', or None to regenerate both.
+        force_refresh: if True, bypass any cached weather data before fetching.
+        """
+        regen_today = image_name is None or image_name == "today.png"
+        regen_daily = image_name is None or image_name == "daily.png"
         with regen_lock:
-            log.info("Regenerating calendar image")
+            label = image_name if image_name else "all images"
+            log.info(f"Regenerating {label}")
+            if force_refresh:
+                weather_svc.invalidate_forecast_cache()
             daily_summary = weather_svc.get_daily_summary()
-            hourly_forecasts = weather_svc.get_hourly_forecast()
-            page.template(
-                map_url=map_url,
-                daily_summary=daily_summary,
-                hourly_forecasts=hourly_forecasts,
-            )
-            page.save()
+            if regen_today:
+                hourly_forecasts = weather_svc.get_hourly_forecast()
+                today_page.template(
+                    map_url=map_url,
+                    daily_summary=daily_summary,
+                    hourly_forecasts=hourly_forecasts,
+                )
+                today_page.save()
+            if regen_daily:
+                five_day_forecasts = weather_svc.get_5day_forecast()
+                daily_page.template(
+                    map_url=map_url,
+                    daily_summary=daily_summary,
+                    daily_forecasts=five_day_forecasts,
+                )
+                daily_page.save()
             log.info("Regeneration complete")
 
     regenerate()
@@ -265,19 +288,18 @@ def main():
 
     while not shutdown_event.is_set():
         now = datetime.now(tz=server_tz)
-        next_regen_dt = _next_refresh_datetime(server_regen_times, server_tz, now=now)
-        next_client_dt = _next_refresh_datetime(server_refresh_times, server_tz, now=now)
+        next_regen_dt, next_wake_dt, next_image = _next_regen(server_display_schedule, server_tz, lead_seconds=server_regen_lead_seconds, now=now)
         # Use timestamps (always real UTC seconds) rather than `next_dt - now`.
         # Python's datetime subtraction does naive wall-clock subtraction when
         # both sides share the same tzinfo, which silently drops the 1h shift
         # across a DST transition.
         wait_seconds = max(0.0, next_regen_dt.timestamp() - now.timestamp())
-        log.info(f"Next regeneration at {next_regen_dt.isoformat()} (in {int(wait_seconds)}s)")
-        log.info(f"Next client refresh at {next_client_dt.isoformat()}")
+        log.info(f"Next client wake at {next_wake_dt.isoformat()} → {next_image}")
+        log.info(f"Regenerating {next_image} at {next_regen_dt.isoformat()} (in {int(wait_seconds)}s)")
         if shutdown_event.wait(wait_seconds):
             break
         try:
-            regenerate()
+            regenerate(image_name=next_image, force_refresh=True)
         except Exception:
             log.exception("Scheduled regeneration failed; will retry at next regen time")
 
@@ -341,39 +363,66 @@ def _validate_time_list(config_key, times):
             sys.exit(1)
 
 
-def _next_refresh_datetime(refresh_times, tz, now=None):
+def _next_regen(display_schedule, tz, lead_seconds=120, now=None):
     """
-    Return the next refresh moment as a tz-aware datetime.
+    Return (regen_dt, wake_dt, url_path) for the next scheduled regeneration.
+
+    Regen fires `lead_seconds` seconds before the corresponding client wake
+    time.  The strict `regen_dt > now` check ensures that after a regen fires,
+    the next loop iteration advances to the following wake slot rather than
+    re-triggering the same one immediately.
 
     All wall-clock arithmetic is anchored in `tz` so DST transitions are
-    handled correctly: subtracting two tz-aware datetimes yields a real-time
-    delta even when an offset change happens between them.
+    handled correctly.
+    """
+    if now is None:
+        now = datetime.now(tz=tz)
+    regen_lead = timedelta(seconds=lead_seconds)
+    today = now.date()
+    for time_str, url_path in display_schedule:
+        t = datetime.strptime(time_str, "%H:%M:%S").time()
+        wake_dt = datetime.combine(today, t, tzinfo=tz)
+        regen_dt = wake_dt - regen_lead
+        if regen_dt > now:
+            return regen_dt, wake_dt, url_path
+    tomorrow = today + timedelta(days=1)
+    time_str, url_path = display_schedule[0]
+    t = datetime.strptime(time_str, "%H:%M:%S").time()
+    wake_dt = datetime.combine(tomorrow, t, tzinfo=tz)
+    return wake_dt - regen_lead, wake_dt, url_path
+
+
+def _next_wake(wake_schedule, tz, now=None):
+    """
+    Return (next_dt, url_path) for the next scheduled client wake.
+
+    wake_schedule is a sorted list of (time_str, url_path) tuples.
+    All wall-clock arithmetic is anchored in `tz` so DST transitions are
+    handled correctly.
     """
     if now is None:
         now = datetime.now(tz=tz)
     today = now.date()
-    for rt in refresh_times:
-        t = datetime.strptime(rt, "%H:%M:%S").time()
+    for time_str, url_path in wake_schedule:
+        t = datetime.strptime(time_str, "%H:%M:%S").time()
         dt = datetime.combine(today, t, tzinfo=tz)
         if dt > now:
-            return dt
+            return dt, url_path
     tomorrow = today + timedelta(days=1)
-    t = datetime.strptime(refresh_times[0], "%H:%M:%S").time()
-    return datetime.combine(tomorrow, t, tzinfo=tz)
+    time_str, url_path = wake_schedule[0]
+    t = datetime.strptime(time_str, "%H:%M:%S").time()
+    return datetime.combine(tomorrow, t, tzinfo=tz), url_path
 
 
-def get_next_refresh_seconds():
+def get_next_wake():
     """
-    Return seconds from now until the next scheduled refresh. Drives the
-    client's deep-sleep duration via the X-Next-Refresh-Seconds header.
-    The server is the single source of truth for *when* — the client just
-    counts down. DST is handled here (via _next_refresh_datetime) so the
-    client doesn't need timezone awareness for scheduling.
+    Return (seconds_until_next_wake, url_path) for the next scheduled client
+    wake. Drives the X-Next-Refresh-Seconds and X-Next-URL response headers.
     """
-    global server_refresh_times, server_tz
+    global server_display_schedule, server_tz
     now = datetime.now(tz=server_tz)
-    next_dt = _next_refresh_datetime(server_refresh_times, server_tz, now=now)
-    return max(0, int(next_dt.timestamp() - now.timestamp()))
+    next_dt, url_path = _next_wake(server_display_schedule, server_tz, now=now)
+    return max(0, int(next_dt.timestamp() - now.timestamp())), url_path
 
 
 class ServerThread(threading.Thread):
@@ -392,22 +441,44 @@ class ServerThread(threading.Thread):
         self.server.shutdown()
 
 
-@app.route("/calendar.png")
-def serve_img_png():
-    """
-    Returns the calendar image directly through send_file
-    """
+@app.route("/today.png")
+def serve_today_png():
+    """Returns the today (hourly forecast) image."""
+    return _serve_png(os.path.join(cwd, "views/today.png"))
 
-    path = os.path.join(cwd, "views/calendar.png")
+
+@app.route("/calendar.png")
+def serve_calendar_png():
+    """Backward-compat alias for /today.png — existing devices use this URL."""
+    return _serve_png(os.path.join(cwd, "views/today.png"))
+
+
+@app.route("/daily.png")
+def serve_daily_png():
+    """Returns the daily (5-day forecast) image."""
+    return _serve_png(os.path.join(cwd, "views/daily.png"))
+
+
+def _serve_png(path):
+    """
+    Serve a PNG file, blocking while any regeneration is in progress so we
+    never serve a partial write.
+
+    Sets X-Next-Refresh-Seconds and X-Next-URL from the wake schedule so the
+    client knows when to next wake and which endpoint to fetch.
+    """
+    from flask import request
 
     if not os.path.exists(path):
         log.error(f"{path}: no such file exists")
         abort(404)
 
-    # Block while a regeneration is mid-write so we never serve a partial PNG.
     with regen_lock:
         with open(path, "rb") as f:
             stream = io.BytesIO(f.read())
+
+    seconds, url_path = get_next_wake()
+    next_url = request.host_url.rstrip("/") + "/" + url_path.lstrip("/")
 
     rsp = make_response(send_file(
         stream,
@@ -415,8 +486,8 @@ def serve_img_png():
         as_attachment=True,
         download_name=os.path.basename(path),
     ))
-    rsp.headers["X-Next-Refresh-Seconds"] = str(get_next_refresh_seconds())
-
+    rsp.headers["X-Next-Refresh-Seconds"] = str(seconds)
+    rsp.headers["X-Next-URL"] = next_url
     return rsp
 
 

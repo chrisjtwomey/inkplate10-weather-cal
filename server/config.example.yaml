@@ -1,28 +1,28 @@
 ---
 server:
   port: 8080
-  # IANA timezone in which refresh_times are interpreted (e.g. Europe/Dublin,
-  # Europe/London, America/New_York). Handles DST transitions automatically.
-  # If omitted, the server's OS-level timezone is used (UTC in Docker by
-  # default, which is rarely what you want).
+  # IANA timezone in which display_schedule times are interpreted
+  # (e.g. Europe/Dublin, Europe/London, America/New_York). Handles DST transitions
+  # automatically. If omitted, the server's OS-level timezone is used (UTC in
+  # Docker by default, which is rarely what you want).
   timezone: Europe/Dublin
-  # Times of day (HH:MM:SS, in the timezone above) at which the calendar
-  # image is regenerated (weather fetched, image rendered).
-  regen_times:
-  - "09:00:00"
-  - "15:00:00"
-  - "21:00:00"
-  # Times of day the server tells clients to wake and re-download the image.
-  # Defaults to regen_times if omitted. Set this independently to pre-generate
-  # before clients arrive (e.g. regen at 08:55, refresh_times at 09:00).
-  refresh_times:
-  - "09:00:00"
-  - "15:00:00"
-  - "21:00:00"
+  # Seconds before each scheduled wake time at which the server regenerates
+  # the corresponding image. Defaults to 120 (2 minutes) if omitted.
+  regen_lead_seconds: 120
+# Maps each client wake time (HH:MM:SS, in server.timezone) to the image the
+# server should serve at that wake. The server regenerates each image 120 seconds
+# before the scheduled wake, then communicates the next wake time and URL via
+# the X-Next-Refresh-Seconds and X-Next-URL response headers.
+# Defaults to {"09:00:00": "today.png"} if omitted.
+display_schedule:
+  "08:00:00": today.png
+  "12:00:00": daily.png
+  "16:00:00": today.png
+  "20:00:00": daily.png
 weather:
   service: accuweather
   apikey: XXXX
-  num_hourly_forecasts: 6
+  num_hourly_forecasts: 9
   metric: true
 google:
   apikey: XXXX

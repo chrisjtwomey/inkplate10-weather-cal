@@ -1,5 +1,6 @@
 import requests
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, time as dt_time
 from ..service import WeatherService
 
 
@@ -78,6 +79,66 @@ class OpenWeatherMapService(WeatherService):
             }
 
             forecasts.append(forecast)
+
+        return forecasts
+
+    def get_5day_forecast(self):
+        res = requests.get(
+            self.baseurl
+            + "/data/2.5/forecast?cnt=40&lat={}&lon={}&appid={}&units={}".format(
+                self.lat, self.lon, self.apikey, self.units
+            )
+        )
+        data = res.json()
+
+        code = data["cod"]
+        if int(code) != 200:
+            raise ValueError("Non-200 response from weather api: {}".format(data))
+
+        if self.units == "metric":
+            temp_unit = "\N{DEGREE SIGN}C"
+            speed_unit = "kmh"
+        else:
+            temp_unit = "\N{DEGREE SIGN}F"
+            speed_unit = "mph"
+
+        # Group 3-hour entries by calendar date
+        by_date = defaultdict(list)
+        for entry in data["list"]:
+            day = datetime.fromtimestamp(entry["dt"]).date()
+            by_date[day].append(entry)
+
+        dates = sorted(by_date.keys())[:5]
+
+        forecasts = []
+        for day in dates:
+            entries = by_date[day]
+            # Use the entry closest to noon as the representative for icon/wind
+            noon_entry = min(
+                entries,
+                key=lambda e: abs(datetime.fromtimestamp(e["dt"]).hour - 12),
+            )
+            temps = [e["main"]["temp"] for e in entries]
+
+            forecasts.append({
+                "dt": datetime.combine(day, dt_time(0, 0)),
+                "icon": self.get_icon(noon_entry["weather"][0]["icon"]),
+                "temperature": {
+                    "unit": temp_unit,
+                    "min": round(min(temps)),
+                    "max": round(max(temps)),
+                },
+                "wind": {
+                    "unit": speed_unit,
+                    "value": noon_entry["wind"]["speed"],
+                    "direction_degrees": noon_entry["wind"].get("deg", 0),
+                },
+                "rain_probability": round(max(e["pop"] for e in entries) * 100),
+                "uv_index": None,
+                "sunrise": None,
+                "sunset": None,
+                "hours_of_sun": None,
+            })
 
         return forecasts
 

@@ -31,6 +31,10 @@ esp_err_t configureWiFi(const char* ssid, const char* pass, int retries);
   If the server sends the X-Next-Refresh-Seconds header, its integer value
   (seconds until the next refresh) is written to `*nextRefreshSeconds`. On a
   missing or malformed header value the out-param is left unmodified.
+
+  If the server sends an X-Next-URL header, up to nextURLSize-1 bytes of the
+  value are written into nextURL (null-terminated). Pass nullptr / 0 to ignore.
 */
-uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* size);
+uint8_t* downloadFile(const char* url, uint32_t* nextRefreshSeconds, int32_t* size,
+                      char* nextURL, size_t nextURLSize);
 #endif

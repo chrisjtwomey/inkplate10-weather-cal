@@ -3,13 +3,13 @@ from airium import Airium
 from .page import Page
 
 
-class CalendarPage(Page):
+class TodayPage(Page):
     def __init__(
         self,
         width,
         height,
     ):
-        super().__init__("calendar", width, height)
+        super().__init__("today", width, height)
 
     def template(
         self,
@@ -38,6 +38,10 @@ class CalendarPage(Page):
             temps.append(forecast["temperature"]["value"])
             precip_percents.append(forecast["rain_probability"])
 
+        temp_unit = hourly_forecasts[0]["temperature"]["unit"]
+        wind_unit_raw = hourly_forecasts[0]["wind"]["unit"]
+        wind_unit_display = "kph" if wind_unit_raw == "kmh" else "mph"
+
         a = self.airium
         now = dt.datetime.now()
         self.log.info("Time synchronised to %s", now)
@@ -51,7 +55,7 @@ class CalendarPage(Page):
                     name="viewport",
                     content="width=device-width, initial-scale=1",
                 )
-                a.title(_t="Calendar")
+                a.title(_t="Today")
                 a.link(rel="stylesheet", href="styles.css")
                 a.script(type="text/javascript", src="https://unpkg.com/chart.js@2.8.0")
                 a.script(type="text/javascript", src="https://unpkg.com/roughjs@3.1.0/dist/rough.js")
@@ -65,7 +69,7 @@ class CalendarPage(Page):
                             a.h3(
                                 id="date",
                                 klass="numcircle text-center",
-                                _t=now_date.day,
+                                _t=str(now_date.day),
                             )
 
                             a.h3(
@@ -92,6 +96,8 @@ class CalendarPage(Page):
                         with a.table(id="forecast-table"):
                             # Icon row
                             with a.tr():
+                                with a.td(klass="legend-cell"):
+                                    a.canvas(klass="legend-divider")
                                 for forecast in hourly_forecasts:
                                     with a.td(klass="forecast-cell"):
                                         with a.div(klass="forecast-icon"):
@@ -99,6 +105,9 @@ class CalendarPage(Page):
 
                             # Hour row — show every second label to stay readable at distance
                             with a.tr():
+                                with a.td(klass="legend-cell"):
+                                    a.img(src="icon/wall-clock.png", klass="legend-icon")
+                                    a.canvas(klass="legend-divider")
                                 for i, forecast in enumerate(hourly_forecasts):
                                     hour = ""
                                     try:
@@ -115,6 +124,10 @@ class CalendarPage(Page):
                             # Temperature row — hide repeated adjacent values
                             prev_temp = None
                             with a.tr():
+                                with a.td(klass="legend-cell"):
+                                    a.img(src="icon/thermometer.png", klass="legend-icon")
+                                    a.span(klass="legend-unit", _t=temp_unit)
+                                    a.canvas(klass="legend-divider")
                                 for forecast in hourly_forecasts:
                                     temp_val = forecast["temperature"]["value"]
                                     with a.td(klass="forecast-cell"):
@@ -125,6 +138,10 @@ class CalendarPage(Page):
                             # Wind direction and speed row — hide repeated adjacent speeds
                             prev_wind_speed = None
                             with a.tr():
+                                with a.td(klass="legend-cell"):
+                                    a.img(src="icon/wind.png", klass="legend-icon")
+                                    a.span(klass="legend-unit", _t=wind_unit_display)
+                                    a.canvas(klass="legend-divider")
                                 for forecast in hourly_forecasts:
                                     deg = forecast["wind"]["direction_degrees"]
                                     speed_val = forecast["wind"]["value"]
@@ -145,6 +162,9 @@ class CalendarPage(Page):
                             # Precipitation bar row — hide repeated adjacent labels, and only on even columns
                             prev_precip = None
                             with a.tr():
+                                with a.td(klass="legend-cell"):
+                                    a.img(src="icon/raindrops.png", klass="legend-icon")
+                                    a.canvas(klass="legend-divider")
                                 for i, forecast in enumerate(hourly_forecasts):
                                     precip = forecast["rain_probability"]
                                     show_even = len(hourly_forecasts) <= 6 or i % 2 == 0
@@ -196,6 +216,35 @@ class CalendarPage(Page):
                                     var labelY = h - barH - 6;
                                     ctx.fillStyle = '#000';
                                     ctx.fillText(label, w / 2, labelY);
+                                }
+                            });
+
+                            var dividers = document.querySelectorAll('.legend-divider');
+                            var dashLen  = 10;
+                            var gapLen   = 6;
+                            var cycle    = dashLen + gapLen;
+                            var firstTop = dividers.length > 0 ? dividers[0].getBoundingClientRect().top : 0;
+
+                            dividers.forEach(function(canvas) {
+                                var w = canvas.offsetWidth || 8;
+                                var h = canvas.offsetHeight || 60;
+                                canvas.width  = w;
+                                canvas.height = h;
+                                var rc    = rough.canvas(canvas);
+                                var x     = w / 2;
+                                var phase = (canvas.getBoundingClientRect().top - firstTop) % cycle;
+                                var y     = -phase;
+                                while (y < h) {
+                                    var segStart = Math.max(y, 0);
+                                    var segEnd   = Math.min(y + dashLen, h);
+                                    if (segEnd > segStart) {
+                                        rc.line(x, segStart, x, segEnd, {
+                                            roughness:   2.5,
+                                            stroke:      '#aaa',
+                                            strokeWidth: 1.5
+                                        });
+                                    }
+                                    y += cycle;
                                 }
                             });
                         };
