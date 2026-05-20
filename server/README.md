@@ -91,7 +91,7 @@ server or scheduler:
 ```
 python3 server.py --once
 ```
-The generated images land at `server/views/today.png` and `server/views/daily.png`.
+The generated images land at `server/views/today.png`, `server/views/hourly.png`, `server/views/daily.png`, and `server/views/tomorrow.png`.
 
 The server runs as a long-running process: it generates all images at startup,
 then regenerates each image shortly before its next scheduled client wake.
@@ -112,7 +112,7 @@ Send `SIGTERM` (Ctrl-C) for a clean shutdown.
 
 ### Telling the client when to wake next
 
-Each response to `GET /calendar.png` includes an `X-Next-Refresh-Seconds`
+Each response to any image endpoint (e.g. `GET /today.png`) includes an `X-Next-Refresh-Seconds`
 header: an integer number of seconds from now until the next scheduled
 refresh, computed from `server.refresh_times` in the configured timezone.
 The Inkplate client treats this as authoritative — it simply sets its RTC
@@ -120,7 +120,7 @@ alarm to "wake `N` seconds from now" and doesn't need its own timezone
 awareness for scheduling.
 
 ```sh
-$ curl -sI http://localhost:8080/calendar.png | grep -i x-next-refresh
+$ curl -sI http://localhost:8080/today.png | grep -i x-next-refresh
 x-next-refresh-seconds: 17602
 ```
 
