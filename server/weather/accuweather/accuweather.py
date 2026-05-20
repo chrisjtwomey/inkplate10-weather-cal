@@ -225,7 +225,10 @@ class AccuweatherService(WeatherService):
                 "uv_index": uv_index,
                 "sunrise": sunrise,
                 "sunset": sunset,
-                "hours_of_sun": entry.get("Day", {}).get("HoursOfSun"),
+                "hours_of_sun": entry.get("HoursOfSun"),
+                "hours_of_rain": entry.get("Day", {}).get("HoursOfRain"),
+                "day_phrase": entry.get("Day", {}).get("LongPhrase"),
+                "night_phrase": entry.get("Night", {}).get("ShortPhrase"),
             })
 
         self._set_cached("5day_forecast", forecasts)
@@ -262,12 +265,18 @@ class AccuweatherService(WeatherService):
             "wind": {
                 "unit": speed_units,
                 "value": data["Wind"]["Speed"][units_key]["Value"],
+                "direction_degrees": data["Wind"].get("Direction", {}).get("Degrees", 0),
             },
             "humidity": data["RelativeHumidity"],
+            "uv_index": data.get("UVIndex"),
+            "weather_text": data.get("WeatherText"),
         }
 
         self._set_cached("current_conditions", conditions)
         return conditions
+
+    def get_current_conditions(self):
+        return self._get_current_conditions()
 
     def _get_location_key(self, location):
         # Cached indefinitely — only re-fetch if the location string has changed.

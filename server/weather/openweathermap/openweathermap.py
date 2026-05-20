@@ -40,6 +40,38 @@ class OpenWeatherMapService(WeatherService):
 
         return forecast
 
+    def get_current_conditions(self):
+        res = requests.get(
+            self.baseurl
+            + "/data/2.5/weather?lat={}&lon={}&appid={}&units={}".format(
+                self.lat, self.lon, self.apikey, self.units
+            )
+        )
+        data = res.json()
+
+        if self.units == "metric":
+            temp_unit = "\N{DEGREE SIGN}C"
+            speed_unit = "kmh"
+        else:
+            temp_unit = "\N{DEGREE SIGN}F"
+            speed_unit = "mph"
+
+        return {
+            "icon": self.get_icon(data["weather"][0]["icon"]),
+            "temperature": {
+                "unit": temp_unit,
+                "value": round(data["main"]["feels_like"]),
+            },
+            "wind": {
+                "unit": speed_unit,
+                "value": data["wind"]["speed"],
+                "direction_degrees": data["wind"].get("deg", 0),
+            },
+            "humidity": data["main"]["humidity"],
+            "uv_index": None,  # requires separate /onecall endpoint
+            "weather_text": data["weather"][0].get("description", "").capitalize(),
+        }
+
     def get_hourly_forecast(self):
         res = requests.get(
             self.baseurl
@@ -138,6 +170,9 @@ class OpenWeatherMapService(WeatherService):
                 "sunrise": None,
                 "sunset": None,
                 "hours_of_sun": None,
+                "hours_of_rain": None,
+                "day_phrase": None,
+                "night_phrase": None,
             })
 
         return forecasts

@@ -32,11 +32,14 @@ class WeatherService:
         """No-op for services that don't cache."""
         pass
 
+    def get_current_conditions(self):
+        raise NotImplementedError("get_current_conditions not implemented")
+
     def get_5day_forecast(self):
         raise NotImplementedError("get_5day_forecast not implemented")
 
     def get_daily_summary(self):
-        raise NotImplementedError("get_current_conditions not implemented")
+        raise NotImplementedError("get_daily_summary not implemented")
 
     def get_hourly_forecast(self):
-        raise NotImplementedError("get_forecast not implemented")
+        raise NotImplementedError("get_hourly_forecast not implemented")

@@ -1,17 +1,21 @@
 import datetime as dt
 from airium import Airium
-from .page import Page
+from .detailed import DetailedPage
 
 
-class DailyPage(Page):
+class DailyPage(DetailedPage):
     def __init__(self, width, height):
-        super().__init__("daily", width, height)
+        super().__init__(width, height)
+        self.name = "daily"
 
-    def template(self, **kwargs):
-        self.airium = Airium()
+    def _title(self):
+        return "Daily Forecast"
 
-        map_url = kwargs["map_url"]
-        daily_summary = kwargs["daily_summary"]
+    def _css_links(self, a):
+        super()._css_links(a)
+        a.link(rel="stylesheet", href="daily.css")
+
+    def _render_body(self, a, **kwargs):
         daily_forecasts = kwargs["daily_forecasts"]
 
         # Drop any days already in the past (API sometimes returns yesterday)
@@ -35,182 +39,136 @@ class DailyPage(Page):
             for f in daily_forecasts
         )
 
-        a = self.airium
-        self.log.info("Rendering daily page for %s", now_date)
+        # ── Bottom half: 5-day forecast table ────────────────────────
+        with a.div(id="daily-body", klass="bg-container"):
+            with a.table(id="daily-table"):
+                for forecast in daily_forecasts:
+                    day_name = forecast["dt"].strftime("%a").upper()
+                    try:
+                        day_date = forecast["dt"].strftime("%-d %b")
+                    except ValueError:
+                        day_date = forecast["dt"].strftime("%d %b").lstrip("0")
 
-        a("<!DOCTYPE html>")
-        with a.html(lang="en"):
-            with a.head():
-                a.meta(
-                    charset="utf-8",
-                    name="viewport",
-                    content="width=device-width, initial-scale=1",
-                )
-                a.title(_t="Daily Forecast")
-                a.link(rel="stylesheet", href="styles.css")
-                a.link(rel="stylesheet", href="daily.css")
+                    deg = forecast["wind"]["direction_degrees"]
+                    speed_val = forecast["wind"]["value"]
+                    speed_kmh = (
+                        speed_val
+                        if wind_unit_raw == "kmh"
+                        else speed_val * 1.609
+                    )
+                    arrow_size = round(
+                        2.5 + 2.5 * min(speed_kmh / 80.0, 1.0) ** 0.5, 2
+                    )
 
-            with a.body():
-                # ── Top half: same as today page ─────────────────────────────
-                with a.div(klass="bg-container"):
-                    with a.div(id="top-banner", klass="container"):
-                        with a.div(id="date-banner"):
-                            a.h3(
-                                id="date",
-                                klass="numcircle text-center",
-                                _t=str(now_date.day),
-                            )
-                            a.h3(
-                                id="month",
-                                klass="month text-center text-uppercase",
-                                _t=now_date.strftime("%B"),
-                            )
+                    with a.tr(klass="day-row"):
+                        # Day name + date
+                        with a.td(klass="day-name-cell"):
+                            a.div(klass="day-name", _t=day_name)
+                            a.div(klass="day-date", _t=day_date)
 
-                        a.h4(
-                            id="temp",
-                            klass="numcircle text-center",
-                            _t=str(daily_summary["temperature"]["value"])
-                            + daily_summary["temperature"]["unit"],
-                        )
+                        # Weather icon
+                        with a.td(klass="day-icon-cell"):
+                            with a.div(klass="day-icon-wrap"):
+                                a.img(src=forecast["icon"], klass="day-icon")
 
-                        with a.div(id="icon-container", klass="numcircle"):
-                            a.img(src=daily_summary["icon"])
+                        # Temperature range bar
+                        with a.td(klass="day-temp-cell"):
+                            span = week_max - week_min
+                            left_pct  = round((forecast["temperature"]["min"] - week_min) / span * 100, 1)
+                            right_pct = round((1 - (forecast["temperature"]["max"] - week_min) / span) * 100, 1)
+                            with a.div(klass="temp-range"):
+                                a.span(
+                                    klass="temp-low",
+                                    _t=str(forecast["temperature"]["min"])
+                                    + temp_unit,
+                                )
+                                with a.div(klass="temp-bar-track"):
+                                    a.div(
+                                        klass="temp-bar-pill",
+                                        style=f"left:{left_pct}%;right:{right_pct}%",
+                                    )
+                                a.span(
+                                    klass="temp-high",
+                                    _t=str(forecast["temperature"]["max"])
+                                    + temp_unit,
+                                )
 
-                with a.div(id="map-container"):
-                    a.img(src=map_url, id="map")
+                        # Precipitation: icon + percentage
+                        with a.td(klass="day-precip-cell"):
+                            with a.div(klass="day-precip"):
+                                a.img(
+                                    src="icon/raindrops.png",
+                                    klass="precip-icon",
+                                )
+                                a.span(
+                                    klass="precip-value",
+                                    _t=f"{forecast['rain_probability']}%",
+                                )
 
-                # ── Bottom half: 5-day forecast table ────────────────────────
-                with a.div(id="daily-body", klass="bg-container"):
-                    with a.table(id="daily-table"):
-                        for forecast in daily_forecasts:
-                            day_name = forecast["dt"].strftime("%a").upper()
-                            try:
-                                day_date = forecast["dt"].strftime("%-d %b")
-                            except ValueError:
-                                day_date = forecast["dt"].strftime("%d %b").lstrip("0")
+                        # Wind
+                        with a.td(klass="day-wind-cell"):
+                            with a.div(klass="day-wind"):
+                                a.img(
+                                    src="icon/wind-arrow.png",
+                                    klass="wind-arrow",
+                                    style=(
+                                        f"transform: rotate({(deg + 180) % 360}deg);"
+                                        f" width: {arrow_size}vw;"
+                                        f" height: {arrow_size}vw;"
+                                    ),
+                                )
+                                a.span(
+                                    klass="wind-speed",
+                                    _t=str(round(speed_val)),
+                                )
+                                a.span(
+                                    klass="wind-unit", _t=wind_unit_display
+                                )
 
-                            deg = forecast["wind"]["direction_degrees"]
-                            speed_val = forecast["wind"]["value"]
-                            speed_kmh = (
-                                speed_val
-                                if wind_unit_raw == "kmh"
-                                else speed_val * 1.609
-                            )
-                            arrow_size = round(
-                                2.5 + 2.5 * min(speed_kmh / 80.0, 1.0) ** 0.5, 2
-                            )
-
-                            with a.tr(klass="day-row"):
-                                # Day name + date
-                                with a.td(klass="day-name-cell"):
-                                    a.div(klass="day-name", _t=day_name)
-                                    a.div(klass="day-date", _t=day_date)
-
-                                # Weather icon
-                                with a.td(klass="day-icon-cell"):
-                                    with a.div(klass="day-icon-wrap"):
-                                        a.img(src=forecast["icon"], klass="day-icon")
-
-                                # Temperature range bar
-                                with a.td(klass="day-temp-cell"):
-                                    span = week_max - week_min
-                                    left_pct  = round((forecast["temperature"]["min"] - week_min) / span * 100, 1)
-                                    right_pct = round((1 - (forecast["temperature"]["max"] - week_min) / span) * 100, 1)
-                                    with a.div(klass="temp-range"):
-                                        a.span(
-                                            klass="temp-low",
-                                            _t=str(forecast["temperature"]["min"])
-                                            + temp_unit,
-                                        )
-                                        with a.div(klass="temp-bar-track"):
-                                            a.div(
-                                                klass="temp-bar-pill",
-                                                style=f"left:{left_pct}%;right:{right_pct}%",
-                                            )
-                                        a.span(
-                                            klass="temp-high",
-                                            _t=str(forecast["temperature"]["max"])
-                                            + temp_unit,
-                                        )
-
-                                # Precipitation: icon + percentage
-                                with a.td(klass="day-precip-cell"):
-                                    with a.div(klass="day-precip"):
+                        # UV index (only rendered when any day has UV data)
+                        if has_uv:
+                            with a.td(klass="day-uv-cell"):
+                                if forecast["uv_index"] is not None:
+                                    with a.div(klass="uv-index"):
                                         a.img(
-                                            src="icon/raindrops.png",
-                                            klass="precip-icon",
+                                            src="icon/sun.png",
+                                            klass="uv-icon",
                                         )
                                         a.span(
-                                            klass="precip-value",
-                                            _t=f"{forecast['rain_probability']}%",
+                                            klass="uv-value",
+                                            _t=str(forecast["uv_index"]),
                                         )
+                                        a.small(klass="uv-label", _t="UV")
 
-                                # Wind
-                                with a.td(klass="day-wind-cell"):
-                                    with a.div(klass="day-wind"):
-                                        a.img(
-                                            src="icon/wind-arrow.png",
-                                            klass="wind-arrow",
-                                            style=(
-                                                f"transform: rotate({(deg + 180) % 360}deg);"
-                                                f" width: {arrow_size}vw;"
-                                                f" height: {arrow_size}vw;"
-                                            ),
-                                        )
-                                        a.span(
-                                            klass="wind-speed",
-                                            _t=str(round(speed_val)),
-                                        )
-                                        a.span(
-                                            klass="wind-unit", _t=wind_unit_display
-                                        )
-
-                                # UV index (only rendered when any day has UV data)
-                                if has_uv:
-                                    with a.td(klass="day-uv-cell"):
-                                        if forecast["uv_index"] is not None:
-                                            with a.div(klass="uv-index"):
+                        # Sunrise / sunset / hours of sun (only when data available)
+                        if has_sun:
+                            with a.td(klass="day-sun-cell"):
+                                with a.div(klass="sun-info"):
+                                    if (
+                                        forecast["sunrise"]
+                                        and forecast["sunset"]
+                                    ):
+                                        with a.div(klass="sun-times"):
+                                            with a.div(klass="sun-row"):
                                                 a.img(
-                                                    src="icon/sun.png",
-                                                    klass="uv-icon",
+                                                    src="icon/sunrise.png",
+                                                    klass="sun-icon",
                                                 )
                                                 a.span(
-                                                    klass="uv-value",
-                                                    _t=str(forecast["uv_index"]),
+                                                    klass="sun-rise",
+                                                    _t=forecast["sunrise"],
                                                 )
-                                                a.small(klass="uv-label", _t="UV")
-
-                                # Sunrise / sunset / hours of sun (only when data available)
-                                if has_sun:
-                                    with a.td(klass="day-sun-cell"):
-                                        with a.div(klass="sun-info"):
-                                            if (
-                                                forecast["sunrise"]
-                                                and forecast["sunset"]
-                                            ):
-                                                with a.div(klass="sun-times"):
-                                                    with a.div(klass="sun-row"):
-                                                        a.img(
-                                                            src="icon/sunrise.png",
-                                                            klass="sun-icon",
-                                                        )
-                                                        a.span(
-                                                            klass="sun-rise",
-                                                            _t=forecast["sunrise"],
-                                                        )
-                                                    with a.div(klass="sun-row"):
-                                                        a.img(
-                                                            src="icon/sunset.png",
-                                                            klass="sun-icon",
-                                                        )
-                                                        a.span(
-                                                            klass="sun-set",
-                                                            _t=forecast["sunset"],
-                                                        )
-                                            if forecast["hours_of_sun"] is not None:
-                                                a.div(
-                                                    klass="sun-hours",
-                                                    _t=f"{forecast['hours_of_sun']:.1f}h ☀",
+                                            with a.div(klass="sun-row"):
+                                                a.img(
+                                                    src="icon/sunset.png",
+                                                    klass="sun-icon",
                                                 )
-
-
+                                                a.span(
+                                                    klass="sun-set",
+                                                    _t=forecast["sunset"],
+                                                )
+                                    if forecast["hours_of_sun"] is not None:
+                                        a.div(
+                                            klass="sun-hours",
+                                            _t=f"{forecast['hours_of_sun']:.1f}h ☀",
+                                        )
