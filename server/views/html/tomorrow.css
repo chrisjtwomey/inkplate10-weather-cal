@@ -1,7 +1,7 @@
 /* ── Tomorrow page: stats section (simplified.css provides the shared layout) ── */
 
 /* ── Stats: staircase rows ── */
-#tomorrow-stats {
+#day-stats {
   display: flex;
   flex-direction: column;
   gap: 2.5vh;

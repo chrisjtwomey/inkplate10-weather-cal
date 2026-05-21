@@ -21,16 +21,31 @@ def _get_current_conditions():
         return weather.get_current_conditions()
 
 
+def _get_daily_summary():
+    with freeze_time("2026-05-21 09:00:00"):
+        weather = MockWeatherService(metric=True)
+        return weather.get_daily_summary()
+
+
 @pytest.fixture
 def current_conditions():
     return _get_current_conditions()
 
 
 @pytest.fixture
-def rendered_html(current_conditions):
+def daily_summary():
+    return _get_daily_summary()
+
+
+@pytest.fixture
+def rendered_html(current_conditions, daily_summary):
     with freeze_time("2026-05-21 09:00:00"):
         page = TodayPage(WIDTH, HEIGHT)
-        page.template(map_url=MAP_URL, current_conditions=current_conditions)
+        page.template(
+            map_url=MAP_URL,
+            current_conditions=current_conditions,
+            daily_summary=daily_summary,
+        )
         return str(page.airium)
 
 
@@ -63,10 +78,30 @@ def test_hero_shows_current_temperature(rendered_html, current_conditions):
     assert str(current_conditions["temperature"]["value"]) in temp_main.get_text()
 
 
-def test_no_temp_range_for_current_conditions(rendered_html):
-    """Current conditions has no daily min/max, so the range element is absent."""
-    soup = BeautifulSoup(rendered_html, "html.parser")
+def test_no_temp_range_without_daily_summary(current_conditions):
+    """Without a daily_summary the range element is absent."""
+    with freeze_time("2026-05-21 09:00:00"):
+        page = TodayPage(WIDTH, HEIGHT)
+        page.template(map_url=MAP_URL, current_conditions=current_conditions)
+    soup = BeautifulSoup(str(page.airium), "html.parser")
     assert soup.find(id="day-temp-range") is None
+
+
+def test_temp_range_shown_with_daily_summary(rendered_html, daily_summary):
+    """When daily_summary is provided, the temp range pill bar is rendered."""
+    soup = BeautifulSoup(rendered_html, "html.parser")
+    temp_range = soup.find(id="day-temp-range")
+    assert temp_range is not None, "#day-temp-range not found"
+
+    track = temp_range.find("div", class_="temp-bar-track-v")
+    assert track is not None, ".temp-bar-track-v not found"
+    pill = track.find("div", class_="temp-bar-pill-v")
+    assert pill is not None, ".temp-bar-pill-v not found"
+    assert "top:" in (pill.get("style") or ""), "pill missing top% style"
+    assert "bottom:" in (pill.get("style") or ""), "pill missing bottom% style"
+
+    range_text = temp_range.get_text()
+    assert str(daily_summary["temperature"]["min"]) in range_text
 
 
 def test_weather_text_shown_as_phrase(rendered_html, current_conditions):
@@ -93,11 +128,11 @@ def test_date_shown_in_hero(rendered_html):
     assert "May" in text
 
 
-def test_no_stats_section(rendered_html):
-    """TodayPage has no stats subclass — no stat rows should be rendered."""
+def test_stats_section_rendered(rendered_html):
+    """TodayPage delegates _render_stats to TomorrowPage — stat rows must appear."""
     soup = BeautifulSoup(rendered_html, "html.parser")
-    assert soup.find(id="tomorrow-stats") is None
-    assert len(soup.find_all(class_="stat-row")) == 0
+    assert soup.find(id="day-stats") is not None
+    assert len(soup.find_all(class_="stat-row")) > 0
 
 
 def test_no_rain_alert_for_current_conditions(rendered_html):

@@ -100,7 +100,7 @@ def test_phrase_section_present_when_phrases_available(rendered_html, tomorrow_f
 
 def test_stats_section_present(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
-    stats_div = soup.find(id="tomorrow-stats")
+    stats_div = soup.find(id="day-stats")
     assert stats_div is not None
     stat_rows = stats_div.find_all(class_="stat-row")
     # rain and wind always present; UV when available = at least 2
@@ -149,7 +149,7 @@ def test_temp_range_pill_in_stats_area(rendered_html, tomorrow_forecast):
 
 def test_stats_contain_rain_probability(rendered_html, tomorrow_forecast):
     soup = BeautifulSoup(rendered_html, "html.parser")
-    stats_div = soup.find(id="tomorrow-stats")
+    stats_div = soup.find(id="day-stats")
     all_stat_spans = stats_div.find_all(class_=["stat-primary", "stat-secondary"])
     values = [el.get_text() for el in all_stat_spans]
     rain_prob = str(tomorrow_forecast["rain_probability"])

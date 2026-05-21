@@ -12,7 +12,7 @@ class HourlyPage(DetailedPage):
         super().__init__(width, height)
         self.name = "hourly"
 
-    def _title(self):
+    def _title(self) -> str:
         return "Hourly"
 
     def _script_tags(self, a):

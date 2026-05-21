@@ -7,8 +7,14 @@ class TodayPage(SimplifiedPage):
         super().__init__(width, height)
         self.name = "today"
 
+    def _css_links(self, a):
+        super()._css_links(a)
+        a.link(rel="stylesheet", href="tomorrow.css")
+
     def template(self, **kwargs):
         cc = kwargs["current_conditions"]
+        ds = kwargs.get("daily_summary")
+
         super().template(
             map_url=kwargs["map_url"],
             forecast={
@@ -16,7 +22,9 @@ class TodayPage(SimplifiedPage):
                 "icon": cc["icon"],
                 "temperature": {
                     "unit": cc["temperature"]["unit"],
-                    "min": None,  # current conditions has no daily min
+                    # Use today's daily min from the summary for the range bar;
+                    # falls back to None (no bar) if no summary was provided.
+                    "min": ds["temperature"]["min"] if ds else None,
                     "max": cc["temperature"]["value"],
                 },
                 "wind": cc["wind"],

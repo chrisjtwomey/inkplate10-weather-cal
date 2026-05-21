@@ -7,7 +7,7 @@ class DetailedPage(Page):
     def __init__(self, width, height):
         super().__init__("detailed", width, height)
 
-    def _title(self):
+    def _title(self) -> str:
         return "Detailed"
 
     def _css_links(self, a):

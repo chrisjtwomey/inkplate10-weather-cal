@@ -255,15 +255,16 @@ def main():
             if force_refresh:
                 weather_svc.invalidate_forecast_cache()
             daily_summary = None
+            if regen_today or regen_hourly or regen_daily or regen_tomorrow:
+                daily_summary = weather_svc.get_daily_summary()
             if regen_today:
                 current_conditions = weather_svc.get_current_conditions()
                 today_page.template(
                     map_url=map_url,
                     current_conditions=current_conditions,
+                    daily_summary=daily_summary,
                 )
                 today_page.save()
-            if regen_hourly or regen_daily or regen_tomorrow:
-                daily_summary = weather_svc.get_daily_summary()
             if regen_hourly:
                 hourly_forecasts = weather_svc.get_hourly_forecast()
                 hourly_page.template(
