@@ -15,12 +15,14 @@ import logging.config
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 from utils import get_prop, get_prop_by_keys
+from views.hourly import HourlyPage
 from views.today import TodayPage
 from views.daily import DailyPage
+from views.tomorrow import TomorrowPage
 from google.api import GoogleAPIService
 from werkzeug.serving import make_server
 from flask import Flask, make_response, send_file, abort
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date as _date
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 cwd = os.path.dirname(os.path.realpath(__file__))
@@ -232,38 +234,68 @@ def main():
         sys.exit(1)
 
     today_page = TodayPage(cfg.image_width, cfg.image_height)
+    hourly_page = HourlyPage(cfg.image_width, cfg.image_height)
     daily_page = DailyPage(cfg.image_width, cfg.image_height)
+    tomorrow_page = TomorrowPage(cfg.image_width, cfg.image_height)
 
     def regenerate(image_name=None, force_refresh=False):
-        """Regenerate one or both page images.
+        """Regenerate one or more page images.
 
-        image_name:    'today.png', 'daily.png', or None to regenerate both.
+        image_name:    'today.png', 'hourly.png', 'daily.png', 'tomorrow.png',
+                       or None to regenerate all.
         force_refresh: if True, bypass any cached weather data before fetching.
         """
-        regen_today = image_name is None or image_name == "today.png"
-        regen_daily = image_name is None or image_name == "daily.png"
+        regen_today    = image_name is None or image_name == "today.png"
+        regen_hourly   = image_name is None or image_name == "hourly.png"
+        regen_daily    = image_name is None or image_name == "daily.png"
+        regen_tomorrow = image_name is None or image_name == "tomorrow.png"
         with regen_lock:
             label = image_name if image_name else "all images"
             log.info(f"Regenerating {label}")
             if force_refresh:
                 weather_svc.invalidate_forecast_cache()
-            daily_summary = weather_svc.get_daily_summary()
+            daily_summary = None
+            if regen_today or regen_hourly or regen_daily or regen_tomorrow:
+                daily_summary = weather_svc.get_daily_summary()
             if regen_today:
-                hourly_forecasts = weather_svc.get_hourly_forecast()
+                current_conditions = weather_svc.get_current_conditions()
                 today_page.template(
+                    map_url=map_url,
+                    current_conditions=current_conditions,
+                    daily_summary=daily_summary,
+                )
+                today_page.save()
+            if regen_hourly:
+                hourly_forecasts = weather_svc.get_hourly_forecast()
+                hourly_page.template(
                     map_url=map_url,
                     daily_summary=daily_summary,
                     hourly_forecasts=hourly_forecasts,
                 )
-                today_page.save()
-            if regen_daily:
+                hourly_page.save()
+            if regen_daily or regen_tomorrow:
                 five_day_forecasts = weather_svc.get_5day_forecast()
-                daily_page.template(
-                    map_url=map_url,
-                    daily_summary=daily_summary,
-                    daily_forecasts=five_day_forecasts,
-                )
-                daily_page.save()
+                if regen_daily:
+                    daily_page.template(
+                        map_url=map_url,
+                        daily_summary=daily_summary,
+                        daily_forecasts=five_day_forecasts,
+                    )
+                    daily_page.save()
+                if regen_tomorrow:
+                    tomorrow_date = _date.today() + timedelta(days=1)
+                    tomorrow_fc = next(
+                        (f for f in five_day_forecasts if f["dt"].date() == tomorrow_date),
+                        None,
+                    )
+                    if tomorrow_fc is not None:
+                        tomorrow_page.template(
+                            map_url=map_url,
+                            tomorrow_forecast=tomorrow_fc,
+                        )
+                        tomorrow_page.save()
+                    else:
+                        log.warning("No forecast data for tomorrow (%s), skipping", tomorrow_date)
             log.info("Regeneration complete")
 
     regenerate()
@@ -443,19 +475,22 @@ class ServerThread(threading.Thread):
 
 @app.route("/today.png")
 def serve_today_png():
-    """Returns the today (hourly forecast) image."""
+    """Returns the today (simplified forecast) image."""
     return _serve_png(os.path.join(cwd, "views/today.png"))
 
+@app.route("/tomorrow.png")
+def serve_tomorrow_png():
+    """Returns the tomorrow (simplified forecast) image."""
+    return _serve_png(os.path.join(cwd, "views/tomorrow.png"))
 
-@app.route("/calendar.png")
-def serve_calendar_png():
-    """Backward-compat alias for /today.png — existing devices use this URL."""
-    return _serve_png(os.path.join(cwd, "views/today.png"))
-
+@app.route("/hourly.png")
+def serve_hourly_png():
+    """Returns the hourly (detailed forecast) image."""
+    return _serve_png(os.path.join(cwd, "views/hourly.png"))
 
 @app.route("/daily.png")
 def serve_daily_png():
-    """Returns the daily (5-day forecast) image."""
+    """Returns the daily (5-day detailed forecast) image."""
     return _serve_png(os.path.join(cwd, "views/daily.png"))
 
 

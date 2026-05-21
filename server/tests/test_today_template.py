@@ -1,14 +1,7 @@
 """
-HTML structure check for `TodayPage.template()`.
-
-We feed mock weather data into the template, then serialize the underlying
-`airium` document and assert its structure with BeautifulSoup. Selenium /
-Chromium rendering is *not* invoked here — that's covered by the end-to-end
-docker run separately. The goal is to catch airium / Pillow / template-call
-regressions when bumping deps, without needing a browser.
+HTML structure tests for `TodayPage.template()`.
+Verifies that current conditions data is correctly adapted into the day layout.
 """
-from datetime import datetime
-
 import pytest
 from bs4 import BeautifulSoup
 from freezegun import freeze_time
@@ -16,22 +9,42 @@ from freezegun import freeze_time
 from views.today import TodayPage
 from weather.mock.mock import MockWeatherService
 
-
-NUM_HOURS = 6
 WIDTH = 825
 HEIGHT = 1200
 
+MAP_URL = "https://example.test/staticmap?center=51.9,-8.5"
+
+
+def _get_current_conditions():
+    with freeze_time("2026-05-21 09:00:00"):
+        weather = MockWeatherService(metric=True)
+        return weather.get_current_conditions()
+
+
+def _get_daily_summary():
+    with freeze_time("2026-05-21 09:00:00"):
+        weather = MockWeatherService(metric=True)
+        return weather.get_daily_summary()
+
 
 @pytest.fixture
-def rendered_html():
-    """Render the today template at a fixed wall-clock and return the HTML."""
-    with freeze_time("2026-05-19 09:00:00"):
+def current_conditions():
+    return _get_current_conditions()
+
+
+@pytest.fixture
+def daily_summary():
+    return _get_daily_summary()
+
+
+@pytest.fixture
+def rendered_html(current_conditions, daily_summary):
+    with freeze_time("2026-05-21 09:00:00"):
         page = TodayPage(WIDTH, HEIGHT)
-        weather = MockWeatherService(num_hours=NUM_HOURS, metric=True)
         page.template(
-            map_url="https://example.test/staticmap?center=51.9,-8.5",
-            daily_summary=weather.get_daily_summary(),
-            hourly_forecasts=weather.get_hourly_forecast(),
+            map_url=MAP_URL,
+            current_conditions=current_conditions,
+            daily_summary=daily_summary,
         )
         return str(page.airium)
 
@@ -44,109 +57,126 @@ def test_html_is_well_formed(rendered_html):
     assert soup.body is not None
 
 
-def test_top_banner_has_date_month_temp_icon(rendered_html):
+def test_loads_day_and_today_css(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
-    banner = soup.find(id="top-banner")
-    assert banner is not None
-
-    assert banner.find(id="date").get_text(strip=True) == "19"             # frozen day
-    assert banner.find(id="month").get_text(strip=True) == "May"
-
-    temp_el = banner.find(id="temp")
-    assert temp_el is not None
-    assert "°C" in temp_el.get_text() or "C" in temp_el.get_text()
-
-    icon_container = banner.find(id="icon-container")
-    assert icon_container is not None
-    assert icon_container.find("img") is not None, "expected a weather icon img tag"
+    hrefs = [link["href"] for link in soup.find_all("link", rel="stylesheet")]
+    assert "styles.css" in hrefs
+    assert "simplified.css" in hrefs
 
 
 def test_map_image_uses_provided_url(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
     img = soup.find(id="map")
     assert img is not None
-    assert img["src"] == "https://example.test/staticmap?center=51.9,-8.5"
+    assert img["src"] == MAP_URL
 
 
-def test_forecast_table_has_one_cell_per_hour_per_row(rendered_html):
-    """
-    Template emits 4 rows: icon, hour label, temperature, precip canvas.
-    Each row has NUM_HOURS cells.
-    """
+def test_hero_shows_current_temperature(rendered_html, current_conditions):
     soup = BeautifulSoup(rendered_html, "html.parser")
-    table = soup.find(id="forecast-table")
-    assert table is not None
-
-    rows = table.find_all("tr")
-    assert len(rows) == 5, f"expected 5 rows (icon/hour/temp/wind/precip); got {len(rows)}"
-    for row in rows:
-        cells = row.find_all("td")
-        assert len(cells) == NUM_HOURS + 1  # +1 for the legend cell
-
-    # Each data cell in row 0 (icons) holds an <img>; skip the first (legend) cell.
-    for cell in rows[0].find_all("td")[1:]:
-        assert cell.find("img") is not None
-
-    # Each data cell in row 3 (wind) holds a rotated arrow <img> and a speed <span>;
-    # skip the first (legend) cell.
-    for cell in rows[3].find_all("td")[1:]:
-        arrow = cell.find("img", class_="wind-arrow")
-        assert arrow is not None
-        assert "rotate" in (arrow.get("style") or "")
-        assert cell.find("span", class_="wind-speed") is not None
-
-    # Each data cell in row 4 (precip) holds a <canvas> with a data_precip attribute;
-    # skip the first (legend) cell.
-    for cell in rows[4].find_all("td")[1:]:
-        canvas = cell.find("canvas")
-        assert canvas is not None
-        pct = int(canvas["data_precip"])
-        assert 0 <= pct <= 100
+    temp_main = soup.find(id="day-temp-main")
+    assert temp_main is not None
+    assert str(current_conditions["temperature"]["value"]) in temp_main.get_text()
 
 
-def test_external_chart_libraries_are_loaded(rendered_html):
-    """Roughjs + Chart.js are required by the precipitation canvas script."""
+def test_no_temp_range_without_daily_summary(current_conditions):
+    """Without a daily_summary the range element is absent."""
+    with freeze_time("2026-05-21 09:00:00"):
+        page = TodayPage(WIDTH, HEIGHT)
+        page.template(map_url=MAP_URL, current_conditions=current_conditions)
+    soup = BeautifulSoup(str(page.airium), "html.parser")
+    assert soup.find(id="day-temp-range") is None
+
+
+def test_temp_range_shown_with_daily_summary(rendered_html, daily_summary):
+    """When daily_summary is provided, the temp range pill bar is rendered."""
     soup = BeautifulSoup(rendered_html, "html.parser")
-    srcs = {s.get("src") for s in soup.find_all("script") if s.get("src")}
-    assert any("rough" in s for s in srcs), "expected roughjs to be loaded"
-    assert any("chart.js" in s for s in srcs), "expected chart.js to be loaded"
+    temp_range = soup.find(id="day-temp-range")
+    assert temp_range is not None, "#day-temp-range not found"
+
+    track = temp_range.find("div", class_="temp-bar-track-v")
+    assert track is not None, ".temp-bar-track-v not found"
+    pill = track.find("div", class_="temp-bar-pill-v")
+    assert pill is not None, ".temp-bar-pill-v not found"
+    assert "top:" in (pill.get("style") or ""), "pill missing top% style"
+    assert "bottom:" in (pill.get("style") or ""), "pill missing bottom% style"
+
+    range_text = temp_range.get_text()
+    assert str(daily_summary["temperature"]["min"]) in range_text
 
 
-def test_local_stylesheet_link_present(rendered_html):
+def test_weather_text_shown_as_phrase(rendered_html, current_conditions):
     soup = BeautifulSoup(rendered_html, "html.parser")
-    link = soup.find("link", rel="stylesheet")
-    assert link is not None
-    assert link["href"] == "styles.css"
+    phrase = soup.find(id="day-phrase")
+    assert phrase is not None
+    assert current_conditions["weather_text"] in phrase.get_text()
 
 
-def test_repeated_template_calls_do_not_stack_content():
-    """
-    Regression for the overnight-accumulation bug: calling template() twice on
-    the same TodayPage used to append a second full page worth of HTML to
-    the airium buffer, producing a double-date PNG. The fix resets self.airium
-    at the top of template(); this test locks that in.
-    """
-    weather = MockWeatherService(num_hours=NUM_HOURS, metric=True)
-    kwargs = dict(
-        map_url="https://example.test/map",
-        daily_summary=weather.get_daily_summary(),
-        hourly_forecasts=weather.get_hourly_forecast(),
-    )
+def test_hero_has_icon(rendered_html):
+    soup = BeautifulSoup(rendered_html, "html.parser")
+    hero = soup.find(id="day-hero")
+    assert hero is not None
+    assert hero.find("img", id="day-icon") is not None
+
+
+def test_date_shown_in_hero(rendered_html):
+    soup = BeautifulSoup(rendered_html, "html.parser")
+    date_el = soup.find(id="day-date")
+    assert date_el is not None
+    text = date_el.get_text()
+    assert "Thursday" in text
+    assert "21" in text
+    assert "May" in text
+
+
+def test_stats_section_rendered(rendered_html):
+    """TodayPage delegates _render_stats to TomorrowPage — stat rows must appear."""
+    soup = BeautifulSoup(rendered_html, "html.parser")
+    assert soup.find(id="day-stats") is not None
+    assert len(soup.find_all(class_="stat-row")) > 0
+
+
+def test_no_rain_alert_for_current_conditions(rendered_html):
+    """rain_probability is always 0 for current conditions — no rain alert."""
+    soup = BeautifulSoup(rendered_html, "html.parser")
+    alerts_div = soup.find(id="day-alerts")
+    if alerts_div:
+        texts = [el.get_text().lower() for el in alerts_div.find_all(class_="alert-text")]
+        assert not any("rain" in t for t in texts)
+
+
+def test_high_uv_alert_fires(rendered_html):
+    """A UV index >= 6 from current conditions should trigger an alert."""
+    cc = _get_current_conditions()
+    cc["uv_index"] = 8
 
     page = TodayPage(WIDTH, HEIGHT)
-    with freeze_time("2026-05-16 09:00:00"):
-        page.template(**kwargs)
-        page.template(**kwargs)  # second call simulates scheduled regen
+    page.template(map_url=MAP_URL, current_conditions=cc)
+    soup = BeautifulSoup(str(page.airium), "html.parser")
+    alerts_div = soup.find(id="day-alerts")
+    assert alerts_div is not None
+    texts = [el.get_text().lower() for el in alerts_div.find_all(class_="alert-text")]
+    assert any("uv" in t for t in texts)
 
-    html = str(page.airium)
-    soup = BeautifulSoup(html, "html.parser")
 
-    date_elements = soup.find_all(id="date")
-    assert len(date_elements) == 1, (
-        f"expected exactly 1 #date element after two template() calls, got {len(date_elements)}"
-    )
+def test_strong_wind_alert_fires():
+    cc = _get_current_conditions()
+    cc["wind"] = {"unit": "kmh", "value": 60, "direction_degrees": 90}
 
-    top_banners = soup.find_all(id="top-banner")
-    assert len(top_banners) == 1, (
-        f"expected exactly 1 #top-banner after two template() calls, got {len(top_banners)}"
-    )
+    page = TodayPage(WIDTH, HEIGHT)
+    page.template(map_url=MAP_URL, current_conditions=cc)
+    soup = BeautifulSoup(str(page.airium), "html.parser")
+    alerts_div = soup.find(id="day-alerts")
+    assert alerts_div is not None
+    texts = [el.get_text().lower() for el in alerts_div.find_all(class_="alert-text")]
+    assert any("wind" in t for t in texts)
+
+
+def test_no_alerts_when_conditions_mild():
+    cc = _get_current_conditions()
+    cc["uv_index"] = 2
+    cc["wind"] = {"unit": "kmh", "value": 10, "direction_degrees": 0}
+
+    page = TodayPage(WIDTH, HEIGHT)
+    page.template(map_url=MAP_URL, current_conditions=cc)
+    soup = BeautifulSoup(str(page.airium), "html.parser")
+    assert soup.find(id="day-alerts") is None

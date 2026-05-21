@@ -1,0 +1,50 @@
+/* ── Tomorrow page: stats section (simplified.css provides the shared layout) ── */
+
+/* ── Stats: staircase rows ── */
+#day-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5vh;
+  padding: 0.5vh 0 2vh 8vw;
+  margin-bottom: 1.2vh;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 3vw;
+}
+
+/* Staircase indentation */
+.stat-rain { padding-left: 0; }
+.stat-uv   { padding-left: 8vw; }
+.stat-wind { padding-left: 16vw; }
+
+.stat-icon {
+  width: 10vw;
+  height: 10vw;
+  flex-shrink: 0;
+}
+
+.stat-icon.wind-arrow {
+  width: 8.5vw;
+  height: 8.5vw;
+}
+
+.stat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2vh;
+}
+
+.stat-primary {
+  font-size: 4vw;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.stat-secondary {
+  font-size: 3vw;
+  color: #666;
+  line-height: 1.2;
+}

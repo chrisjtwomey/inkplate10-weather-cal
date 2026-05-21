@@ -1,0 +1,160 @@
+/* ── Day page styles (shared by DayPage and subclasses) ── */
+
+/* ── Map wrapper: full-page container so children can be placed by % ── */
+#day-map-wrapper {
+  position: relative;
+  height: 100vh;
+}
+
+/* Taller map that bleeds further into the content area */
+#map-container {
+  height: 500px;
+  z-index: 0; /* reset the -1 from styles.css so fade/header stack correctly */
+}
+
+#map {
+  top: 30%;
+}
+
+/* Fade-to-white at the bottom of the map */
+#map-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: linear-gradient(to bottom, transparent 0%, white 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Content section ── */
+#day-body {
+  position: absolute;
+  top: 13%;
+  left: 0;
+  right: 0;
+  padding: 0 3vw;
+}
+
+/* ── Hero: vertical stack – icon → date → temp → phrase ── */
+#day-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5vh 0 1.5vh 0;
+  margin-bottom: 1.5vh;
+  text-align: center;
+}
+
+#day-icon {
+  width: 32vw;
+  height: 32vw;
+  margin-bottom: 1.5vh;
+  padding: 2vw;
+  background: radial-gradient(circle, white 48%, transparent 70%);
+}
+
+#day-date {
+  font-size: 4vw;
+  font-weight: 600;
+  color: #444;
+  margin: 0 0 0.5vh 0;
+  line-height: 1;
+}
+
+#day-temp-main {
+  font-size: 15vw;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+}
+
+#day-phrase {
+  font-size: 3.6vw;
+  font-weight: 600;
+  margin: 1.2vh 0 0 0;
+  line-height: 1.3;
+  padding: 0 2vw;
+}
+
+/* ── Stats + vertical range row ── */
+#day-body-lower {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+#day-body-stats {
+  flex: 1;
+}
+
+/* ── Vertical min–max pill bar ── */
+#day-temp-range {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1vh;
+  padding: 0.5vh 5vw;
+}
+
+.temp-range-icon {
+  width: 6vw;
+  height: auto;
+  display: block;
+}
+
+.temp-range-high,
+.temp-range-low {
+  font-size: 3vw;
+  white-space: nowrap;
+}
+
+.temp-range-high {
+  font-family: "Merienda-Bold", serif;
+  font-weight: 700;
+}
+
+.temp-bar-track-v {
+  flex: 1;
+  position: relative;
+  width: 4px;
+  background: #ccc;
+  border-radius: 2px;
+  min-height: 20px;
+}
+
+.temp-bar-pill-v {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  background: #222;
+  border-radius: 5px;
+  min-height: 4px;
+}
+
+/* ── Alerts ── */
+#day-alerts {
+  padding: 0.3vh 0;
+}
+
+.alert-item {
+  display: flex;
+  align-items: center;
+  gap: 1.5vw;
+  margin: 0.5vh 0;
+}
+
+.alert-icon {
+  font-size: 4vw;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.alert-text {
+  font-size: 3.3vw;
+  font-weight: 600;
+  line-height: 1.3;
+}

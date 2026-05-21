@@ -23,6 +23,23 @@ _NIGHT_ICONS = [
     "icon/rainy.png",
 ]
 
+_DAY_PHRASES = [
+    "Partly sunny with some afternoon clouds",
+    "Mostly sunny and pleasant",
+    "Cloudy with periods of rain",
+    "Sunny intervals, turning windy later",
+    "A mix of sun and cloud",
+    "Overcast with light showers throughout the day",
+]
+
+_NIGHT_PHRASES = [
+    "Clear overnight",
+    "Mostly cloudy",
+    "Scattered showers possible",
+    "Clearing up later in the night",
+    "Remaining overcast",
+]
+
 
 class MockWeatherService(WeatherService):
     def __init__(self, num_hours=6, metric=True):
@@ -120,6 +137,34 @@ class MockWeatherService(WeatherService):
                 "sunrise": f"{sunrise_h:02d}:{sunrise_m:02d}",
                 "sunset": f"{sunset_h:02d}:{sunset_m:02d}",
                 "hours_of_sun": round(rng.uniform(0, 12), 1),
+                "hours_of_rain": round(rng.uniform(0, 6), 1),
+                "day_phrase": rng.choice(_DAY_PHRASES),
+                "night_phrase": rng.choice(_NIGHT_PHRASES),
             })
 
         return forecasts
+
+    def get_current_conditions(self):
+        rng = random.Random(self._seed + 3)
+        temp_unit = "\N{DEGREE SIGN}C" if self.units == "metric" else "\N{DEGREE SIGN}F"
+        temp_range = (-5, 35) if self.units == "metric" else (23, 95)
+        speed_unit = "kmh" if self.units == "metric" else "mph"
+        _weather_texts = [
+            "Partly sunny", "Overcast", "Light rain", "Fog",
+            "Cloudy", "Mostly sunny", "Showers",
+        ]
+        return {
+            "icon": rng.choice(_DAY_ICONS),
+            "temperature": {
+                "unit": temp_unit,
+                "value": rng.randint(temp_range[0], temp_range[1]),
+            },
+            "wind": {
+                "unit": speed_unit,
+                "value": rng.randint(0, 80),
+                "direction_degrees": rng.randint(0, 359),
+            },
+            "humidity": rng.randint(30, 100),
+            "uv_index": rng.randint(0, 11),
+            "weather_text": rng.choice(_weather_texts),
+        }
