@@ -32,7 +32,7 @@
 /* ── Content section ── */
 #day-body {
   position: absolute;
-  top: 12%;
+  top: 13%;
   left: 0;
   right: 0;
   padding: 0 3vw;
@@ -52,7 +52,7 @@
   width: 32vw;
   height: 32vw;
   margin-bottom: 1.5vh;
-  padding: 4vw;
+  padding: 2vw;
   background: radial-gradient(circle, white 48%, transparent 70%);
 }
 
