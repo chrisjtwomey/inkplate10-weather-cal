@@ -112,20 +112,39 @@ def test_hero_shows_temp_and_icon(rendered_html, tomorrow_forecast):
     hero = soup.find(id="day-hero")
     assert hero is not None
 
-    # Large temperature value
+    # Large temperature value in the hero
     temp_main = soup.find(id="day-temp-main")
     assert temp_main is not None
     assert str(tomorrow_forecast["temperature"]["max"]) in temp_main.get_text()
 
-    # Temperature range
+    # Range moved out of the hero — should not appear inside #day-hero
+    assert hero.find(id="day-temp-range") is None
+
+    # Weather icon inside hero
+    assert hero.find("img", id="day-icon") is not None
+
+
+def test_temp_range_pill_in_stats_area(rendered_html, tomorrow_forecast):
+    soup = BeautifulSoup(rendered_html, "html.parser")
+
+    # Must not be inside the hero
+    hero = soup.find(id="day-hero")
+    assert hero.find(id="day-temp-range") is None
+
+    # Must exist outside the hero with both temperature labels
     temp_range = soup.find(id="day-temp-range")
-    assert temp_range is not None
+    assert temp_range is not None, "#day-temp-range not found"
     range_text = temp_range.get_text()
     assert str(tomorrow_forecast["temperature"]["min"]) in range_text
     assert str(tomorrow_forecast["temperature"]["max"]) in range_text
 
-    # Weather icon inside hero
-    assert hero.find("img", id="day-icon") is not None
+    # daily-style track + pill divs must be present with inline positioning
+    track = temp_range.find("div", class_="temp-bar-track-v")
+    assert track is not None, ".temp-bar-track-v not found inside #day-temp-range"
+    pill = track.find("div", class_="temp-bar-pill-v")
+    assert pill is not None, ".temp-bar-pill-v not found inside .temp-bar-track-v"
+    assert "top:" in (pill.get("style") or ""), "pill missing top% style"
+    assert "bottom:" in (pill.get("style") or ""), "pill missing bottom% style"
 
 
 def test_stats_contain_rain_probability(rendered_html, tomorrow_forecast):

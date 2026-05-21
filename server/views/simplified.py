@@ -38,6 +38,9 @@ class SimplifiedPage(Page):
         a.link(rel="stylesheet", href="styles.css")
         a.link(rel="stylesheet", href="simplified.css")
 
+    def _script_tags(self, a):
+        pass  # subclasses may add extra <script> tags in <head>
+
     def _render_stats(self, a, forecast):
         pass  # subclasses override to insert a stats section
 
@@ -71,6 +74,13 @@ class SimplifiedPage(Page):
         if speed_kmh >= 50:
             alerts.append(f"Strong winds ({round(wind_val)} {wind_unit_display})")
 
+        # Fixed temperature scale so the pill's position is consistent.
+        # Covers -10…40°C (14–104°F) — the same pill proportions work for both.
+        if "F" in temp_unit.upper():
+            _scale_min, _scale_max = 14, 104
+        else:
+            _scale_min, _scale_max = -10, 40
+
         self.log.info("Rendering %s page for %s", self.name, forecast_dt.date())
 
         try:
@@ -88,6 +98,7 @@ class SimplifiedPage(Page):
                 )
                 a.title(_t="Day Forecast")
                 self._css_links(a)
+                self._script_tags(a)
 
             with a.body():
                 # ── Map ──────────────────────────────────────────────────
@@ -98,21 +109,31 @@ class SimplifiedPage(Page):
                 # ── Content section ───────────────────────────────────────
                 with a.div(id="day-body", klass="bg-container"):
 
-                    # ── Hero: icon → date → temperature → range → phrase ──
+                    # ── Hero: icon → date → temperature → phrase ──
                     with a.div(id="day-hero"):
                         a.img(src=forecast["icon"], id="day-icon")
                         a.p(id="day-date", _t=date_str)
                         a.p(id="day-temp-main", _t=f"{temp_max}{temp_unit}")
-                        if temp_min is not None:
-                            a.p(
-                                id="day-temp-range",
-                                _t=f"{temp_min}\u2013{temp_max}{temp_unit}",
-                            )
                         if day_phrase:
                             a.p(id="day-phrase", _t=day_phrase)
 
-                    # ── Hook for subclass stats sections ──────────────────
-                    self._render_stats(a, forecast)
+                    # ── Stats (left) + vertical temp range bar (right) ────
+                    with a.div(id="day-body-lower"):
+                        with a.div(id="day-body-stats"):
+                            self._render_stats(a, forecast)
+                        if temp_min is not None:
+                            _span = _scale_max - _scale_min
+                            _top_pct    = round((_scale_max - temp_max) / _span * 100, 1)
+                            _bottom_pct = round((temp_min - _scale_min) / _span * 100, 1)
+                            with a.div(id="day-temp-range"):
+                                a.img(src="icon/thermometer.png", klass="temp-range-icon")
+                                a.span(klass="temp-range-high", _t=f"{temp_max}{temp_unit}")
+                                with a.div(klass="temp-bar-track-v"):
+                                    a.div(
+                                        klass="temp-bar-pill-v",
+                                        style=f"top:{_top_pct}%;bottom:{_bottom_pct}%",
+                                    )
+                                a.span(klass="temp-range-low", _t=f"{temp_min}{temp_unit}")
 
                     # ── Alerts ────────────────────────────────────────────
                     if alerts:
@@ -121,3 +142,5 @@ class SimplifiedPage(Page):
                                 with a.div(klass="alert-item"):
                                     a.span(klass="alert-icon", _t="\u26a0")
                                     a.span(klass="alert-text", _t=alert_text)
+
+
