@@ -3,6 +3,7 @@ import logging
 from time import sleep
 from PIL import Image
 from airium import Airium
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -52,8 +53,15 @@ class Page:
         driver.quit()
 
         img = Image.open(png_fp)
-        img = img.convert("P", palette=Image.ADAPTIVE, colors=256)
-        img.save(png_fp, format="png", optimize=True, quality=25)
+        pal_img = Image.new("P", (1, 1))
+        pal: list[int] = []
+        for v in (0, 85, 170, 255):
+            pal += [v, v, v]
+        pal += [0] * (768 - len(pal))
+        pal_img.putpalette(pal)
+        img.convert("RGB").quantize(
+            colors=4, palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG
+        ).convert("L").save(png_fp, format="png", optimize=True)
 
         self.log.info("Screenshot captured and saved to file.")
 
