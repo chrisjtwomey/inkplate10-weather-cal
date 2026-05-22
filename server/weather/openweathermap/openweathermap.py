@@ -36,6 +36,7 @@ class OpenWeatherMapService(WeatherService):
                 "min": round(data["main"]["temp_min"]),
                 "max": round(data["main"]["temp_max"]),
             },
+            "pollen": None,
         }
 
         return forecast
@@ -60,7 +61,8 @@ class OpenWeatherMapService(WeatherService):
             "icon": self.get_icon(data["weather"][0]["icon"]),
             "temperature": {
                 "unit": temp_unit,
-                "value": round(data["main"]["feels_like"]),
+                "value": round(data["main"]["temp"]),
+                "feels_like": round(data["main"]["feels_like"]),
             },
             "wind": {
                 "unit": speed_unit,
@@ -167,6 +169,7 @@ class OpenWeatherMapService(WeatherService):
                 },
                 "rain_probability": round(max(e["pop"] for e in entries) * 100),
                 "uv_index": None,
+                "pollen": None,
                 "sunrise": None,
                 "sunset": None,
                 "hours_of_sun": None,

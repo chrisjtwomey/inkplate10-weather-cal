@@ -69,6 +69,20 @@
   font-weight: 700;
   line-height: 1;
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 2vw;
+}
+
+#day-temp-lo {
+  font-size: 8vw;
+  font-weight: 400;
+  color: #888;
+}
+
+#day-temp-hi {
+  font-size: 15vw;
+  font-weight: 700;
 }
 
 #day-phrase {
@@ -79,82 +93,26 @@
   padding: 0 2vw;
 }
 
-/* ── Stats + vertical range row ── */
-#day-body-lower {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-}
-
-#day-body-stats {
-  flex: 1;
-}
-
-/* ── Vertical min–max pill bar ── */
-#day-temp-range {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1vh;
-  padding: 0.5vh 5vw;
-}
-
-.temp-range-icon {
-  width: 6vw;
-  height: auto;
-  display: block;
-}
-
-.temp-range-high,
-.temp-range-low {
-  font-size: 3vw;
-  white-space: nowrap;
-}
-
-.temp-range-high {
-  font-family: "Merienda-Bold", serif;
-  font-weight: 700;
-}
-
-.temp-bar-track-v {
-  flex: 1;
-  position: relative;
-  width: 4px;
-  background: #ccc;
-  border-radius: 2px;
-  min-height: 20px;
-}
-
-.temp-bar-pill-v {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 10px;
-  background: #222;
-  border-radius: 5px;
-  min-height: 4px;
-}
-
-/* ── Alerts ── */
-#day-alerts {
-  padding: 0.3vh 0;
-}
-
-.alert-item {
-  display: flex;
-  align-items: center;
-  gap: 1.5vw;
-  margin: 0.5vh 0;
-}
-
-.alert-icon {
-  font-size: 4vw;
-  flex-shrink: 0;
+#day-feels-like {
+  font-size: 3.2vw;
+  color: #666;
+  margin: 0.4vh 0 0 0;
   line-height: 1;
 }
 
-.alert-text {
-  font-size: 3.3vw;
-  font-weight: 600;
-  line-height: 1.3;
+#day-rain-prob {
+  font-size: 3.4vw;
+  color: #555;
+  margin: 0.8vh 0 0 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 1.5vw;
 }
+
+.day-rain-prob-icon {
+  width: 4vw;
+  height: 4vw;
+}
+
+

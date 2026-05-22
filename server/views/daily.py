@@ -15,6 +15,50 @@ class DailyPage(DetailedPage):
         super()._css_links(a)
         a.link(rel="stylesheet", href="daily.css")
 
+    def _script_tags(self, a):
+        a.script(src="rough.iife.min.js")
+        with a.script():
+            a("""
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('canvas.temp-bar-canvas').forEach(function (canvas) {
+        var leftPct  = parseFloat(canvas.getAttribute('data-left'))  / 100;
+        var rightPct = parseFloat(canvas.getAttribute('data-right')) / 100;
+        var w = canvas.offsetWidth;
+        var h = canvas.offsetHeight;
+        canvas.width  = w;
+        canvas.height = h;
+        var x1    = w * leftPct;
+        var x2    = w * (1 - rightPct);
+        var pillW = Math.max(x2 - x1, 4);
+        var pillH = h / 2;
+        var y0 = (h - pillH) / 2, y1 = y0 + pillH;
+        var r  = Math.min((y1 - y0) / 2, pillW / 2);
+        var path = [
+            'M', x1 + r, y0,
+            'H', x2 - r,
+            'Q', x2, y0,   x2, y0 + r,
+            'V', y1 - r,
+            'Q', x2, y1,   x2 - r, y1,
+            'H', x1 + r,
+            'Q', x1, y1,   x1, y1 - r,
+            'V', y0 + r,
+            'Q', x1, y0,   x1 + r, y0,
+            'Z'
+        ].join(' ');
+        var rc = rough.canvas(canvas);
+        rc.path(path, {
+            fill: '#222',
+            fillStyle:    'zigzag',
+            hachureAngle: 45,
+            hachureGap:   5,
+            roughness:    0.8,
+            bowing:       1,
+            strokeWidth:  1.3
+        });
+    });
+});
+            """)
+
     def _render_body(self, a, **kwargs):
         daily_forecasts = kwargs["daily_forecasts"]
 
@@ -83,9 +127,9 @@ class DailyPage(DetailedPage):
                                     + temp_unit,
                                 )
                                 with a.div(klass="temp-bar-track"):
-                                    a.div(
-                                        klass="temp-bar-pill",
-                                        style=f"left:{left_pct}%;right:{right_pct}%",
+                                    a.canvas(
+                                        klass="temp-bar-canvas",
+                                        **{"data-left": str(left_pct), "data-right": str(right_pct)}
                                     )
                                 a.span(
                                     klass="temp-high",
