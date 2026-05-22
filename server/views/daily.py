@@ -78,8 +78,9 @@ document.addEventListener('DOMContentLoaded', function () {
         wind_unit_display = "kph" if wind_unit_raw == "kmh" else "mph"
 
         has_uv = any(f["uv_index"] is not None for f in daily_forecasts)
+        has_sun_hours = any(f["hours_of_sun"] is not None for f in daily_forecasts)
         has_sun = any(
-            f["sunrise"] is not None or f["hours_of_sun"] is not None
+            f["sunrise"] is not None
             for f in daily_forecasts
         )
 
@@ -169,20 +170,23 @@ document.addEventListener('DOMContentLoaded', function () {
                                     klass="wind-unit", _t=wind_unit_display
                                 )
 
-                        # UV index (only rendered when any day has UV data)
-                        if has_uv:
-                            with a.td(klass="day-uv-cell"):
-                                if forecast["uv_index"] is not None:
-                                    with a.div(klass="uv-index"):
+                        # Hours of sun (only rendered when any day has sun hours data)
+                        if has_sun_hours:
+                            with a.td(klass="day-sun-hours-cell"):
+                                if forecast["hours_of_sun"] is not None:
+                                    with a.div(klass="sun-hours"):
                                         a.img(
                                             src="icon/sun.png",
-                                            klass="uv-icon",
+                                            klass="sun-icon",
                                         )
                                         a.span(
-                                            klass="uv-value",
-                                            _t=str(forecast["uv_index"]),
+                                            klass="sun-hours-value",
+                                            _t=f"{forecast['hours_of_sun']:.1f}",
                                         )
-                                        a.small(klass="uv-label", _t="UV")
+                                        a.span(
+                                            klass="sun-hours-unit",
+                                            _t="hours",
+                                        )
 
                         # Sunrise / sunset / hours of sun (only when data available)
                         if has_sun:
@@ -211,8 +215,15 @@ document.addEventListener('DOMContentLoaded', function () {
                                                     klass="sun-set",
                                                     _t=forecast["sunset"],
                                                 )
-                                    if forecast["hours_of_sun"] is not None:
-                                        a.div(
-                                            klass="sun-hours",
-                                            _t=f"{forecast['hours_of_sun']:.1f}h ☀",
-                                        )
+                                            if has_uv and forecast["uv_index"] is not None:
+                                                uv = forecast["uv_index"]
+                                                uv_label = "Low" if uv <= 2 else "Med" if uv <= 5 else "High"
+                                                with a.div(klass="sun-row"):
+                                                    a.img(
+                                                        src="icon/uv.png",
+                                                        klass="sun-icon",
+                                                    )
+                                                    a.span(
+                                                        klass="sun-set",
+                                                        _t=uv_label,
+                                                    )
