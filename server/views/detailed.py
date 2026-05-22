@@ -12,6 +12,7 @@ class DetailedPage(Page):
 
     def _css_links(self, a):
         a.link(rel="stylesheet", href="styles.css")
+        a.link(rel="stylesheet", href="detailed.css")
 
     def _script_tags(self, a):
         pass
