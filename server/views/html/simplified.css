@@ -4,6 +4,19 @@
 #day-map-wrapper {
   position: relative;
   height: 100vh;
+  overflow: hidden;
+}
+
+#day-icon-bg {
+  position: absolute;
+  bottom: -20%;
+  left: -20%;
+  width: 95vw;
+  height: auto;
+  opacity: 0.05;
+  transform: rotate(15deg);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Taller map that bleeds further into the content area */

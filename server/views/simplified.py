@@ -50,6 +50,7 @@ class SimplifiedPage(Page):
             with a.body():
                 # ── Map ──────────────────────────────────────────────────
                 with a.div(id="day-map-wrapper"):
+                    a.img(src=forecast["icon"], id="day-icon-bg")
                     with a.div(id="map-container"):
                         a.img(src=map_url, id="map")
 
