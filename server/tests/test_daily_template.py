@@ -91,24 +91,19 @@ def test_each_row_has_correct_cell_count(rendered_html):
         )
 
 
-def test_temp_bar_pill_positions_are_valid(rendered_html):
+def test_temp_bar_canvas_positions_are_valid(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
     tracks = soup.find_all("div", class_="temp-bar-track")
     assert len(tracks) == 5
 
     for track in tracks:
-        pill = track.find("div", class_="temp-bar-pill")
-        assert pill is not None, "temp-bar-track missing temp-bar-pill child"
-        style = pill.get("style", "")
-        # style should be e.g. "left:10.5%;right:20.3%"
-        assert "left:" in style and "right:" in style, (
-            f"pill missing left/right positioning: {style!r}"
-        )
-        left_pct  = float(style.split("left:")[1].split("%")[0])
-        right_pct = float(style.split("right:")[1].split("%")[0])
+        canvas = track.find("canvas", class_="temp-bar-canvas")
+        assert canvas is not None, "temp-bar-track missing temp-bar-canvas child"
+        left_pct  = float(canvas.get("data-left",  "0"))
+        right_pct = float(canvas.get("data-right", "0"))
         assert 0.0 <= left_pct  <= 100.0
         assert 0.0 <= right_pct <= 100.0
-        assert left_pct + right_pct < 100.0, "pill has no visible width"
+        assert left_pct + right_pct < 100.0, "pill canvas has no visible width"
 
 
 def test_precip_cells_show_icon_and_percentage(rendered_html):
@@ -161,10 +156,10 @@ def test_sun_cells_present_with_mock_data(rendered_html):
     assert len(sun_cells) == 5
 
 
-def test_roughjs_is_not_loaded(rendered_html):
+def test_roughjs_is_loaded(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
     srcs = {s.get("src") for s in soup.find_all("script") if s.get("src")}
-    assert not any("rough" in (s or "") for s in srcs), "roughjs script tag should be removed"
+    assert any("rough" in (s or "") for s in srcs), "roughjs script tag should be present"
 
 
 def test_stylesheets_loaded(rendered_html):

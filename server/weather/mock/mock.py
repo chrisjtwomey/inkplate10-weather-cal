@@ -41,6 +41,14 @@ _NIGHT_PHRASES = [
 ]
 
 
+_POLLEN_CATEGORIES = [
+    ("Low", 1),
+    ("Moderate", 2),
+    ("High", 3),
+    ("Very High", 4),
+]
+
+
 class MockWeatherService(WeatherService):
     def __init__(self, num_hours=6, metric=True):
         super().__init__(
@@ -56,6 +64,13 @@ class MockWeatherService(WeatherService):
         rng = random.Random(self._seed)
         temp_unit = "\N{DEGREE SIGN}C" if self.units == "metric" else "\N{DEGREE SIGN}F"
         temp_range = (-5, 35) if self.units == "metric" else (23, 95)
+        pollen = [
+            {"name": name, "category": cat, "category_value": val}
+            for name, (cat, val) in zip(
+                ("Grass", "Tree", "Ragweed"),
+                [rng.choice(_POLLEN_CATEGORIES) for _ in range(3)],
+            )
+        ]
         return {
             "icon": rng.choice(_DAY_ICONS),
             "temperature": {
@@ -63,12 +78,15 @@ class MockWeatherService(WeatherService):
                 "min": rng.randint(temp_range[0], temp_range[1] - 5),
                 "max": rng.randint(temp_range[0] + 5, temp_range[1]),
                 "value": rng.randint(temp_range[0] + 2, temp_range[1] - 2),
+                "feels_like": rng.randint(temp_range[0], temp_range[1] - 3),
             },
             "wind": {
                 "unit": "kmh" if self.units == "metric" else "mph",
                 "value": rng.randint(0, 80),
             },
             "humidity": rng.randint(30, 100),
+            "rain_probability": rng.randint(0, 100),
+            "pollen": pollen,
         }
 
     def get_hourly_forecast(self):
@@ -118,6 +136,13 @@ class MockWeatherService(WeatherService):
             sunrise_m = rng.randint(0, 59)
             sunset_h = rng.randint(20, 21)
             sunset_m = rng.randint(0, 59)
+            pollen = [
+                {"name": name, "category": cat, "category_value": val}
+                for name, (cat, val) in zip(
+                    ("Grass", "Tree", "Ragweed"),
+                    [rng.choice(_POLLEN_CATEGORIES) for _ in range(3)],
+                )
+            ]
 
             forecasts.append({
                 "dt": day_dt,
@@ -134,6 +159,7 @@ class MockWeatherService(WeatherService):
                 },
                 "rain_probability": rng.randint(0, 100),
                 "uv_index": rng.randint(0, 11),
+                "pollen": pollen,
                 "sunrise": f"{sunrise_h:02d}:{sunrise_m:02d}",
                 "sunset": f"{sunset_h:02d}:{sunset_m:02d}",
                 "hours_of_sun": round(rng.uniform(0, 12), 1),
@@ -158,6 +184,7 @@ class MockWeatherService(WeatherService):
             "temperature": {
                 "unit": temp_unit,
                 "value": rng.randint(temp_range[0], temp_range[1]),
+                "feels_like": rng.randint(temp_range[0] - 3, temp_range[1]),
             },
             "wind": {
                 "unit": speed_unit,

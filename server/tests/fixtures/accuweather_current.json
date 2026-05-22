@@ -1,6 +1,10 @@
 [
   {
     "WeatherIcon": 3,
+    "Temperature": {
+      "Metric": {"Value": 16.2, "Unit": "C"},
+      "Imperial": {"Value": 61.2, "Unit": "F"}
+    },
     "RealFeelTemperature": {
       "Metric": {"Value": 14.7, "Unit": "C"},
       "Imperial": {"Value": 58.5, "Unit": "F"}

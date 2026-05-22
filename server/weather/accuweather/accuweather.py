@@ -96,19 +96,29 @@ class AccuweatherService(WeatherService):
         current_conditions = self._get_current_conditions()
 
         data = data["DailyForecasts"][0]
+        pollen = [
+            {
+                "name": ap["Name"],
+                "category": ap.get("Category", "Unknown"),
+                "category_value": ap.get("CategoryValue", 0),
+            }
+            for ap in data.get("AirAndPollen", [])
+            if ap.get("Name") in ("Grass", "Tree", "Ragweed", "Mold")
+        ]
         forecast = {
             "icon": self.get_icon(data["Day"]["Icon"]),
             "temperature": {
                 "unit": "\N{DEGREE SIGN}C"
                 if self.units == "metric"
                 else "\N{DEGREE SIGN}F",
-                "min": round(data["RealFeelTemperature"]["Minimum"]["Value"]),
-                "max": round(data["RealFeelTemperature"]["Maximum"]["Value"]),
-                #"value": current_conditions["temperature"]["value"],
-                "value": round(data["RealFeelTemperature"]["Maximum"]["Value"]),
+                "min": round(data["Temperature"]["Minimum"]["Value"]),
+                "max": round(data["Temperature"]["Maximum"]["Value"]),
+                "feels_like": round(data["RealFeelTemperature"]["Maximum"]["Value"]),
             },
             "wind": current_conditions["wind"],
             "humidity": current_conditions["humidity"],
+            "rain_probability": round(data["Day"].get("PrecipitationProbability", 0)),
+            "pollen": pollen or None,
         }
 
         self._set_cached("daily_summary", forecast)
@@ -186,12 +196,19 @@ class AccuweatherService(WeatherService):
 
         forecasts = []
         for entry in data["DailyForecasts"]:
-            # UV index from AirAndPollen list
+            # UV index and pollen from AirAndPollen list
             uv_index = None
+            pollen = []
             for ap in entry.get("AirAndPollen", []):
-                if ap.get("Name") == "UVIndex":
+                name = ap.get("Name")
+                if name == "UVIndex":
                     uv_index = ap.get("Value")
-                    break
+                elif name in ("Grass", "Tree", "Ragweed", "Mold"):
+                    pollen.append({
+                        "name": name,
+                        "category": ap.get("Category", "Unknown"),
+                        "category_value": ap.get("CategoryValue", 0),
+                    })
 
             # Sunrise / sunset as "HH:MM" strings
             sunrise = None
@@ -223,6 +240,7 @@ class AccuweatherService(WeatherService):
                 },
                 "rain_probability": round(entry["Day"].get("PrecipitationProbability", 0)),
                 "uv_index": uv_index,
+                "pollen": pollen or None,
                 "sunrise": sunrise,
                 "sunset": sunset,
                 "hours_of_sun": entry.get("HoursOfSun"),
@@ -260,7 +278,8 @@ class AccuweatherService(WeatherService):
             "icon": self.get_icon(data["WeatherIcon"]),
             "temperature": {
                 "unit": temp_units,
-                "value": round(data["RealFeelTemperature"][units_key]["Value"]),
+                "value": round(data["Temperature"][units_key]["Value"]),
+                "feels_like": round(data["RealFeelTemperature"][units_key]["Value"]),
             },
             "wind": {
                 "unit": speed_units,

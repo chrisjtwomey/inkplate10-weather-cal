@@ -22,14 +22,14 @@ class TodayPage(SimplifiedPage):
                 "icon": cc["icon"],
                 "temperature": {
                     "unit": cc["temperature"]["unit"],
-                    # Use today's daily min from the summary for the range bar;
-                    # falls back to None (no bar) if no summary was provided.
                     "min": ds["temperature"]["min"] if ds else None,
                     "max": cc["temperature"]["value"],
+                    "feels_like": cc["temperature"].get("feels_like"),
                 },
                 "wind": cc["wind"],
-                "rain_probability": 0,  # not available from current conditions
+                "rain_probability": ds["rain_probability"] if ds else 0,
                 "uv_index": cc.get("uv_index"),
                 "day_phrase": cc.get("weather_text"),
+                "pollen": ds.get("pollen") if ds else None,
             },
         )

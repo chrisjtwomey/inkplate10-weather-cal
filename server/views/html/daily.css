@@ -97,14 +97,13 @@
   border-radius: 2px;
 }
 
-.temp-bar-pill {
+.temp-bar-canvas {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  height: 10px;
-  background: #222;
-  border-radius: 5px;
-  min-width: 4px;
+  width: 100%;
+  height: 20px;
+  display: block;
 }
 
 /* ── Precipitation cell ────────────────────────────────────── */

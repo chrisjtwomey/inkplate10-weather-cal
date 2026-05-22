@@ -52,9 +52,10 @@ def test_accuweather_daily_summary_parses_metric(accuweather_endpoints):
     summary = svc.get_daily_summary()
 
     assert summary["temperature"]["unit"] == "\N{DEGREE SIGN}C"
-    assert summary["temperature"]["min"] == 9                  # round(8.6)
-    assert summary["temperature"]["max"] == 18                 # round(18.2)
-    assert summary["temperature"]["value"] == 18               # currently mirrors max
+    assert summary["temperature"]["min"] == 10                 # round(10.3) actual
+    assert summary["temperature"]["max"] == 20                 # round(19.5) actual
+    assert summary["temperature"]["feels_like"] == 18          # round(18.2) RealFeel max
+    assert summary["rain_probability"] == 35
     assert summary["icon"] == "icon/day/partly-clear.png"      # Day.Icon=3 -> partly-clear
     assert summary["humidity"] == 64
     assert summary["wind"]["unit"] == "kmh"
