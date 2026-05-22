@@ -53,7 +53,7 @@
 .day-temp-cell   { width: 26%; }
 .day-precip-cell { width: 10%; text-align: center; }
 .day-wind-cell   { width: 10%; }
-.day-uv-cell     { width: 10%; text-align: center; }
+.day-sun-hours-cell { width: 10%; text-align: center; }
 .day-sun-cell    { width: 12%; }
 
 /* ── Day name / date cell ───────────────────────────────────── */
@@ -155,31 +155,6 @@
   line-height: 1;
 }
 
-/* ── UV index cell ──────────────────────────────────────────── */
-.uv-index {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.1;
-}
-
-.uv-icon {
-  width: 3.5vw;
-  height: auto;
-  display: block;
-}
-
-.uv-value {
-  font-family: "Merienda-Bold", serif;
-  font-size: 4vw;
-  font-weight: 700;
-}
-
-.uv-label {
-  font-size: 1.8vw;
-  color: #555;
-}
-
 /* ── Sunrise / sunset / hours-of-sun cell ───────────────────── */
 .sun-info {
   display: flex;
@@ -202,8 +177,9 @@
 }
 
 .sun-icon {
-  width: 2.5vw;
+  width: 3.5vw;
   height: auto;
+  display: block;
 }
 
 .sun-rise,
@@ -212,6 +188,20 @@
 }
 
 .sun-hours {
-  font-size: 1.9vw;
-  color: #444;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 2.5vw;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.sun-hours-value {
+  font-family: "Merienda-Bold", serif;
+}
+
+.sun-hours-unit {
+  font-size: 1.6vw;
+  color: #555;
+  line-height: 1;
 }
