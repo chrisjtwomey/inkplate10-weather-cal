@@ -2,6 +2,18 @@
    Common reset, fonts, body, bg-container, container, and map styles
    are provided by styles.css. */
 
+/* ── Fade-to-white at the bottom of the map ─────────────────── */
+#map-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: linear-gradient(to bottom, transparent 40%, white 100%);
+  pointer-events: none;
+  z-index: 1;
+}
 /* ── NumCircle (date / temp / icon) ──────────────────────────── */
 h3.numcircle {
   font-size: 18vw;
