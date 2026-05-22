@@ -138,15 +138,15 @@ def test_wind_cells_have_arrow_and_speed(rendered_html):
 
 
 def test_uv_cells_present_with_mock_data(rendered_html):
-    """Mock service always has UV data → uv cells should appear with sun icon."""
+    """Mock service always has hours-of-sun data → sun-hours cells should appear."""
     soup = BeautifulSoup(rendered_html, "html.parser")
-    uv_cells = soup.find_all("td", class_="day-uv-cell")
-    assert len(uv_cells) == 5
-    for cell in uv_cells:
-        assert cell.find("img", class_="uv-icon") is not None
-        uv_val = cell.find("span", class_="uv-value")
-        assert uv_val is not None
-        assert 0 <= int(uv_val.get_text(strip=True)) <= 11
+    sun_hours_cells = soup.find_all("td", class_="day-sun-hours-cell")
+    assert len(sun_hours_cells) == 5
+    for cell in sun_hours_cells:
+        assert cell.find("img", class_="sun-icon") is not None
+        hours_val = cell.find("span", class_="sun-hours-value")
+        assert hours_val is not None
+        assert float(hours_val.get_text(strip=True)) >= 0
 
 
 def test_sun_cells_present_with_mock_data(rendered_html):
