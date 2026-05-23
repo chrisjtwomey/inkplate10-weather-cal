@@ -7,6 +7,21 @@ Display weather forecasts and a stylised map of your city on an Inkplate 10 that
 
 <img src=https://user-images.githubusercontent.com/5797356/223708925-131d7ecc-5e95-453a-b687-427b75d959dd.jpg width=800 />
 
+## Gallery
+
+A few example screenshots from the Inkplate 10 Weather Calendar:
+
+<table align="center">
+  <tr>
+    <td align="center"><img src="doc/assets/today_dublin.png" alt="Today - Dublin" width="350" style="margin:8px;" /><br/><sub>Today view: Current weather, map, and summary for Dublin</sub></td>
+    <td align="center"><img src="doc/assets/tomorrow_stockholm.png" alt="Tomorrow - Stockholm" width="350" style="margin:8px;" /><br/><sub>Tomorrow view: Forecast for Stockholm with icon and phrase</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="doc/assets/hourly_reykjavik.png" alt="Hourly - Reykjavik" width="350" style="margin:8px;" /><br/><sub>Hourly view: 9-hour forecast table for Reykjavik</sub></td>
+    <td align="center"><img src="doc/assets/daily_lisbon.png" alt="Daily - Lisbon" width="350" style="margin:8px;" /><br/><sub>Daily view: 5-day summary for Lisbon with icons and highs/lows</sub></td>
+  </tr>
+</table>
+
 - [Background](#background)
 - [How it Works](#how-it-works)
 - [Bill of Materials](#bill-of-materials)
