@@ -15,6 +15,10 @@ class HourlyPage(DetailedPage):
     def _title(self) -> str:
         return "Hourly"
 
+    def _css_links(self, a):
+        super()._css_links(a)
+        a.link(rel="stylesheet", href="hourly.css")
+
     def _script_tags(self, a):
         a.script(type="text/javascript", src="https://unpkg.com/chart.js@2.8.0")
         a.script(type="text/javascript", src="https://unpkg.com/roughjs@3.1.0/dist/rough.js")

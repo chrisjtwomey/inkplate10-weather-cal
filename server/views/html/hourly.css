@@ -1,0 +1,104 @@
+/* HourlyPage-specific styles.
+   Shared reset, map, numcircle, and top-banner styles
+   are provided by styles.css and detailed.css. */
+
+/* ── Forecast table ─────────────────────────────────────────── */
+#bottom-banner {
+  width: 99%;
+}
+
+#forecast-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.2vh;
+}
+
+#forecast-table tr {
+  border: none;
+}
+
+#forecast-table td {
+  border: none;
+  padding: 0.3rem 0;
+  text-align: center;
+}
+
+.forecast-cell {
+  vertical-align: top;
+  min-height: 80px;
+}
+
+.forecast-icon {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.forecast-icon img {
+  width: 90%;
+  height: auto;
+  max-height: 110px;
+}
+
+.forecast-hour {
+  font-size: 2.8vw;
+  font-weight: 700;
+  line-height: 1.2;
+  padding-bottom: 1.5vh;
+}
+
+.forecast-temp {
+  font-size: 2.7vw;
+  font-weight: 600;
+  line-height: 1.2;
+  padding-bottom: 0.8vh;
+}
+
+.forecast-wind {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5vh;
+}
+
+.precip-canvas {
+  display: block;
+  width: 100%;
+  height: 120px;
+}
+
+/* ── Legend column ──────────────────────────────────────────── */
+.legend-cell {
+  vertical-align: middle;
+  text-align: center;
+  width: 5vw;
+  padding: 0.4rem !important;
+  position: relative;
+}
+
+.legend-divider {
+  position: absolute;
+  right: 0;
+  top: 10%;
+  height: 80%;
+  width: 8px;
+  display: block;
+}
+
+.legend-icon {
+  width: 3.5vw;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.legend-unit {
+  display: block;
+  font-size: 1.5vw;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+  margin-top: 0.3vh;
+}
