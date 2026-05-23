@@ -168,8 +168,8 @@ class HourlyPage(DetailedPage):
                         });
 
                         var ctx      = canvas.getContext('2d');
-                        // Match ~3vw font size used in the rest of the table
-                        var fontSize = Math.max(14, Math.round(w * 0.19));
+                        // Fixed font size for all labels
+                        var fontSize = 24;
                         ctx.font      = 'bold ' + fontSize + 'px Merienda-Regular, sans-serif';
                         ctx.textAlign = 'center';
 

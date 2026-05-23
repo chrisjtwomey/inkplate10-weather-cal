@@ -304,6 +304,15 @@ class AccuweatherService(WeatherService):
             log.debug("AccuWeather cache hit: location_key")
             return entry["data"]
 
+        # Location changed — bust the forecast cache so stale data isn't served.
+        if entry and entry.get("location") != location:
+            log.info(
+                "Location changed (%s → %s); invalidating forecast cache",
+                entry.get("location"),
+                location,
+            )
+            self.invalidate_forecast_cache()
+
         path = (
             f"{self.baseurl}/locations/v1/search?apikey={self.apikey}&q={location}"
         )

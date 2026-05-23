@@ -65,28 +65,32 @@ h4.numcircle, #icon-container.numcircle {
 }
 
 #date-banner #date {
-  outline: 3vw solid var(--color-paper);
-  outline-offset: 0px;
+  box-shadow:
+    0 0 0 1.5vw var(--color-paper),
+    0 0 4vw 1.5vw color-mix(in srgb, var(--color-paper) 40%, transparent);
   position: relative;
   z-index: 2;
 }
 
 #date-banner #month {
   background: var(--color-paper);
-  border-radius: 3vw;
-  padding: 4vw 4vw 4vw 7vw;
+  border-top-right-radius: 6vw;
+  border-bottom-right-radius: 6vw;
+  padding: 3vw 4vw 3vw 5vw;
   line-height: 1.2;
   font-size: 10vw;
   margin: 0;
-  margin-left: -5vw
+  margin-left: -5vw;
+  box-shadow: 0 0 4vw 2vw color-mix(in srgb, var(--color-paper) 40%, transparent);
 }
 
 #top-banner #temp {
   position: absolute;
   top: 22vh;
   left: 5vw;
-  outline: 2vw solid var(--color-paper);
-  outline-offset: 0px;
+  box-shadow:
+    0 0 0 1vw var(--color-paper),
+    0 0 4vw 1vw color-mix(in srgb, var(--color-paper) 40%, transparent);
   z-index: 1;
 }
 
@@ -94,8 +98,9 @@ h4.numcircle, #icon-container.numcircle {
   position: absolute;
   top: 35.5vh;
   left: 5vw;
-  outline: 2vw solid var(--color-paper);
-  outline-offset: 0px;
+  box-shadow:
+    0 0 0 1vw var(--color-paper),
+    0 0 4vw 1vw color-mix(in srgb, var(--color-paper) 40%, transparent);
   z-index: 1;
 }
 
