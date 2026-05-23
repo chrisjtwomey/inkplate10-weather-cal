@@ -154,7 +154,7 @@ class HourlyPage(DetailedPage):
 
                         var rc = rough.canvas(canvas);
                         rc.rectangle(pad, h - barH, barW, barH, {
-                            fill:         'black',
+                            fill:         '#aaa',
                             fillStyle:    'zigzag',
                             hachureAngle: 45,
                             hachureGap:   5,
