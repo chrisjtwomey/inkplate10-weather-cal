@@ -10,7 +10,7 @@
   left: 0;
   right: 0;
   height: 60%;
-  background: linear-gradient(to bottom, transparent 40%, white 100%);
+  background: linear-gradient(to bottom, transparent 40%, var(--color-paper) 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -41,8 +41,8 @@ h4.numcircle, #icon-container.numcircle {
 }
 
 .numcircle {
-  color: white;
-  background: #000000;
+  color: var(--color-paper);
+  background: var(--color-ink);
   margin: 1rem;
   vertical-align: middle;
 }
@@ -65,14 +65,14 @@ h4.numcircle, #icon-container.numcircle {
 }
 
 #date-banner #date {
-  outline: 3vw solid rgba(255, 255, 255, 1);
+  outline: 3vw solid var(--color-paper);
   outline-offset: 0px;
   position: relative;
   z-index: 2;
 }
 
 #date-banner #month {
-  background: rgba(255, 255, 255, 1);
+  background: var(--color-paper);
   border-radius: 3vw;
   padding: 4vw 4vw 4vw 7vw;
   line-height: 1.2;
@@ -85,7 +85,7 @@ h4.numcircle, #icon-container.numcircle {
   position: absolute;
   top: 22vh;
   left: 5vw;
-  outline: 2vw solid rgba(255, 255, 255, 1);
+  outline: 2vw solid var(--color-paper);
   outline-offset: 0px;
   z-index: 1;
 }
@@ -94,7 +94,7 @@ h4.numcircle, #icon-container.numcircle {
   position: absolute;
   top: 35.5vh;
   left: 5vw;
-  outline: 2vw solid rgba(255, 255, 255, 1);
+  outline: 2vw solid var(--color-paper);
   outline-offset: 0px;
   z-index: 1;
 }

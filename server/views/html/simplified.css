@@ -13,7 +13,7 @@
   left: -20%;
   width: 95vw;
   height: auto;
-  opacity: 0.05;
+  opacity: 0.16;
   transform: rotate(15deg);
   pointer-events: none;
   z-index: 0;
@@ -37,7 +37,7 @@
   left: 0;
   right: 0;
   height: 60%;
-  background: linear-gradient(to bottom, transparent 0%, white 100%);
+  background: linear-gradient(to bottom, transparent 0%, var(--color-paper) 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -66,13 +66,13 @@
   height: 32vw;
   margin-bottom: 1.5vh;
   padding: 2vw;
-  background: radial-gradient(circle, white 48%, transparent 70%);
+  background: radial-gradient(circle, var(--color-paper) 48%, transparent 70%);
 }
 
 #day-date {
   font-size: 4vw;
   font-weight: 600;
-  color: #444;
+  color: var(--color-dark);
   margin: 0 0 0.5vh 0;
   line-height: 1;
 }
@@ -90,7 +90,7 @@
 #day-temp-lo {
   font-size: 8vw;
   font-weight: 400;
-  color: #888;
+  color: var(--color-light);
 }
 
 #day-temp-hi {
@@ -108,14 +108,14 @@
 
 #day-feels-like {
   font-size: 3.2vw;
-  color: #666;
+  color: var(--color-dark);
   margin: 0.4vh 0 0 0;
   line-height: 1;
 }
 
 #day-rain-prob {
   font-size: 3.4vw;
-  color: #555;
+  color: var(--color-dark);
   margin: 0.8vh 0 0 0;
   line-height: 1;
   display: flex;

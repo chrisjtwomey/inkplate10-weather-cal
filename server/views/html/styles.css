@@ -8,6 +8,14 @@
   src: url('Merienda-Regular.ttf');
 }
 
+/* ── Grayscale swatch (4-level e-ink) ──────────────────────── */
+:root {
+  --color-ink:   #000;  /* Level 0 – black                      */
+  --color-dark:  #555;  /* Level 1 – dark gray                  */
+  --color-light: #aaa;  /* Level 2 – light gray                 */
+  --color-paper: #fff;  /* Level 3 – white                      */
+}
+
 .text-uppercase {
   text-transform: uppercase !important;
 }
@@ -24,8 +32,8 @@ body {
   font-weight: 400;
   line-height: 1.5;
   text-align: left;
-  color: #000;
-  background-color: #fff;
+  color: var(--color-ink);
+  background-color: var(--color-paper);
 }
 
 .bg-container {

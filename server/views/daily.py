@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ].join(' ');
         var rc = rough.canvas(canvas);
         rc.path(path, {
-            fill: '#222',
+            fill: '#000',
             fillStyle:    'zigzag',
             hachureAngle: 45,
             hachureGap:   5,
