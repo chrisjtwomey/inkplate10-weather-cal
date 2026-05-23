@@ -3,7 +3,7 @@
 [![PlatformIO CI](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/build.yaml/badge.svg)](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/build.yaml)
 [![Release](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/release.yaml/badge.svg)](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/release.yaml)
 
-Display today's date, weather forecast and a stylised map of your city using an Inkplate 10 that can last for months on a single battery.
+Display weather forecasts and a stylised map of your city on an Inkplate 10 that can last for months on a single battery. Four page layouts are available: a simplified today/tomorrow view, an hourly forecast table, and a 5-day daily summary.
 
 <img src=https://user-images.githubusercontent.com/5797356/223708925-131d7ecc-5e95-453a-b687-427b75d959dd.jpg width=800 />
 
@@ -192,7 +192,8 @@ cp src/defaults.example.cpp src/defaults.cpp
 
 ```cpp
 // Server URL — hostname or IP of the machine running the server
-char serverURL[] = "http://YOUR_SERVER_HOST:8080/calendar.png";
+// Use today.png, tomorrow.png, hourly.png, or daily.png (see server/README.md)
+char serverURL[] = "http://YOUR_SERVER_HOST:8080/today.png";
 
 // WiFi credentials
 char wifiSSID[] = "your_wifi_ssid";
@@ -215,7 +216,8 @@ Place a `config.yaml` in the root of your SD card:
 
 ```yaml
 server:
-  url: http://YOUR_SERVER_HOST:8080/calendar.png
+  # Use today.png, tomorrow.png, hourly.png, or daily.png (see server/README.md)
+  url: http://YOUR_SERVER_HOST:8080/today.png
   retries: 3
 wifi:
   ssid: XXXX

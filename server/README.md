@@ -2,6 +2,7 @@
 
 A service for the weather calendar client written in Python3, backed by [Airium](https://pypi.org/project/airium/) and [Chromedriver](https://chromedriver.chromium.org/downloads).
 
+> **Note:** Screenshots below are from an older release. Current page designs differ.
 
 
 Example 1                  | Example 2                 | Example 3
@@ -17,7 +18,19 @@ Example 1                  | Example 2                 | Example 3
 - Uses [Airium](https://pypi.org/project/airium/) and [Chromedriver](https://chromedriver.chromium.org/downloads) to generate HTML and PNG files for image serving.
 - Uses [Flask](https://flask.palletsprojects.com/en/2.3.x/) to serve images.
 
-## Setup 
+## Pages
+
+The server exposes four page endpoints, each suited to a different time of day:
+
+| Endpoint | Layout | Best used for |
+|---|---|---|
+| `today.png` | Simplified — today's icon, high/low, feels-like, rain probability, map | Morning |
+| `tomorrow.png` | Simplified — same layout for tomorrow's forecast | Evening |
+| `hourly.png` | Detailed — hourly table: icon, temp, wind direction/speed, precipitation bars | Daytime |
+| `daily.png` | Detailed — 5-day table: icon, temp range, wind, precipitation, sun hours | Afternoon / Evening |
+
+Configure which page the client fetches at each wake time via `display_schedule` in `config.yaml`.
+ 
 
 ### Accuweather API
 
@@ -28,6 +41,8 @@ In order to obtain an API Key, you will need to:
 4. Generate API key.
 
 Make sure you update the config `weather.apikey` with your generated api key and update `weather.service` to `accuweather`.
+
+> **Note:** AccuWeather API responses are cached server-side to minimise API calls between image regenerations.
 
 ### OpenWeatherMap API
 
@@ -103,9 +118,10 @@ seconds (default 120) before the wake so a fresh image is always ready.
 
 ```yaml
 display_schedule:
-  "09:00:00": today.png
-  "15:00:00": daily.png
-  "21:00:00": today.png
+  "08:00:00": today.png     # today's simplified forecast — morning wake
+  "12:00:00": hourly.png   # hourly detail — midday wake
+  "16:00:00": daily.png    # 5-day summary — afternoon wake
+  "20:00:00": tomorrow.png # tomorrow's simplified forecast — evening wake
 ```
 
 Send `SIGTERM` (Ctrl-C) for a clean shutdown.
