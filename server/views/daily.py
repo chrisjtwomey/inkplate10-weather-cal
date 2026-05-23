@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', function () {
         canvas.height = h;
         var x1    = w * leftPct;
         var x2    = w * (1 - rightPct);
-        var pillW = Math.max(x2 - x1, 4);
-        var pillH = h / 2;
+        var pillW = Math.max(x2 - x1, 2);
+        var pillH = h / 3;
         var y0 = (h - pillH) / 2, y1 = y0 + pillH;
         var r  = Math.min((y1 - y0) / 2, pillW / 2);
         var path = [
