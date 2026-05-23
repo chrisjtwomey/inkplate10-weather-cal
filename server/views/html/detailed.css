@@ -167,7 +167,7 @@ h4.numcircle, #icon-container.numcircle {
 /* ── Wind (shared: hourly + daily) ─────────────────────────── */
 .wind-arrow {
   display: block;
-  opacity: 0.8;;
+  opacity: 0.8;
 }
 
 .wind-speed {
