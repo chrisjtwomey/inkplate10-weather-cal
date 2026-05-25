@@ -28,12 +28,12 @@ jobs:
         run: cp src/defaults.example.cpp src/defaults.cpp
 
       - name: Build release firmware
-        run: pio run -e release
+        run: pio run -e release_sdcard
 
       - name: Upload firmware.bin to release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: .pio/build/release/firmware.bin
+          files: .pio/build/release_sdcard/firmware.bin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
