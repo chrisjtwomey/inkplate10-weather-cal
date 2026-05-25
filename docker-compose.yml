@@ -1,0 +1,14 @@
+version: '3'
+services:
+  weather-cal-server:
+    image: ghcr.io/chrisjtwomey/inkplate10-weather-cal-server:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    # Recommended: mount your config.yaml for server configuration
+    volumes:
+      - ./server/config.yaml:/app/server/config.yaml:ro
+    # Only override these if needed; most config is in config.yaml
+    environment:
+      LOCATION: "Cork"         # Optional: override location
+      SERVER_PORT: "8080"      # Optional: override port

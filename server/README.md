@@ -2,6 +2,9 @@
 
 A service for the weather calendar client written in Python3, backed by [Airium](https://pypi.org/project/airium/) and [Chromedriver](https://chromedriver.chromium.org/downloads).
 
+New to this project? Start with the [main README](../README.md) for quick start and hardware/client setup.
+For local development workflows, see [CONTRIBUTING.md](../CONTRIBUTING.md).
+
 > **Note:** Screenshots below are from an older release. Current page designs differ.
 
 
@@ -75,37 +78,22 @@ You can now use the map style to create a map ID that we can reference in our se
 3. Update the `associated map style` to the name of the map style created in the steps earlier.
 4. Copy the `Map ID` and update the `google.staticmaps_id` field in `config.yaml`.
 
-### Server setup
+### Local development and runtime behavior
 
-Ensure Python3 is installed on your system
-```
-python3 --version
-Python 3.9.2
-```
+For full local development setup (Python dependencies, local config, Chrome/Selenium), see [CONTRIBUTING.md](../CONTRIBUTING.md#server-development-setup).
 
-Download project and install dependencies
-```
-git clone https://github.com/chrisjtwomey/inkplate10-weather-cal.git
-cd inkplate10-weather-cal
-python3 -m pip install -r requirements.txt
-```
+From the `server` directory, run:
 
-Create your local config from the template (kept out of git):
-```
-cp server/config.example.yaml server/config.yaml
-```
-Then edit `server/config.yaml` and fill in your API keys, map ID, and location.
-
-Run the server manually:
-```
+```sh
 python3 server.py
 ```
 
-For development — render the PNG once and exit without starting the HTTP
-server or scheduler:
-```
+For development, render images once and exit without starting HTTP/scheduler:
+
+```sh
 python3 server.py --once
 ```
+
 The generated images land at `server/views/today.png`, `server/views/hourly.png`, `server/views/daily.png`, and `server/views/tomorrow.png`.
 
 The server runs as a long-running process: it generates all images at startup,

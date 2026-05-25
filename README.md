@@ -1,15 +1,13 @@
+
 # Inkplate 10 Weather Calendar
 
 [![PlatformIO CI](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/build.yaml/badge.svg)](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/build.yaml)
 [![Release](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/release.yaml/badge.svg)](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/release.yaml)
 
+
 Display weather forecasts and a stylised map of your city on an Inkplate 10 that can last for months on a single battery. Four page layouts are available: a simplified today/tomorrow view, an hourly forecast table, and a 5-day daily summary.
 
 <img src=https://user-images.githubusercontent.com/5797356/223708925-131d7ecc-5e95-453a-b687-427b75d959dd.jpg width=800 />
-
-## Gallery
-
-A few example screenshots from the Inkplate 10 Weather Calendar:
 
 <table align="center">
   <tr>
@@ -22,15 +20,105 @@ A few example screenshots from the Inkplate 10 Weather Calendar:
   </tr>
 </table>
 
+- [Getting Started](#getting-started)
 - [Background](#background)
 - [How it Works](#how-it-works)
 - [Bill of Materials](#bill-of-materials)
-- [Setup](#setup)
-  - [Server](#server)
-  - [Client (Firmware)](#client-firmware)
 - [Firmware](#firmware)
-  - [Building with PlatformIO](#building-with-platformio)
 - [License](#license)
+
+
+## Getting Started
+
+This project has two main parts: a **server** (image generator) and a **client** (firmware for the Inkplate 10). Follow these steps to get up and running.
+
+### Prepare your server configuration
+
+For API keys, environment variables, schedule configuration, and advanced server setup, see [server/README.md](server/README.md).
+
+Before starting the server, copy the example config and fill in your API keys, Google Maps Map ID, and location:
+
+```sh
+cp server/config.example.yaml server/config.yaml
+# Edit server/config.yaml and set your weather API key, Google Maps API key, map ID, and location
+```
+
+
+### 1. Server Setup
+
+You can run the server using Docker (recommended) or directly with Python. The server generates weather/calendar images and serves them to the Inkplate client.
+
+**Run with Docker Compose (Recommended)**
+
+A sample `docker-compose.yml` is included in the repository. Most configuration is done in `server/config.yaml`, which is volume-mounted into the container. Only `LOCATION` and `SERVER_PORT` are set as environment variables (and are optional overrides):
+
+```yaml
+version: '3'
+services:
+  weather-cal-server:
+    image: ghcr.io/chrisjtwomey/inkplate10-weather-cal-server:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    # Recommended: mount your config.yaml for server configuration
+    volumes:
+      - ./server/config.yaml:/app/server/config.yaml:ro
+    # Only override these if needed
+    environment:
+      LOCATION: "Dublin, IE"   # Optional: override location
+      SERVER_PORT: "8080"      # Optional: override port
+```
+
+Then start the server:
+
+```sh
+docker compose up -d
+```
+
+**Run with Docker (single command)**
+
+```sh
+docker run -d --restart unless-stopped \
+  -p 8080:8080 \
+  -e WEATHER_SERVICE=accuweather \
+  -e WEATHER_APIKEY=<your_key> \
+  -e GOOGLE_APIKEY=<your_key> \
+  -e GOOGLE_STATICMAPS_MAPID=<your_map_id> \
+  -e LOCATION="Dublin, IE" \
+  -e SERVER_TIMEZONE="Europe/Dublin" \
+  ghcr.io/chrisjtwomey/inkplate10-weather-cal-server:latest
+```
+
+
+**Run from Source**
+
+See [server/README.md](server/README.md).
+
+### 2. Client (Firmware) Setup
+
+Pre-built firmware binaries in the [releases](https://github.com/chrisjtwomey/inkplate10-weather-cal/releases) are SD-card firmware only.
+
+**Recommended path (pre-built firmware):**
+
+1. Place a `config.yaml` in the root of your SD card (see [doc/config.yaml](doc/config.yaml) for an example).
+2. Download `firmware.bin` from the [latest release](https://github.com/chrisjtwomey/inkplate10-weather-cal/release/latest).
+3. Flash it using `esptool.py`:
+
+```sh
+pip install esptool
+esptool.py --chip esp32 --port /dev/ttyUSB0 write_flash 0x10000 firmware.bin
+```
+
+4. Insert the SD card and boot the device. The firmware reads `config.yaml` from SD card on startup.
+
+**No SD card setup:**
+
+If you want firmware configured via `src/defaults.cpp` (no SD card), build from source instead. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Notes:**
+
+- SD card support is intended for SolderedElectronics Inkplate 10 hardware.
+- Older E-Radionica Inkplate 10 boards can have [higher deep-sleep drain](https://github.com/chrisjtwomey/inkplate10-weather-cal/blob/main/doc/power-consumption.md#update-june-28-2023) when SD card is enabled.
 
 ## Background
 
@@ -64,7 +152,7 @@ Both a server and client are required. The main workload is in the server which 
   - Can publish to a MQTT topic for remote logging.
   - Renders messages on the e-ink display for critical errors (battery low, WiFi timeout, etc.). The previous calendar image stays visible behind the banner (cached in SPIFFS on first successful refresh).
   - Exponential back-off on server failures: 2 min → 6 min → 18 min → … → 24 h cap, resetting on the next successful server-dictated refresh.
-  - Optional: SD card support for loading client config from `config.yaml` without reflashing (see [Setup](#client-firmware)).
+  - Optional: SD card support for loading client config from `config.yaml` without reflashing (see [doc/config.yaml](doc/config.yaml)).
 
 #### Power Consumption
 
@@ -101,190 +189,7 @@ See [server/README.md](server/README.md) for full server documentation.
 
   The mount needs to fit an 8"x10" frame but expose only the e-ink area (~5.5"x7.5").
 
-## Setup
 
-### Running via Docker
-
-See [server/README.md](server/README.md) for full details:
-
-```sh
-docker run -d --restart unless-stopped \
-  -p 8080:8080 \
-  -e WEATHER_SERVICE=accuweather \
-  -e WEATHER_APIKEY=<your_key> \
-  -e GOOGLE_APIKEY=<your_key> \
-  -e GOOGLE_STATICMAPS_MAPID=<your_map_id> \
-  -e LOCATION="Cork" \
-  -e SERVER_TIMEZONE="Europe/Dublin" \
-  ghcr.io/chrisjtwomey/inkplate10-weather-cal-server:latest
-```
-
-To build from source instead (e.g. after local changes):
-
-```sh
-docker build -t weather-cal-server ./server
-docker run -d --restart unless-stopped -p 8080:8080 \
-  -e SERVER_TIMEZONE="Europe/Dublin" \
-  ... \
-  weather-cal-server
-```
-
-`SERVER_TIMEZONE` controls when the daily refresh times fire. Any config key from `server/config.example.yaml` can be overridden via env var — see [server/README.md](server/README.md) for the full mapping table.
-
-The server regenerates the calendar image at startup and then at each time in `server.refresh_times` (default 09:00, 15:00, 21:00). The response to `GET /calendar.png` includes an `X-Next-Refresh-Seconds` header telling the client exactly how long to sleep — DST and timezone handling stay entirely server-side.
-
-### Running locally
-
-The server uses Selenium + Chrome to render the HTML template into a PNG. In Docker, Chromium is installed automatically. When running locally, you may need to point `CHROME_BIN` at your browser:
-
-#### macOS 
-
-`/usr/bin/chromium` doesn't exist, so `CHROME_BIN` is required:
-
-```sh
-export CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-# or, if using Chromium via Homebrew:
-# export CHROME_BIN="/Applications/Chromium.app/Contents/MacOS/Chromium"
-```
-If Chrome isn't installed: `brew install --cask google-chrome`
-
-#### Linux 
-
-Works out of the box if Chromium is at `/usr/bin/chromium` (the default):
-
-```sh
-sudo apt install chromium chromium-driver   # Debian/Ubuntu
-```
-If using Google Chrome instead:
-```sh
-export CHROME_BIN="/usr/bin/google-chrome"
-```
-
-#### Windows
-
-`/usr/bin/chromium` doesn't exist, so `CHROME_BIN` is required:
-
-```powershell
-$env:CHROME_BIN = "C:\Program Files\Google\Chrome\Application\chrome.exe"
-```
-
-> **Note:** Selenium Manager may emit warnings about `chromedriver` version mismatches or `/usr/bin/chromium` not existing. These are harmless — set `CHROME_BIN` as above and they will go away.
-
-#### Run once (template development)
-
-Regenerates the calendar PNG and exits — no HTTP server, no scheduler:
-
-```sh
-cd server && python3 server.py --once
-# Output: server/views/calendar.png
-```
-
-#### Run as a daemon
-
-Starts the full HTTP server and regeneration scheduler:
-
-```sh
-cd server && python3 server.py
-```
-
-The server listens on the port configured in `config.yaml` (default `8080`) and serves the calendar image at `GET /calendar.png`.
-
-### Client (Firmware)
-
-The client is configured either via a header file compiled into the firmware (Option 1, no SD card needed) or via a YAML file on an SD card (Option 2).
-
-#### Option 1: `src/defaults.cpp` _(recommended — no SD card required)_
-
-**Note: The older E-Radionica Inkplate 10 is [missing hardware](https://github.com/SolderedElectronics/Inkplate-Arduino-library/issues/209#issuecomment-1608843488) to control power to the SD card module, causing up to 2 mA drain during deep sleep. Use this option to preserve battery life.**
-
-Copy the example file and fill in your values:
-
-```sh
-cp src/defaults.example.cpp src/defaults.cpp
-```
-
-`src/defaults.cpp` is gitignored so your credentials stay local. Edit the key fields:
-
-```cpp
-// Server URL — hostname or IP of the machine running the server
-// Use today.png, tomorrow.png, hourly.png, or daily.png (see server/README.md)
-char serverURL[] = "http://YOUR_SERVER_HOST:8080/today.png";
-
-// WiFi credentials
-char wifiSSID[] = "your_wifi_ssid";
-char wifiPass[] = "your_wifi_password";
-
-// Timezone (Olson format) — used for log message timestamps only.
-// Wake scheduling is dictated by the server via X-Next-Refresh-Seconds/
-char ntpTimezone[] = "Europe/Dublin";
-
-// Optional: MQTT remote logging
-bool mqttLoggerEnabled = true;
-char mqttLoggerBroker[] = "YOUR_SERVER_HOST";
-```
-
-#### Option 2: SD card YAML _(for SolderedElectronics Inkplate 10 with SD card)_
-
-**Note: Use build flag `USE_SDCARD` to enable SD card support.**
-
-Place a `config.yaml` in the root of your SD card:
-
-```yaml
-server:
-  # Use today.png, tomorrow.png, hourly.png, or daily.png (see server/README.md)
-  url: http://YOUR_SERVER_HOST:8080/today.png
-  retries: 3
-wifi:
-  ssid: XXXX
-  pass: XXXX
-  retries: 6
-ntp:
-  host: pool.ntp.org
-  timezone: Europe/Dublin
-mqtt_logger:
-  enabled: false
-  broker: localhost
-  port: 1883
-  clientId: inkplate10-weather-calendar
-  topic: mqtt/inkplate10-weather-calendar
-  retries: 3
-```
-
-See [doc/config.yaml](doc/config.yaml) for a fully annotated example.
-
-## Firmware
-
-### Flashing a pre-built binary
-
-Each [GitHub release](https://github.com/chrisjtwomey/inkplate10-weather-cal/releases) includes a pre-built `firmware.bin`. Flash it directly without installing PlatformIO:
-
-```sh
-pip install esptool
-esptool.py --chip esp32 --port /dev/ttyUSB0 write_flash 0x10000 firmware.bin
-```
-
-### Building with PlatformIO
-
-Clone the repo, copy your config as above, then build and flash:
-
-```sh
-pio run -e debug -t upload
-```
-
-`platformio.ini` has two environments:
-
-| Environment | Use |
-|---|---|
-| `debug` | Verbose serial logging (`LOG_LEVEL=5`). Use during development. |
-| `release` | Minimal logging (`LOG_LEVEL=4`). Use for day-to-day deployment. |
-
-### Running the tests
-
-A suite of native (host-side) unit tests covers pure logic — back-off timing, battery capacity, refresh header parsing, scheduling — no device needed:
-
-```sh
-pio test -e native
-```
 
 ## License
 
