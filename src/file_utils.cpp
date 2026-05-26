@@ -20,7 +20,7 @@ extern Inkplate board;
   - ESP_ERR_EFILEW if number of retries is exceeded without success.
 */
 
-esp_err_t writeFile(uint8_t* buf, int32_t size, const char* filePath) {
+esp_err_t writeFile(uint8_t* buf, size_t size, const char* filePath) {
     logf(LOG_DEBUG, "writing file to path %s", filePath);
     SdFat &sd = board.getSdFat();
 

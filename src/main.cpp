@@ -13,6 +13,8 @@
 #include "sleep_utils.h"
 #include "time_utils.h"
 #if defined(USE_SDCARD)
+#include <ArduinoJson.h>
+#include <ArduinoYaml.h>
 #include "file_utils.h"
 #endif
 
@@ -99,59 +101,119 @@ void setup() {
         log(LOG_WARNING, "battery low, charge soon!");
     }
 
+    // Runtime config defaults to compile-time values and may be overridden
+    // by SD config when USE_SDCARD is enabled.
+    const char* activeServerURL = serverURL;
+    int activeServerRetries = serverRetries;
+    uint32_t activeServerDefaultRefreshSeconds = serverDefaultRefreshSeconds;
+
+    const char* activeWifiSSID = wifiSSID;
+    const char* activeWifiPass = wifiPass;
+    int activeWifiRetries = wifiRetries;
+
+    const char* activeNtpHost = ntpHost;
+    const char* activeNtpTimezone = ntpTimezone;
+
+    bool activeMqttLoggerEnabled = mqttLoggerEnabled;
+    const char* activeMqttLoggerBroker = mqttLoggerBroker;
+    int activeMqttLoggerPort = mqttLoggerPort;
+    const char* activeMqttLoggerClientID = mqttLoggerClientID;
+    const char* activeMqttLoggerTopic = mqttLoggerTopic;
+    int activeMqttLoggerRetries = mqttLoggerRetries;
+
     // Init err state.
     esp_err_t err = ESP_OK;
 
 #if defined(USE_SDCARD)
+    SdFat &sd = board.getSdFat();
+
     // Attempt to get config yaml file.
-    File file = sd.open(CONFIG_FILE_PATH, FILE_READ);
+    FsFile file = sd.open(CONFIG_FILE_PATH, O_RDONLY);
     if (!file) {
         const char* errMsg = "Failed to open config file";
         logf(LOG_ERROR, errMsg);
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep_for(serverDefaultRefreshSeconds);
+        sleep_for(activeServerDefaultRefreshSeconds);
+        return;
     }
 
     // Attempt to parse yaml file.
     StaticJsonDocument<768> doc;
-    ReadBufferingStream bufferedFile(file, 64);
-    DeserializationError dse = deserializeYml(doc, bufferedFile);
+    DeserializationError dse = deserializeYml(doc, file);
     if (dse) {
         const char* errMsg = "Failed to load config from file";
         logf(LOG_ERROR, "failed to deserialize YAML: %s", dse.c_str());
         displayMessage(errMsg, batteryRemainingPercent);
-        sleep_for(serverDefaultRefreshSeconds);
+        sleep_for(activeServerDefaultRefreshSeconds);
+        return;
     }
     file.close();
 
-    // Assign config values.
+    // Validate required fields before applying SD overrides.
     JsonObject serverCfg = doc["server"];
-    serverURL = serverCfg["url"];
-    serverRetries = serverCfg["retries"];
-    serverDefaultRefreshSeconds = serverCfg["default_refresh_seconds"];
-
-    // Wifi config.
     JsonObject wifiCfg = doc["wifi"];
-    wifiSSID = wifiCfg["ssid"];
-    wifiPass = wifiCfg["pass"];
-    wifiRetries = wifiCfg["retries"];
+    JsonObject ntpCfg = doc["ntp"];
 
-    // NTP config.
-    ntpHost = doc["ntp"]["host"];
-    ntpTimezone = doc["ntp"]["timezone"];
+    const char* cfgServerURL = serverCfg["url"];
+    const char* cfgWifiSSID = wifiCfg["ssid"];
+    const char* cfgWifiPass = wifiCfg["pass"];
+    const char* cfgNtpHost = ntpCfg["host"];
+    const char* cfgNtpTimezone = ntpCfg["timezone"];
+
+    if (!cfgServerURL || !cfgWifiSSID || !cfgWifiPass ||
+        !cfgNtpHost || !cfgNtpTimezone) {
+        const char* errMsg = "Missing required config keys";
+        log(LOG_ERROR, errMsg);
+        displayMessage(errMsg, batteryRemainingPercent);
+        sleep_for(activeServerDefaultRefreshSeconds);
+        return;
+    }
+
+    // Persist SD-provided strings for the lifetime of setup().
+    static String sdServerURL;
+    static String sdWifiSSID;
+    static String sdWifiPass;
+    static String sdNtpHost;
+    static String sdNtpTimezone;
+    static String sdMqttLoggerBroker;
+    static String sdMqttLoggerClientID;
+    static String sdMqttLoggerTopic;
+
+    sdServerURL = cfgServerURL;
+    sdWifiSSID = cfgWifiSSID;
+    sdWifiPass = cfgWifiPass;
+    sdNtpHost = cfgNtpHost;
+    sdNtpTimezone = cfgNtpTimezone;
+
+    activeServerURL = sdServerURL.c_str();
+    activeServerRetries = serverCfg["retries"] | activeServerRetries;
+    activeServerDefaultRefreshSeconds =
+        serverCfg["default_refresh_seconds"] | activeServerDefaultRefreshSeconds;
+
+    activeWifiSSID = sdWifiSSID.c_str();
+    activeWifiPass = sdWifiPass.c_str();
+    activeWifiRetries = wifiCfg["retries"] | activeWifiRetries;
+
+    activeNtpHost = sdNtpHost.c_str();
+    activeNtpTimezone = sdNtpTimezone.c_str();
 
     // Remote logging config.
     JsonObject mqttLoggerCfg = doc["mqtt_logger"];
-    mqttLoggerEnabled = mqttLoggerCfg["enabled"];
-    mqttLoggerBroker = mqttLoggerCfg["broker"];
-    mqttLoggerPort = mqttLoggerCfg["port"];
-    mqttLoggerClientID = mqttLoggerCfg["clientId"];
-    mqttLoggerTopic = mqttLoggerCfg["topic"];
-    mqttLoggerRetries = mqttLoggerCfg["retries"];
+    activeMqttLoggerEnabled = mqttLoggerCfg["enabled"] | activeMqttLoggerEnabled;
+    if (mqttLoggerCfg["broker"] && mqttLoggerCfg["clientId"] && mqttLoggerCfg["topic"]) {
+        sdMqttLoggerBroker = mqttLoggerCfg["broker"].as<const char*>();
+        sdMqttLoggerClientID = mqttLoggerCfg["clientId"].as<const char*>();
+        sdMqttLoggerTopic = mqttLoggerCfg["topic"].as<const char*>();
+        activeMqttLoggerBroker = sdMqttLoggerBroker.c_str();
+        activeMqttLoggerClientID = sdMqttLoggerClientID.c_str();
+        activeMqttLoggerTopic = sdMqttLoggerTopic.c_str();
+    }
+    activeMqttLoggerPort = mqttLoggerCfg["port"] | activeMqttLoggerPort;
+    activeMqttLoggerRetries = mqttLoggerCfg["retries"] | activeMqttLoggerRetries;
 #endif
 
     // Attempt to connect to WiFi.
-    err = configureWiFi(wifiSSID, wifiPass, wifiRetries);
+    err = configureWiFi(activeWifiSSID, activeWifiPass, activeWifiRetries);
     if (err == ESP_ERR_TIMEOUT) {
         const char* errMsg = "wifi connect timeout";
         log(LOG_ERROR, errMsg);
@@ -160,15 +222,16 @@ void setup() {
     }
 
     // Attempt to synchronize clocks with network time.
-    err = configureTime(ntpHost, ntpTimezone);
+    err = configureTime(activeNtpHost, activeNtpTimezone);
     if (err != ESP_OK) {
         log(LOG_WARNING, "failed to synchronize RTC with network time");
     }
 
-    if (mqttLoggerEnabled) {
+    if (activeMqttLoggerEnabled) {
         // Attempt to connect to MQTT broker for remote logging.
-        err = configureMQTT(mqttLoggerBroker, mqttLoggerPort, mqttLoggerTopic,
-                            mqttLoggerClientID, mqttLoggerRetries);
+        err = configureMQTT(activeMqttLoggerBroker, activeMqttLoggerPort,
+                            activeMqttLoggerTopic, activeMqttLoggerClientID,
+                            activeMqttLoggerRetries);
         if (err == ESP_ERR_TIMEOUT) {
             log(LOG_WARNING,
                 "failed to connect remote logging, fallback to serial");
@@ -185,7 +248,8 @@ void setup() {
     do {
         logf(LOG_DEBUG, "calendar download attempt #%d", attempts + 1);
 
-        const char* fetchURL = (nextServerURL[0] != '\0') ? nextServerURL : serverURL;
+        const char* fetchURL =
+            (nextServerURL[0] != '\0') ? nextServerURL : activeServerURL;
         buf = downloadFile(fetchURL, &nextRefreshSeconds, &defaultLen,
                            nextServerURL, sizeof(nextServerURL));
         if (!buf) {
@@ -196,7 +260,8 @@ void setup() {
         err = ESP_OK;
 
         logf(LOG_INFO, "next refresh in %u seconds",
-             nextRefreshSeconds ? nextRefreshSeconds : serverDefaultRefreshSeconds);
+         nextRefreshSeconds ? nextRefreshSeconds
+                : activeServerDefaultRefreshSeconds);
 #if defined(USE_SDCARD)
         err = writeFile(buf, defaultLen, CALENDAR_RW_PATH);
         if (err != ESP_OK) {
@@ -205,7 +270,7 @@ void setup() {
             continue;
         }
 #endif
-    } while (err != ESP_OK && ++attempts <= serverRetries);
+    } while (err != ESP_OK && ++attempts <= activeServerRetries);
 
     // Disconnect and turn off WiFi radio to save power.
     // Remove the below lines if you want to stay connected
@@ -245,7 +310,7 @@ void setup() {
 
         // Send buffer to eink display.
         board.display();
-    } while (err != ESP_OK && ++attempts <= serverRetries);
+    } while (err != ESP_OK && ++attempts <= activeServerRetries);
 
     // Draw failure: persistent local problem (corrupt image, rendering bug).
     // Back off to conserve battery — won't self-heal without a reflash.
