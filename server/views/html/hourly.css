@@ -5,16 +5,27 @@
 /* ── Forecast table ─────────────────────────────────────────── */
 #bottom-banner {
   width: 99%;
+  height: calc(100% - var(--map-height));
+  box-sizing: border-box;
 }
 
 #forecast-table {
   width: 100%;
+  height: 100%;
   border-collapse: collapse;
   margin-top: 0.2vh;
 }
 
 #forecast-table tr {
   border: none;
+}
+
+#forecast-table tr:not(.precip-row) {
+  height: var(--hourly-fixed-row-height, 14%);
+}
+
+#forecast-table tr.precip-row {
+  height: calc(100% - (var(--hourly-fixed-row-height, 14%) * 4));
 }
 
 #forecast-table td {
@@ -25,21 +36,22 @@
 
 .forecast-cell {
   vertical-align: top;
-  min-height: 80px;
+  min-height: 10%;
 }
 
 .forecast-icon {
   width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
+  min-height: 0;
 }
 
 .forecast-icon img {
   width: 90%;
   height: auto;
-  max-height: 110px;
+  max-height: 100%;
 }
 
 .forecast-hour {
@@ -66,7 +78,7 @@
 .precip-canvas {
   display: block;
   width: 100%;
-  height: 120px;
+  height: 100%;
 }
 
 /* ── Legend column ──────────────────────────────────────────── */

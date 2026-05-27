@@ -51,6 +51,10 @@ class ServerConfig:
     regen_lead_seconds: Any    # int; seconds before wake time to regenerate the image
     image_width: Any
     image_height: Any
+    image_inner_width: Any
+    image_inner_height: Any
+    image_inner_align_x: Any
+    image_inner_align_y: Any
     weather_service: Any      # one of _SUPPORTED_WEATHER_SERVICES
     weather_apikey: Any       # str, or None for mock service
     weather_metric: Any
@@ -127,6 +131,48 @@ def validate_config(config: dict) -> ServerConfig:
     # ---- image ----
     image_width = get_prop_by_keys(config, "image", "width", default=825)
     image_height = get_prop_by_keys(config, "image", "height", default=1200)
+    image_inner_width = get_prop_by_keys(config, "image", "innerWidth", default=image_width)
+    image_inner_height = get_prop_by_keys(config, "image", "innerHeight", default=image_height)
+    image_inner_align_x = str(
+        get_prop_by_keys(config, "image", "innerAlignX", default="center")
+    ).strip().lower()
+    image_inner_align_y = str(
+        get_prop_by_keys(config, "image", "innerAlignY", default="center")
+    ).strip().lower()
+
+    image_keys = {
+        "image.width": image_width,
+        "image.height": image_height,
+        "image.innerWidth": image_inner_width,
+        "image.innerHeight": image_inner_height,
+    }
+    for key, value in image_keys.items():
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            _err(f"{key} must be a positive integer (got {value!r})")
+
+    if image_inner_width > image_width:
+        _err(
+            f"image.innerWidth ({image_inner_width}) cannot be greater than "
+            f"image.width ({image_width})"
+        )
+    if image_inner_height > image_height:
+        _err(
+            f"image.innerHeight ({image_inner_height}) cannot be greater than "
+            f"image.height ({image_height})"
+        )
+
+    allowed_align_x = {"left", "center", "right"}
+    allowed_align_y = {"top", "center", "bottom"}
+    if image_inner_align_x not in allowed_align_x:
+        _err(
+            "image.innerAlignX must be one of "
+            f"{sorted(allowed_align_x)} (got {image_inner_align_x!r})"
+        )
+    if image_inner_align_y not in allowed_align_y:
+        _err(
+            "image.innerAlignY must be one of "
+            f"{sorted(allowed_align_y)} (got {image_inner_align_y!r})"
+        )
 
     # ---- mqtt ----
     mqtt_enabled = get_prop_by_keys(config, "mqtt", "enabled", default=False)
@@ -144,6 +190,10 @@ def validate_config(config: dict) -> ServerConfig:
         regen_lead_seconds=regen_lead_seconds,
         image_width=image_width,
         image_height=image_height,
+        image_inner_width=image_inner_width,
+        image_inner_height=image_inner_height,
+        image_inner_align_x=image_inner_align_x,
+        image_inner_align_y=image_inner_align_y,
         weather_service=weather_service,
         weather_apikey=weather_apikey,
         weather_metric=weather_metric,
@@ -233,10 +283,38 @@ def main():
         log.error(f"not a supported weather service: {cfg.weather_service}")
         sys.exit(1)
 
-    today_page = TodayPage(cfg.image_width, cfg.image_height)
-    hourly_page = HourlyPage(cfg.image_width, cfg.image_height)
-    daily_page = DailyPage(cfg.image_width, cfg.image_height)
-    tomorrow_page = TomorrowPage(cfg.image_width, cfg.image_height)
+    today_page = TodayPage(
+        cfg.image_width,
+        cfg.image_height,
+        cfg.image_inner_width,
+        cfg.image_inner_height,
+        cfg.image_inner_align_x,
+        cfg.image_inner_align_y,
+    )
+    hourly_page = HourlyPage(
+        cfg.image_width,
+        cfg.image_height,
+        cfg.image_inner_width,
+        cfg.image_inner_height,
+        cfg.image_inner_align_x,
+        cfg.image_inner_align_y,
+    )
+    daily_page = DailyPage(
+        cfg.image_width,
+        cfg.image_height,
+        cfg.image_inner_width,
+        cfg.image_inner_height,
+        cfg.image_inner_align_x,
+        cfg.image_inner_align_y,
+    )
+    tomorrow_page = TomorrowPage(
+        cfg.image_width,
+        cfg.image_height,
+        cfg.image_inner_width,
+        cfg.image_inner_height,
+        cfg.image_inner_align_x,
+        cfg.image_inner_align_y,
+    )
 
     def regenerate(image_name=None, force_refresh=False):
         """Regenerate one or more page images.

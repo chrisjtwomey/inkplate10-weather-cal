@@ -14,6 +14,7 @@
   --color-dark:  #555;  /* Level 1 – dark gray                  */
   --color-light: #aaa;  /* Level 2 – light gray                 */
   --color-paper: #fff;  /* Level 3 – white                      */
+  --map-height: clamp(40%, 55%, 55%);
 }
 
 .text-uppercase {
@@ -36,6 +37,35 @@ body {
   background-color: var(--color-paper);
 }
 
+.inner-canvas-outer {
+  width: var(--outer-width, 825px);
+  height: var(--outer-height, 1200px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--color-paper);
+}
+
+.inner-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding-top: var(--inner-pad-top, 0px);
+  padding-right: var(--inner-pad-right, 0px);
+  padding-bottom: var(--inner-pad-bottom, 0px);
+  padding-left: var(--inner-pad-left, 0px);
+  background-color: var(--color-paper);
+}
+
+.inner-canvas-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 .bg-container {
   width: 100%;
   padding: 0 !important;
@@ -52,8 +82,8 @@ body {
 #map-container {
   position: relative;
   overflow: hidden;
-  height: calc(20vh + 400px);
-  z-index: -1;
+  height: var(--map-height);
+  z-index: 0;
 }
 
 #map {

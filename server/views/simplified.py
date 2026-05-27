@@ -3,8 +3,24 @@ from .page import Page
 
 
 class SimplifiedPage(Page):
-    def __init__(self, width, height):
-        super().__init__("simplified", width, height)
+    def __init__(
+        self,
+        width,
+        height,
+        inner_width=None,
+        inner_height=None,
+        inner_align_x="center",
+        inner_align_y="center",
+    ):
+        super().__init__(
+            "simplified",
+            width,
+            height,
+            inner_width,
+            inner_height,
+            inner_align_x,
+            inner_align_y,
+        )
 
     def _css_links(self, a):
         a.link(rel="stylesheet", href="styles.css")
@@ -47,31 +63,34 @@ class SimplifiedPage(Page):
                 self._css_links(a)
                 self._script_tags(a)
 
-            with a.body():
-                # ── Map ──────────────────────────────────────────────────
-                with a.div(id="day-map-wrapper"):
-                    a.img(src=forecast["icon"], id="day-icon-bg")
-                    with a.div(id="map-container"):
-                        a.img(src=map_url, id="map")
+            with a.body(style=self.layout_css_variables()):
+                with a.div(klass="inner-canvas-outer"):
+                    with a.div(klass="inner-canvas"):
+                        with a.div(klass="inner-canvas-content"):
+                            # ── Map ──────────────────────────────────────────────────
+                            with a.div(id="day-map-wrapper"):
+                                a.img(src=forecast["icon"], id="day-icon-bg")
+                                with a.div(id="map-container"):
+                                    a.img(src=map_url, id="map")
 
-                # ── Content section ───────────────────────────────────────
-                with a.div(id="day-body", klass="bg-container"):
+                            # ── Content section ───────────────────────────────────────
+                            with a.div(id="day-body", klass="bg-container"):
 
-                    # ── Hero: icon → date → temperature → phrase ──
-                    with a.div(id="day-hero"):
-                        a.img(src=forecast["icon"], id="day-icon")
-                        a.p(id="day-date", _t=date_str)
-                        with a.p(id="day-temp-main"):
-                            if temp_min is not None:
-                                a.span(id="day-temp-lo", _t=f"{temp_min}°")
-                            a.span(id="day-temp-hi", _t=f"{temp_max}{temp_unit}")
-                        if feels_like is not None:
-                            a.p(id="day-feels-like", _t=f"Feels like {feels_like}\u00b0")
-                        if day_phrase:
-                            a.p(id="day-phrase", _t=day_phrase)
-                        with a.p(id="day-rain-prob"):
-                            a.img(src="icon/raindrops.png", klass="day-rain-prob-icon")
-                            a.span(_t=f"{rain_prob}% rain")
+                                # ── Hero: icon → date → temperature → phrase ──
+                                with a.div(id="day-hero"):
+                                    a.img(src=forecast["icon"], id="day-icon")
+                                    a.p(id="day-date", _t=date_str)
+                                    with a.p(id="day-temp-main"):
+                                        if temp_min is not None:
+                                            a.span(id="day-temp-lo", _t=f"{temp_min}°")
+                                        a.span(id="day-temp-hi", _t=f"{temp_max}{temp_unit}")
+                                    if feels_like is not None:
+                                        a.p(id="day-feels-like", _t=f"Feels like {feels_like}\u00b0")
+                                    if day_phrase:
+                                        a.p(id="day-phrase", _t=day_phrase)
+                                    with a.p(id="day-rain-prob"):
+                                        a.img(src="icon/raindrops.png", klass="day-rain-prob-icon")
+                                        a.span(_t=f"{rain_prob}% rain")
 
 
 

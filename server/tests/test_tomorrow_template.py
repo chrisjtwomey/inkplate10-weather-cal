@@ -53,6 +53,17 @@ def test_html_is_well_formed(rendered_html):
     assert soup.body is not None
 
 
+def test_inner_canvas_wrapper_and_layout_variables_present(rendered_html):
+    soup = BeautifulSoup(rendered_html, "html.parser")
+    outer = soup.find("div", class_="inner-canvas-outer")
+    inner = soup.find("div", class_="inner-canvas")
+    assert outer is not None
+    assert inner is not None
+    assert inner.find(id="day-map-wrapper") is not None
+    assert "--outer-width:825px" in soup.body.get("style", "")
+    assert "--outer-height:1200px" in soup.body.get("style", "")
+
+
 def test_top_banner_shows_tomorrow_date(rendered_html):
     """Date is rendered inside the hero section in tomorrow-body."""
     soup = BeautifulSoup(rendered_html, "html.parser")

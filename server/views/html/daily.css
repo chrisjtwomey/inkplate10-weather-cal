@@ -5,22 +5,26 @@
 /* ── Daily table container ──────────────────────────────────── */
 #daily-body {
   padding-top: 0.5vh;
+  height: calc(100% - var(--map-height));
+  box-sizing: border-box;
 }
 
 #daily-table {
   width: 90%;
+  height: 100%;
   border-collapse: collapse;
   table-layout: fixed;
   margin: 0 auto;
 }
 
 .day-row {
+  height: calc(100% / var(--daily-row-count, 5));
   border-bottom: 1px solid var(--color-light);
 }
 
 .day-row td {
   vertical-align: middle;
-  padding: 0.6vh 0.4vw;
+  padding: 0.3vh 0.4vw;
   position: relative;
 }
 

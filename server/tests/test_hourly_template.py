@@ -44,6 +44,17 @@ def test_html_is_well_formed(rendered_html):
     assert soup.body is not None
 
 
+def test_inner_canvas_wrapper_and_layout_variables_present(rendered_html):
+    soup = BeautifulSoup(rendered_html, "html.parser")
+    outer = soup.find("div", class_="inner-canvas-outer")
+    inner = soup.find("div", class_="inner-canvas")
+    assert outer is not None
+    assert inner is not None
+    assert inner.find(id="top-banner") is not None
+    assert "--outer-width:825px" in soup.body.get("style", "")
+    assert "--outer-height:1200px" in soup.body.get("style", "")
+
+
 def test_top_banner_has_date_month_temp_icon(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
     banner = soup.find(id="top-banner")

@@ -53,6 +53,10 @@ Then edit `config.yaml` with your API keys, location, and schedule.
 | `location` | string | `Dublin` | Location query used for weather and map generation. |
 | `image.width` | integer | `825` | Output image width in pixels. Do not modify unless not using an Inkplate10. |
 | `image.height` | integer | `1200` | Output image height in pixels. Do not modify unless not using an Inkplate10. |
+| `image.innerWidth` | integer | `image.width` | Inner HTML/CSS layout width in pixels. Page content is constrained inside this centered container. Must be `<= image.width`. |
+| `image.innerHeight` | integer | `image.height` | Inner HTML/CSS layout height in pixels. Overflow is clipped at this boundary. Must be `<= image.height`. |
+| `image.innerAlignX` | string enum | `center` | Horizontal alignment for inner bounds inside the output canvas (`left`, `center`, `right`). |
+| `image.innerAlignY` | string enum | `center` | Vertical alignment for inner bounds inside the output canvas (`top`, `center`, `bottom`). |
 | `mqtt.enabled` | boolean | `false` | Enables MQTT subscription so the server can listen for client logs. |
 | `mqtt.host` | string | `localhost` | MQTT broker host. |
 | `mqtt.port` | integer | `1883` | MQTT broker port. |
@@ -165,6 +169,57 @@ All daylight-saving / timezone math happens server-side. If the client is
 unreachable when a refresh fires, it'll still wake on its next scheduled
 attempt using the last seconds value it received (or the firmware's built-in
 fallback on cold boot).
+
+## Adjusting the inner frame
+
+Inner frame settings are useful whenever your usable display area is smaller than the full 825x1200 Inkplate10 panel, or when you intentionally want a "safe" content zone inside the panel.
+
+Common use cases:
+
+- Picture frame + photo mat: the visible window is smaller than the physical e-paper panel.
+- Edge masking and mount tolerances: bezels, adhesive borders, or slight physical misalignment can hide a few pixels near one or more edges.
+
+The inner frame settings let you render content only inside that safe area while still generating a full-size image for the panel.
+
+How it works:
+
+- The output image is still generated at `image.width` x `image.height`.
+- Layout content is constrained to an inner HTML/CSS frame defined by `image.innerWidth` and `image.innerHeight`.
+- Anything outside the inner frame is clipped.
+- `image.innerAlignX` and `image.innerAlignY` control where the inner frame sits inside the full panel.
+
+This means you can tune the forecast layout to fit exactly inside your photo mat window without changing hardware resolution.
+
+Example: centered inner frame smaller than the panel
+
+```yaml
+image:
+  width: 825
+  height: 1200
+  innerWidth: 760
+  innerHeight: 1060
+  innerAlignX: center
+  innerAlignY: center
+```
+
+Example: top-aligned frame (useful when the mat crops mostly at the bottom)
+
+```yaml
+image:
+  width: 825
+  height: 1200
+  innerWidth: 760
+  innerHeight: 1060
+  innerAlignX: center
+  innerAlignY: top
+```
+
+Tips:
+
+- Start by measuring the visible mat opening in pixels relative to your rendered image.
+- Keep `innerWidth <= width` and `innerHeight <= height`.
+- Keep reducing inner bounds until no critical content is hidden by the mat.
+- Use `python3 server.py --once` to iterate quickly while tuning values.
 
 ## MQTT
 

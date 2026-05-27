@@ -4,8 +4,24 @@ from .page import Page
 
 
 class DetailedPage(Page):
-    def __init__(self, width, height):
-        super().__init__("detailed", width, height)
+    def __init__(
+        self,
+        width,
+        height,
+        inner_width=None,
+        inner_height=None,
+        inner_align_x="center",
+        inner_align_y="center",
+    ):
+        super().__init__(
+            "detailed",
+            width,
+            height,
+            inner_width,
+            inner_height,
+            inner_align_x,
+            inner_align_y,
+        )
 
     def _title(self) -> str:
         return "Detailed"
@@ -43,35 +59,38 @@ class DetailedPage(Page):
                 self._css_links(a)
                 self._script_tags(a)
 
-            with a.body():
-                with a.div(klass="bg-container"):
-                    with a.div(id="top-banner", klass="container"):
-                        with a.div(id="date-banner"):
-                            a.h3(
-                                id="date",
-                                klass="numcircle text-center",
-                                _t=str(now_date.day),
-                            )
-                            a.h3(
-                                id="month",
-                                klass="month text-center text-uppercase",
-                                _t=now_date.strftime("%B"),
-                            )
+            with a.body(style=self.layout_css_variables()):
+                with a.div(klass="inner-canvas-outer"):
+                    with a.div(klass="inner-canvas"):
+                        with a.div(klass="inner-canvas-content"):
+                            with a.div(klass="bg-container"):
+                                with a.div(id="top-banner", klass="container"):
+                                    with a.div(id="date-banner"):
+                                        a.h3(
+                                            id="date",
+                                            klass="numcircle text-center",
+                                            _t=str(now_date.day),
+                                        )
+                                        a.h3(
+                                            id="month",
+                                            klass="month text-center text-uppercase",
+                                            _t=now_date.strftime("%B"),
+                                        )
 
-                        a.h4(
-                            id="temp",
-                            klass="numcircle text-center",
-                            _t=str(
-                                daily_summary["temperature"].get("value")
-                                or daily_summary["temperature"]["max"]
-                            )
-                            + daily_summary["temperature"]["unit"],
-                        )
+                                    a.h4(
+                                        id="temp",
+                                        klass="numcircle text-center",
+                                        _t=str(
+                                            daily_summary["temperature"].get("value")
+                                            or daily_summary["temperature"]["max"]
+                                        )
+                                        + daily_summary["temperature"]["unit"],
+                                    )
 
-                        with a.div(id="icon-container", klass="numcircle"):
-                            a.img(src=daily_summary["icon"])
+                                    with a.div(id="icon-container", klass="numcircle"):
+                                        a.img(src=daily_summary["icon"])
 
-                with a.div(id="map-container"):
-                    a.img(src=map_url, id="map")
+                            with a.div(id="map-container"):
+                                a.img(src=map_url, id="map")
 
-                self._render_body(a, **kwargs)
+                            self._render_body(a, **kwargs)

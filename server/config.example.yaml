@@ -32,8 +32,22 @@ google:
   staticmaps_mapid: XXXX
 location: Dublin
 image:
+  # Final generated PNG width (pixels).
   width: 825
+  # Final generated PNG height (pixels).
   height: 1200
+  # Inner layout bounds width (pixels). Page HTML is constrained to this box.
+  # Must be <= width.
+  innerWidth: 825
+  # Inner layout bounds height (pixels). Content outside this box is clipped.
+  # Must be <= height.
+  innerHeight: 1200
+  # Horizontal alignment for the inner bounds within the full canvas.
+  # Allowed: left, center, right.
+  innerAlignX: center
+  # Vertical alignment for the inner bounds within the full canvas.
+  # Allowed: top, center, bottom.
+  innerAlignY: center
 mqtt:
   enabled: false
   host: localhost

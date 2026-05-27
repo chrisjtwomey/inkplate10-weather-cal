@@ -3,8 +3,23 @@ from .simplified import SimplifiedPage
 
 
 class TodayPage(SimplifiedPage):
-    def __init__(self, width, height):
-        super().__init__(width, height)
+    def __init__(
+        self,
+        width,
+        height,
+        inner_width=None,
+        inner_height=None,
+        inner_align_x="center",
+        inner_align_y="center",
+    ):
+        super().__init__(
+            width,
+            height,
+            inner_width,
+            inner_height,
+            inner_align_x,
+            inner_align_y,
+        )
         self.name = "today"
 
     def _css_links(self, a):

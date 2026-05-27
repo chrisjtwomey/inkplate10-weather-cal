@@ -8,8 +8,19 @@ class HourlyPage(DetailedPage):
         self,
         width,
         height,
+        inner_width=None,
+        inner_height=None,
+        inner_align_x="center",
+        inner_align_y="center",
     ):
-        super().__init__(width, height)
+        super().__init__(
+            width,
+            height,
+            inner_width,
+            inner_height,
+            inner_align_x,
+            inner_align_y,
+        )
         self.name = "hourly"
 
     def _title(self) -> str:
@@ -55,9 +66,8 @@ class HourlyPage(DetailedPage):
         wind_unit_raw = hourly_forecasts[0]["wind"]["unit"]
         wind_unit_display = "kph" if wind_unit_raw == "kmh" else "mph"
 
-        with a.div(klass="bg-container"):
-            with a.div(id="bottom-banner", klass="container"):
-                with a.table(id="forecast-table"):
+        with a.div(id="bottom-banner", klass="container"):
+            with a.table(id="forecast-table", style="--hourly-row-count:5;"):
                     # Icon row
                     with a.tr():
                         with a.td(klass="legend-cell"):
@@ -125,7 +135,7 @@ class HourlyPage(DetailedPage):
 
                     # Precipitation bar row — hide repeated adjacent labels, and only on even columns
                     prev_precip = None
-                    with a.tr():
+                    with a.tr(klass="precip-row"):
                         with a.td(klass="legend-cell"):
                             a.img(src="icon/raindrops.png", klass="legend-icon")
                             a.canvas(klass="legend-divider")
@@ -147,8 +157,9 @@ class HourlyPage(DetailedPage):
                     var bars = document.querySelectorAll('.precip-canvas');
                     bars.forEach(function(canvas) {
                         var pct  = parseInt(canvas.getAttribute('data_precip'), 10);
-                        var w    = canvas.parentElement.offsetWidth || 80;
-                        var h    = 120;
+                        var rect = canvas.getBoundingClientRect();
+                        var w    = Math.max(1, Math.round(rect.width || canvas.parentElement.offsetWidth || 80));
+                        var h    = Math.max(40, Math.round(rect.height || canvas.parentElement.offsetHeight || 120));
                         canvas.width  = w;
                         canvas.height = h;
 
@@ -168,8 +179,8 @@ class HourlyPage(DetailedPage):
                         });
 
                         var ctx      = canvas.getContext('2d');
-                        // Fixed font size for all labels
-                        var fontSize = 24;
+                        // Scale label font with the available row height.
+                        var fontSize = Math.max(12, Math.round(h * 0.1));
                         ctx.font      = 'bold ' + fontSize + 'px Merienda-Regular, sans-serif';
                         ctx.textAlign = 'center';
 

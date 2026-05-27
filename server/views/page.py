@@ -16,10 +16,18 @@ class Page:
         name,
         width,
         height,
+        inner_width=None,
+        inner_height=None,
+        inner_align_x="center",
+        inner_align_y="center",
     ):
         self.name = name
         self.image_width = width
         self.image_height = height
+        self.image_inner_width = inner_width if inner_width is not None else width
+        self.image_inner_height = inner_height if inner_height is not None else height
+        self.image_inner_align_x = inner_align_x
+        self.image_inner_align_y = inner_align_y
         self.log = logging.getLogger(self.name)
 
         self.airium = Airium()     
@@ -101,3 +109,38 @@ class Page:
         )
 
         return driver
+
+    def layout_css_variables(self) -> str:
+        slack_x = max(self.image_width - self.image_inner_width, 0)
+        slack_y = max(self.image_height - self.image_inner_height, 0)
+        inner_vw = self.image_inner_width / 100.0
+        inner_vh = self.image_inner_height / 100.0
+
+        if self.image_inner_align_x == "left":
+            pad_left, pad_right = 0, slack_x
+        elif self.image_inner_align_x == "right":
+            pad_left, pad_right = slack_x, 0
+        else:
+            pad_left = slack_x / 2
+            pad_right = slack_x - pad_left
+
+        if self.image_inner_align_y == "top":
+            pad_top, pad_bottom = 0, slack_y
+        elif self.image_inner_align_y == "bottom":
+            pad_top, pad_bottom = slack_y, 0
+        else:
+            pad_top = slack_y / 2
+            pad_bottom = slack_y - pad_top
+
+        return (
+            f"--outer-width:{self.image_width}px;"
+            f"--outer-height:{self.image_height}px;"
+            f"--inner-width:{self.image_inner_width}px;"
+            f"--inner-height:{self.image_inner_height}px;"
+            f"--inner-vw:{inner_vw}px;"
+            f"--inner-vh:{inner_vh}px;"
+            f"--inner-pad-left:{pad_left}px;"
+            f"--inner-pad-right:{pad_right}px;"
+            f"--inner-pad-top:{pad_top}px;"
+            f"--inner-pad-bottom:{pad_bottom}px;"
+        )

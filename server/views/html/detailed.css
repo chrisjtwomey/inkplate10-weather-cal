@@ -16,20 +16,20 @@
 }
 /* ── NumCircle (date / temp / icon) ──────────────────────────── */
 h3.numcircle {
-  font-size: 18vw;
+  font-size: calc(var(--inner-vw) * 18);
   font-weight: 700;
-  line-height: 24vw;
-  width: 24vw;
-  border-radius: 12vw;
+  line-height: calc(var(--inner-vw) * 24);
+  width: calc(var(--inner-vw) * 24);
+  border-radius: calc(var(--inner-vw) * 12);
 }
 
 h4.numcircle, #icon-container.numcircle {
-  font-size: 5vw;
+  font-size: calc(var(--inner-vw) * 5);
   font-weight: 600;
-  line-height: 10vh;
-  height: 10vh;
-  width: 14vw;
-  border-radius: 7vw;
+  line-height: calc(var(--inner-vw) * 14.5455);
+  height: calc(var(--inner-vw) * 14.5455);
+  width: calc(var(--inner-vw) * 14);
+  border-radius: calc(var(--inner-vw) * 7);
 }
 
 #icon-container.numcircle img {
@@ -55,7 +55,7 @@ h4.numcircle, #icon-container.numcircle {
 
 #date-banner {
   position: absolute;
-  top: 2vw;
+  top: calc(var(--inner-vh) * 1.375);
   z-index: 1;
   display: inline-flex;
   align-items: center;
@@ -66,41 +66,46 @@ h4.numcircle, #icon-container.numcircle {
 
 #date-banner #date {
   box-shadow:
-    0 0 0 1.5vw var(--color-paper),
-    0 0 4vw 1.5vw color-mix(in srgb, var(--color-paper) 40%, transparent);
+    0 0 0 calc(var(--inner-vw) * 1.5) var(--color-paper),
+    0 0 calc(var(--inner-vw) * 4) calc(var(--inner-vw) * 1.5)
+      color-mix(in srgb, var(--color-paper) 40%, transparent);
   position: relative;
   z-index: 2;
 }
 
 #date-banner #month {
   background: var(--color-paper);
-  border-top-right-radius: 6vw;
-  border-bottom-right-radius: 6vw;
-  padding: 3vw 4vw 3vw 5vw;
+  border-top-right-radius: calc(var(--inner-vw) * 6);
+  border-bottom-right-radius: calc(var(--inner-vw) * 6);
+  padding: calc(var(--inner-vw) * 3) calc(var(--inner-vw) * 4)
+    calc(var(--inner-vw) * 3) calc(var(--inner-vw) * 5);
   line-height: 1.2;
-  font-size: 10vw;
+  font-size: calc(var(--inner-vw) * 10);
   margin: 0;
-  margin-left: -5vw;
-  box-shadow: 0 0 4vw 2vw color-mix(in srgb, var(--color-paper) 40%, transparent);
+  margin-left: calc(var(--inner-vw) * -5);
+  box-shadow: 0 0 calc(var(--inner-vw) * 4) calc(var(--inner-vw) * 2)
+    color-mix(in srgb, var(--color-paper) 40%, transparent);
 }
 
 #top-banner #temp {
   position: absolute;
-  top: 22vh;
-  left: 5vw;
+  top: calc(var(--inner-vh) * 22);
+  left: calc(var(--inner-vw) * 5);
   box-shadow:
-    0 0 0 1vw var(--color-paper),
-    0 0 4vw 1vw color-mix(in srgb, var(--color-paper) 40%, transparent);
+    0 0 0 calc(var(--inner-vw) * 1) var(--color-paper),
+    0 0 calc(var(--inner-vw) * 4) calc(var(--inner-vw) * 1)
+      color-mix(in srgb, var(--color-paper) 40%, transparent);
   z-index: 1;
 }
 
 #top-banner #icon-container {
   position: absolute;
-  top: 35.5vh;
-  left: 5vw;
+  top: calc(var(--inner-vh) * 35.5);
+  left: calc(var(--inner-vw) * 5);
   box-shadow:
-    0 0 0 1vw var(--color-paper),
-    0 0 4vw 1vw color-mix(in srgb, var(--color-paper) 40%, transparent);
+    0 0 0 calc(var(--inner-vw) * 1) var(--color-paper),
+    0 0 calc(var(--inner-vw) * 4) calc(var(--inner-vw) * 1)
+      color-mix(in srgb, var(--color-paper) 40%, transparent);
   z-index: 1;
 }
 
