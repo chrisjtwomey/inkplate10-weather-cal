@@ -21,11 +21,20 @@ Display weather forecasts and a stylised map of your city on an Inkplate 10 that
 </table>
 
 - [Getting Started](#getting-started)
+- [Documentation](#documentation)
 - [Background](#background)
 - [How it Works](#how-it-works)
 - [Bill of Materials](#bill-of-materials)
+- [Client Configuration](#client-configuration)
 - [Firmware](#firmware)
 - [License](#license)
+
+## Documentation
+
+- Server guide: [server/README.md](server/README.md)
+- Weather provider API setup: [doc/weather-apis.md](doc/weather-apis.md)
+- Google Static Maps setup: [doc/google-static-maps.md](doc/google-static-maps.md)
+- Contributor guide: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 
 ## Getting Started
@@ -135,7 +144,7 @@ Both a server and client are required. The main workload is in the server which 
 ### Client (Inkplate 10)
 1. Wakes from deep sleep and attempts to connect to WiFi.
 2. Attempts to get current network time and update real-time clock.
-3. (Optional) Attempts to connect to a MQTT topic to publish logs. This allows you to see what the ESP32 is doing without needing to monitor the serial connection.
+3. (Optional) Attempts to connect to an [MQTT](server/README.md#mqtt) topic to publish logs. This allows you to see what the ESP32 is doing without needing to monitor the serial connection.
 4. Downloads the PNG image the server is hosting.
 5. (Optional, SD card only) Writes the downloaded PNG image to SD card.
 6. Reads the PNG image and writes it to the e-ink display.
@@ -175,7 +184,7 @@ See [server/README.md](server/README.md) for full server documentation.
 
 - **3000mAh LiPo battery pack ~€10**
 
-  Any Lithium-Ion/Polymer battery with a JST connector. Some Inkplate 10s are sold with a 3000mAh battery (~6 months of life). See [doc/power-consumption.md](doc/power-consumption.md) for real-world numbers.
+  Any Lithium-Ion/Polymer battery with a JST connector. Some Inkplate 10s are sold with a 3000mAh battery (~1-2+ years of life). See [doc/power-consumption.md](doc/power-consumption.md) for real-world numbers.
 
 - **CR2032 3V coin cell ~€1**
 
@@ -189,6 +198,56 @@ See [server/README.md](server/README.md) for full server documentation.
 
   The mount needs to fit an 8"x10" frame but expose only the e-ink area (~5.5"x7.5").
 
+## Client Configuration
+
+The client (Inkplate 10) configuration can be loaded from `config.yaml` on the SD card root when firmware provided in the [latest release](https://github.com/chrisjtwomey/inkplate10-weather-cal/release/latest). Use [doc/config.yaml](doc/config.yaml) as the starting template.
+
+There is on-firmware defaults in `src/defaults.cpp`. These are are compiled into the binary. Any missing keys from `config.yaml` will fall back to the firmware defaults.
+
+If you are not using an SD Card to configure the client, see [Choose your configuration mode](./CONTRIBUTING.md#choose-your-configuration-mode) for how to build firmware to only use `defaults.cpp`.
+
+### Parameters
+
+| Key | Type | Default (firmware) | What it does |
+|---|---|---|---|
+| `server.url` | string | `http://YOUR_SERVER_HOST:8080/calendar.png` | Initial image URL to fetch (`/today.png`, `/tomorrow.png`, `/hourly.png`, `/daily.png`). |
+| `server.retries` | integer | `3` | Number of retry attempts for image download and draw operations. |
+| `server.default_refresh_seconds` | integer | `3600` | Fallback sleep interval in seconds when the server has not provided `X-Next-Refresh-Seconds`. |
+| `wifi.ssid` | string | `XXXX` | WiFi SSID used by the client. |
+| `wifi.pass` | string | `XXXX` | WiFi password used by the client. |
+| `wifi.retries` | integer | `10` | Number of WiFi connection attempts before timeout. |
+| `ntp.host` | string | `pool.ntp.org` | NTP server host for RTC synchronization. |
+| `ntp.timezone` | string (IANA timezone) | `Europe/Dublin` | Local timezone used for client-side timestamps/logging. |
+| `mqtt_logger.enabled` | boolean | `false` | Enables client [MQTT](server/README.md#mqtt) logging. |
+| `mqtt_logger.broker` | string | `localhost` | MQTT broker host for client log publishing. |
+| `mqtt_logger.port` | integer | `1883` | MQTT broker port. |
+| `mqtt_logger.clientId` | string | `inkplate10-weather-client` | MQTT client ID used by the device. |
+| `mqtt_logger.topic` | string | `mqtt/eink-cal-client` | MQTT topic used for client log publishing. |
+| `mqtt_logger.retries` | integer | `3` | Number of MQTT connection retries before timeout. |
+
+### Example
+
+```yaml
+server:
+  url: http://YOUR_SERVER_HOST:8080/today.png
+  retries: 3
+wifi:
+  ssid: YOUR_WIFI
+  pass: YOUR_WIFI_PASSWORD
+  retries: 6
+ntp:
+  host: pool.ntp.org
+  timezone: Europe/Dublin
+mqtt_logger:
+  enabled: false
+  broker: localhost
+  port: 1883
+  clientId: inkplate10-weather-calendar
+  topic: mqtt/inkplate10-weather-calendar
+  retries: 3
+```
+
+For a fully annotated example, see [doc/config.yaml](doc/config.yaml).
 
 
 ## License

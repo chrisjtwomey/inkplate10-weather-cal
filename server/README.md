@@ -2,136 +2,61 @@
 
 A service for the weather calendar client written in Python3, backed by [Airium](https://pypi.org/project/airium/) and [Chromedriver](https://chromedriver.chromium.org/downloads).
 
-New to this project? Start with the [main README](../README.md) for quick start and hardware/client setup.
-For local development workflows, see [CONTRIBUTING.md](../CONTRIBUTING.md).
-
-> **Note:** Screenshots below are from an older release. Current page designs differ.
-
-
-Example 1                  | Example 2                 | Example 3
-:-------------------------:|:-------------------------:|:-------------------------:
-<img src=https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/c37e6b65-a226-40d7-b1c7-cb3d72973054 width=300 /> | <img src=https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/71958bcb-839d-447a-b671-a4cb5fbca25e width=300 /> | <img src=https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/90608c9f-c16e-4d56-9edc-13b9d85ef659 width=300 />
-
-<img width="1044" alt="Screenshot 2023-05-17 at 01 07 53" src="https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/e02e672b-7ad0-431d-8a29-c2740857a4d7">
-
-
-
 - Uses [Accuweather](https://developer.accuweather.com/) or [OpenWeatherMap](https://openweathermap.org/api) APIs for weather data.
 - Uses Google's [StaticMaps API](https://developers.google.com/maps/documentation/maps-static/overview) to generate a static map of your area.
 - Uses [Airium](https://pypi.org/project/airium/) and [Chromedriver](https://chromedriver.chromium.org/downloads) to generate HTML and PNG files for image serving.
 - Uses [Flask](https://flask.palletsprojects.com/en/2.3.x/) to serve images.
 
-## Pages
+New to this project? Start with the [main README](../README.md) for quick start and hardware/client setup.
+For local development workflows, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-The server exposes four page endpoints, each suited to a different time of day:
+## Before you begin
 
-| Endpoint | Layout | Best used for |
-|---|---|---|
-| `today.png` | Simplified — today's icon, high/low, feels-like, rain probability, map | Morning |
-| `tomorrow.png` | Simplified — same layout for tomorrow's forecast | Evening |
-| `hourly.png` | Detailed — hourly table: icon, temp, wind direction/speed, precipitation bars | Daytime |
-| `daily.png` | Detailed — 5-day table: icon, temp range, wind, precipitation, sun hours | Afternoon / Evening |
+There are a few pre-requisite steps to follow to obtain to obtain your weather provider API key and your Google Static Maps ID:
 
-Configure which page the client fetches at each wake time via `display_schedule` in `config.yaml`.
- 
+- [Weather provider setup](../doc/weather-apis.md)
+- [Google Static Maps setup](../doc/google-static-maps.md)
 
-### Accuweather API
+## Configuration reference
 
-In order to obtain an API Key, you will need to:
-1. Sign up to [developer.accuweather.com](https://developer.accuweather.com/).
-2. Create an app in [https://developer.accuweather.com/user/me/apps](https://developer.accuweather.com/user/me/apps).
-3. Enter some details about the app's usage and purpose.
-4. Generate API key.
+Server behavior is controlled by `server/config.yaml`.
 
-Make sure you update the config `weather.apikey` with your generated api key and update `weather.service` to `accuweather`.
-
-> **Note:** AccuWeather API responses are cached server-side to minimise API calls between image regenerations.
-
-### OpenWeatherMap API
-
-In order to obtain an API Key, you will need to sign up to OpenWeatherMap and [generate an API key](https://home.openweathermap.org/api_keys).
-
-Make sure you update the config `weather.apikey` with your generated api key and update `weather.service` to `openweathermap`.
-
-### Google StaticMaps API
-
-<img src="https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/b3f2efd0-23c0-4b9f-81e6-5684fc470ecc" width="800" />
-
-In order to generate a static map of your area you will need to sign up to [Google's developer console](https://developers.google.com/):
-
-1. Create a new project.
-2. Go to Google Maps Platform → `Maps Static API` → `Enable`.
-3. Go to `Credentials` → `Create Credentials` → `API Key`
-4. After generating your API key, copy and update `google.apikey` in `config.yaml`
-5. (Optional) add restriction to API Key and limit only to the `Maps Static API` service.
-
-This will give us access to the Static Maps API service. In order to re-create the static map in the picture above, we first need to create a map style:
-
-1. In Google Maps Platform → `Map styles` → `Create style`
-2. In order to replicate the style used above, select `Import JSON` and paste the contents of [map-style.json](google/staticmaps/map-style.json) into the text field. This should replicate the map style I use.
-3. Click `Save` and assign a name to the map style.
-
-You can now use the map style to create a map ID that we can reference in our server:
-
-1. In Google Maps Platform → `Map management` → `Create Map ID`.
-2. Give the Map ID a name and make sure `map type` is set to `static`, then click `Save`.
-3. Update the `associated map style` to the name of the map style created in the steps earlier.
-4. Copy the `Map ID` and update the `google.staticmaps_id` field in `config.yaml`.
-
-### Local development and runtime behavior
-
-For full local development setup (Python dependencies, local config, Chrome/Selenium), see [CONTRIBUTING.md](../CONTRIBUTING.md#server-development-setup).
-
-From the `server` directory, run:
+Start by copying the example file:
 
 ```sh
-python3 server.py
+cp config.example.yaml config.yaml
 ```
 
-For development, render images once and exit without starting HTTP/scheduler:
+Then edit `config.yaml` with your API keys, location, and schedule.
 
-```sh
-python3 server.py --once
-```
+### Configuration model
 
-The generated images land at `server/views/today.png`, `server/views/hourly.png`, `server/views/daily.png`, and `server/views/tomorrow.png`.
+- The server reads `config.yaml` at startup.
+- Most scalar keys can be overridden by environment variables. See [section on this](#configuration-via-environment-variables) below.
+- `display_schedule` is a mapping and should be configured in YAML (not env vars).
+- If `display_schedule` is omitted, it defaults to a single wake: `09:00:00 -> today.png`.
 
-The server runs as a long-running process: it generates all images at startup,
-then regenerates each image shortly before its next scheduled client wake.
+### Parameters
 
-The schedule is configured via `display_schedule` — a mapping of
-`HH:MM:SS` wake times (in `server.timezone`) to the image the client should
-fetch at that wake. The server regenerates that image `server.regen_lead_seconds`
-seconds (default 120) before the wake so a fresh image is always ready.
-
-```yaml
-display_schedule:
-  "08:00:00": today.png     # today's simplified forecast — morning wake
-  "12:00:00": hourly.png   # hourly detail — midday wake
-  "16:00:00": daily.png    # 5-day summary — afternoon wake
-  "20:00:00": tomorrow.png # tomorrow's simplified forecast — evening wake
-```
-
-Send `SIGTERM` (Ctrl-C) for a clean shutdown.
-
-### Telling the client when to wake next
-
-Each response to any image endpoint (e.g. `GET /today.png`) includes an `X-Next-Refresh-Seconds`
-header: an integer number of seconds from now until the next scheduled
-refresh, computed from `server.refresh_times` in the configured timezone.
-The Inkplate client treats this as authoritative — it simply sets its RTC
-alarm to "wake `N` seconds from now" and doesn't need its own timezone
-awareness for scheduling.
-
-```sh
-$ curl -sI http://localhost:8080/today.png | grep -i x-next-refresh
-x-next-refresh-seconds: 17602
-```
-
-All daylight-saving / timezone math happens server-side. If the client is
-unreachable when a refresh fires, it'll still wake on its next scheduled
-attempt using the last seconds value it received (or the firmware's built-in
-fallback on cold boot).
+| Key | Type | Default | What it does |
+|---|---|---|---|
+| `server.port` | integer | `8080` | HTTP port to bind. |
+| `server.timezone` | string (IANA timezone) | `Europe/Dublin` in example | Timezone used to interpret `display_schedule`; handles DST transitions server-side. |
+| `server.regen_lead_seconds` | integer | `120` | Seconds before each scheduled wake when the server regenerates the target image. |
+| `display_schedule` | mapping `HH:MM:SS -> endpoint` | `{"09:00:00": "today.png"}` if omitted | Defines which image to serve at each client wake time. |
+| `weather.service` | string enum | `accuweather` | Weather provider (`accuweather`, `openweathermap`, or `mock`). |
+| `weather.apikey` | string | `XXXX` placeholder | Weather provider API key. |
+| `weather.num_hourly_forecasts` | integer | `9` | Number of hourly forecast points to include in the hourly day view. |
+| `weather.metric` | boolean | `true` | Unit system toggle for weather values. |
+| `google.apikey` | string | `XXXX` placeholder | Google API key used for Static Maps requests. |
+| `google.staticmaps_mapid` | string | `XXXX` placeholder | Google Static Maps Map ID. |
+| `location` | string | `Dublin` | Location query used for weather and map generation. |
+| `image.width` | integer | `825` | Output image width in pixels. Do not modify unless not using an Inkplate10. |
+| `image.height` | integer | `1200` | Output image height in pixels. Do not modify unless not using an Inkplate10. |
+| `mqtt.enabled` | boolean | `false` | Enables MQTT subscription so the server can listen for client logs. |
+| `mqtt.host` | string | `localhost` | MQTT broker host. |
+| `mqtt.port` | integer | `1883` | MQTT broker port. |
+| `mqtt.topic` | string | `mqtt/eink-cal-client` | MQTT topic the server subscribes to for client logs. |
 
 ### Configuration via environment variables
 
@@ -190,10 +115,137 @@ services:
       - ./config.yaml:/app/config.yaml:ro
 ```
 
-Copy `config.example.yaml` as a starting point:
+## How scheduling works
 
-```sh
-cp config.example.yaml config.yaml
-# edit config.yaml with your API keys, location, and schedule
+The server is typically a long-running process: it generates all images at startup,
+then regenerates each image shortly before its next scheduled client wake.
+
+The schedule for regenerating the images is configured via `display_schedule` — a mapping of
+`HH:MM:SS` wake times (in `server.timezone`) to the image the client should
+fetch at that wake. 
+
+The server regenerates that image `server.regen_lead_seconds`
+seconds (default 120) before the wake so a fresh image is always ready.
+
+```yaml
+display_schedule:
+  "08:00:00": today.png
+  "12:00:00": hourly.png
+  "16:00:00": daily.png
+  "20:00:00": tomorrow.png
 ```
 
+### Pages 
+The server exposes four page endpoints, each suited to a different time of day:
+
+| Endpoint | Layout | Best used for |
+|---|---|---|
+| `today.png` | Simplified — today's icon, high/low, feels-like, rain probability, map | Morning |
+| `tomorrow.png` | Simplified — same layout for tomorrow's forecast | Evening |
+| `hourly.png` | Detailed — hourly table: icon, temp, wind direction/speed, precipitation bars | Daytime |
+| `daily.png` | Detailed — 5-day table: icon, temp range, wind, precipitation, sun hours | Afternoon / Evening |
+
+Configure which page the client fetches at each wake time via `display_schedule` in `config.yaml`.
+
+### Telling the client when to wake next
+
+Each response to any image endpoint (e.g. `GET /today.png`) includes an `X-Next-Refresh-Seconds`
+header: an integer number of seconds from now until the next scheduled
+refresh, computed from `server.refresh_times` in the configured timezone.
+The Inkplate client treats this as authoritative — it simply sets its RTC
+alarm to "wake `N` seconds from now" and doesn't need its own timezone
+awareness for scheduling.
+
+```sh
+$ curl -sI http://localhost:8080/today.png | grep -i x-next-refresh
+x-next-refresh-seconds: 17602
+```
+
+All daylight-saving / timezone math happens server-side. If the client is
+unreachable when a refresh fires, it'll still wake on its next scheduled
+attempt using the last seconds value it received (or the firmware's built-in
+fallback on cold boot).
+
+## MQTT
+
+MQTT stands for Message Queuing Telemetry Transport. It is a lightweight publish/subscribe protocol that uses a broker to relay messages between devices and services.
+
+In this project, the Inkplate client publishes its logs to an MQTT topic and the server subscribes to that topic so the logs are collected alongside the server's own output. Without MQTT enabled, debugging client issues usually means connecting the device to a development machine and watching the serial console directly.
+
+An example of server logs with captured client logs from the MQTT topic:
+```
+2026-05-27 08:28:00 - simplified - INFO - Rendering today page for 2026-05-27
+2026-05-27 08:28:03 - simplified - INFO - Screenshot captured and saved to file.
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - NOTICE - ##### Inkplate10 Weather Calendar boot #78 #####
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - INFO - battery voltage: 4.21v
+2026-05-27 08:30:11 - werkzeug - INFO - 192.168.1.181 - - [27/May/2026 08:30:11] "GET /today.png HTTP/1.1" 200 -
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - INFO - approx battery capacity: 98%
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - INFO - connecting to WiFi SSID VM6088281...
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - configuring network time and RTC...
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - configuring remote MQTT logging...
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - connected to MQTT broker roci.local:1883
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - downloading file at URL http://roci.local:8081/today.png
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header X-Next-Refresh-Seconds: 3588
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header X-Next-URL: http://roci.local:8081/hourly.png
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - next refresh in 3588 seconds
+```
+
+### How this project uses MQTT
+
+- The client publishes logs using the `mqtt_logger.*` settings in the client `config.yaml`.
+- The server subscribes using the `mqtt.*` settings in the server `config.yaml`.
+- Both sides must point at the same broker and use the same topic.
+- The default topic in this repository is `mqtt/eink-cal-client`.
+
+### Deploying a broker
+
+The simplest way to get started is to run [eclipse-mosquitto](https://hub.docker.com/_/eclipse-mosquitto) as a local broker.
+
+For a development setup, create a small `mosquitto.conf` like this:
+
+```conf
+listener 1883
+allow_anonymous true
+persistence true
+persistence_location /mosquitto/data/
+log_dest stdout
+```
+
+Then deploy it with Docker Compose:
+
+```yaml
+services:
+  mqtt-broker:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
+```
+
+If you are running the server and client in Docker or on different machines, make sure both point to the broker hostname or IP address and that port `1883` is reachable.
+
+## Local development and runtime behavior
+
+For full local development setup (Python dependencies, local config, Chrome/Selenium), see [CONTRIBUTING.md](../CONTRIBUTING.md#server-development-setup).
+
+From the `server` directory, run:
+
+```sh
+python3 server.py
+```
+
+For development, render images once and exit without starting HTTP/scheduler:
+
+```sh
+python3 server.py --once
+```
+
+Send `SIGTERM` (Ctrl-C) for a clean shutdown.
