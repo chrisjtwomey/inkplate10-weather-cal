@@ -18,7 +18,7 @@ display_schedule:
   "08:00:00": today.png
   "10:00:00": hourly.png
   "12:00:00": daily.png
-  "14:00:00": hourly.png
+  "14:00:00": current.png
   "16:00:00": daily.png
   "18:00:00": hourly.png
   "20:00:00": tomorrow.png

@@ -18,6 +18,7 @@ def client(tmp_path, monkeypatch):
     views = tmp_path / "views"
     views.mkdir()
     (views / "today.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    (views / "current.png").write_bytes(b"\x89PNG\r\n\x1a\n")
     (views / "daily.png").write_bytes(b"\x89PNG\r\n\x1a\n")
     monkeypatch.setattr(server, "cwd", str(tmp_path))
 
@@ -28,6 +29,12 @@ def client(tmp_path, monkeypatch):
 
 def test_today_png_x_next_url_present(client):
     rsp = client.get("/today.png")
+    assert rsp.status_code == 200
+    assert rsp.headers["X-Next-URL"].startswith("http://localhost/")
+
+
+def test_current_png_x_next_url_present(client):
+    rsp = client.get("/current.png")
     assert rsp.status_code == 200
     assert rsp.headers["X-Next-URL"].startswith("http://localhost/")
 

@@ -17,6 +17,7 @@ from paho.mqtt.enums import CallbackAPIVersion
 from utils import get_prop, get_prop_by_keys
 from views.hourly import HourlyPage
 from views.today import TodayPage
+from views.current import CurrentPage
 from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
 from google.api import GoogleAPIService
@@ -291,6 +292,14 @@ def main():
         cfg.image_inner_align_x,
         cfg.image_inner_align_y,
     )
+    current_page = CurrentPage(
+        cfg.image_width,
+        cfg.image_height,
+        cfg.image_inner_width,
+        cfg.image_inner_height,
+        cfg.image_inner_align_x,
+        cfg.image_inner_align_y,
+    )
     hourly_page = HourlyPage(
         cfg.image_width,
         cfg.image_height,
@@ -319,11 +328,12 @@ def main():
     def regenerate(image_name=None, force_refresh=False):
         """Regenerate one or more page images.
 
-        image_name:    'today.png', 'hourly.png', 'daily.png', 'tomorrow.png',
+        image_name:    'today.png', 'current.png', 'hourly.png', 'daily.png', 'tomorrow.png',
                        or None to regenerate all.
         force_refresh: if True, bypass any cached weather data before fetching.
         """
         regen_today    = image_name is None or image_name == "today.png"
+        regen_current  = image_name is None or image_name == "current.png"
         regen_hourly   = image_name is None or image_name == "hourly.png"
         regen_daily    = image_name is None or image_name == "daily.png"
         regen_tomorrow = image_name is None or image_name == "tomorrow.png"
@@ -333,16 +343,24 @@ def main():
             if force_refresh:
                 weather_svc.invalidate_forecast_cache()
             daily_summary = None
-            if regen_today or regen_hourly or regen_daily or regen_tomorrow:
+            if regen_today or regen_current or regen_hourly or regen_daily or regen_tomorrow:
                 daily_summary = weather_svc.get_daily_summary()
-            if regen_today:
+            if regen_today or regen_current:
                 current_conditions = weather_svc.get_current_conditions()
+            if regen_today:
                 today_page.template(
                     map_url=map_url,
                     current_conditions=current_conditions,
                     daily_summary=daily_summary,
                 )
                 today_page.save()
+            if regen_current:
+                current_page.template(
+                    map_url=map_url,
+                    current_conditions=current_conditions,
+                    daily_summary=daily_summary,
+                )
+                current_page.save()
             if regen_hourly:
                 hourly_forecasts = weather_svc.get_hourly_forecast()
                 hourly_page.template(
@@ -555,6 +573,12 @@ class ServerThread(threading.Thread):
 def serve_today_png():
     """Returns the today (simplified forecast) image."""
     return _serve_png(os.path.join(cwd, "views/today.png"))
+
+
+@app.route("/current.png")
+def serve_current_png():
+    """Returns the current (simplified forecast) image."""
+    return _serve_png(os.path.join(cwd, "views/current.png"))
 
 @app.route("/tomorrow.png")
 def serve_tomorrow_png():
