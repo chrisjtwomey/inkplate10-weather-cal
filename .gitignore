@@ -1,6 +1,9 @@
 # AccuWeather response cache
 server/weather/accuweather/.cache.json
 
+# Google static map cache metadata (contains API-key-bearing URLs)
+server/google/.cache.json
+
 # Byte-compiled / optimized / DLL files
 **/*__pycache__/
 *.py[cod]

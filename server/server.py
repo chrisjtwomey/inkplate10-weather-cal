@@ -252,7 +252,7 @@ def main():
     log.info(f"regen_lead_seconds: {server_regen_lead_seconds}")
 
     gapi = GoogleAPIService(cfg.google_apikey)
-    map_url = gapi.get_static_map_url(cfg.staticmaps_mapid, cfg.location)
+    map_url = gapi.get_static_map_local_src(cfg.staticmaps_mapid, cfg.location)
 
     if cfg.weather_service == "mock":
         from weather.mock.mock import MockWeatherService

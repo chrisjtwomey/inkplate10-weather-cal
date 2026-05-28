@@ -1,4 +1,5 @@
 """URL construction and location resolution in google/api.py."""
+import os
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
@@ -53,6 +54,62 @@ def test_static_map_url_respects_custom_zoom():
     svc = GoogleAPIService.StaticMapService(FAKE_API_KEY, FAKE_MAP_ID)
     url = svc.get_url("53.1,-6.1", zoom=14)
     assert "zoom=14" in url
+
+
+def test_static_map_url_cache_reused_for_same_location_and_map_id(gapi):
+    with patch.object(gapi, "_get_location_center", wraps=gapi._get_location_center) as wrapped_center:
+        url1 = gapi.get_static_map_url(FAKE_MAP_ID, (53.141819, -6.118493))
+        url2 = gapi.get_static_map_url(FAKE_MAP_ID, (53.141819, -6.118493))
+
+    assert url1 == url2
+    assert wrapped_center.call_count == 1
+
+
+def test_static_map_url_cache_invalidated_when_location_changes(gapi):
+    url1 = gapi.get_static_map_url(FAKE_MAP_ID, (53.141819, -6.118493))
+    url2 = gapi.get_static_map_url(FAKE_MAP_ID, (51.898500, -8.475600))
+
+    assert url1 != url2
+
+
+def test_static_map_local_src_reuses_cached_image_for_same_location(gapi):
+    class _Resp:
+        def __init__(self, content):
+            self.content = content
+
+        def raise_for_status(self):
+            return None
+
+    with patch("google.api.requests.get", return_value=_Resp(b"\x89PNG\r\n\x1a\n")) as mock_get:
+        src1 = gapi.get_static_map_local_src(FAKE_MAP_ID, (53.141819, -6.118493))
+        src2 = gapi.get_static_map_local_src(FAKE_MAP_ID, (53.141819, -6.118493))
+
+    assert src1 == src2
+    assert src1.startswith("map-cache/staticmap_")
+    assert mock_get.call_count == 1
+
+    root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    assert os.path.exists(os.path.join(root, "views", "html", src1))
+
+
+def test_static_map_local_src_invalidates_cached_image_when_location_changes(gapi):
+    class _Resp:
+        def __init__(self, content):
+            self.content = content
+
+        def raise_for_status(self):
+            return None
+
+    with patch("google.api.requests.get", return_value=_Resp(b"\x89PNG\r\n\x1a\n")) as mock_get:
+        src1 = gapi.get_static_map_local_src(FAKE_MAP_ID, (53.141819, -6.118493))
+        root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        old_abs = os.path.join(root, "views", "html", src1)
+
+        src2 = gapi.get_static_map_local_src(FAKE_MAP_ID, (51.898500, -8.475600))
+
+    assert src1 != src2
+    assert mock_get.call_count == 2
+    assert not os.path.exists(old_abs)
 
 
 # ---------- _get_location_center ----------
