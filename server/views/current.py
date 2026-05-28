@@ -26,18 +26,28 @@ class CurrentPage(SimplifiedPage):
         super()._css_links(a)
         a.link(rel="stylesheet", href="current.css")
 
+    @staticmethod
+    def _rounded_hour_phrase(now: dt.datetime) -> str:
+        rounded = (now + dt.timedelta(minutes=30)).replace(minute=0, second=0, microsecond=0)
+        hour_24 = rounded.hour
+        hour_12 = hour_24 % 12 or 12
+        suffix = "am" if hour_24 < 12 else "pm"
+        return f"{hour_12}{suffix}"
+
     def template(self, **kwargs):
+        now = dt.datetime.now()
         cc = kwargs["current_conditions"]
         daily_summary = kwargs.get("daily_summary")
 
         super().template(
             map_url=kwargs["map_url"],
             forecast={
-                "dt": dt.datetime.now(),
+                "dt": now,
+                "date_phrase": self._rounded_hour_phrase(now),
                 "icon": cc["icon"],
                 "temperature": {
                     "unit": cc["temperature"]["unit"],
-                    "min": daily_summary["temperature"].get("min") if daily_summary else None,
+                    "min": None,
                     "max": cc["temperature"]["value"],
                     "feels_like": cc["temperature"].get("feels_like"),
                 },

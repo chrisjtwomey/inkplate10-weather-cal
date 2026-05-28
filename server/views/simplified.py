@@ -43,13 +43,15 @@ class SimplifiedPage(Page):
         feels_like = forecast["temperature"].get("feels_like")
         rain_prob = forecast["rain_probability"]
         day_phrase = forecast.get("day_phrase")
+        date_phrase = forecast.get("date_phrase")
 
         self.log.info("Rendering %s page for %s", self.name, forecast_dt.date())
 
-        try:
-            date_str = forecast_dt.strftime("%A, %B %-d")
-        except ValueError:
-            date_str = forecast_dt.strftime("%A, %B %d").replace(" 0", " ")
+        if date_phrase is None:
+            try:
+                date_phrase = forecast_dt.strftime("%A, %B %-d")
+            except ValueError:
+                date_phrase = forecast_dt.strftime("%A, %B %d").replace(" 0", " ")
 
         a("<!DOCTYPE html>")
         with a.html(lang="en"):
@@ -79,7 +81,7 @@ class SimplifiedPage(Page):
                                 # ── Hero: icon → date → temperature → phrase ──
                                 with a.div(id="day-hero"):
                                     a.img(src=forecast["icon"], id="day-icon")
-                                    a.p(id="day-date", _t=date_str)
+                                    a.p(id="day-date", _t=date_phrase)
                                     with a.p(id="day-temp-main"):
                                         if temp_min is not None:
                                             a.span(id="day-temp-lo", _t=f"{temp_min}°")

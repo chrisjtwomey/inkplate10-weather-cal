@@ -90,6 +90,11 @@ def test_hero_shows_current_temperature(rendered_html, current_conditions):
     assert str(current_conditions["temperature"]["value"]) in temp_main.get_text()
 
 
+def test_hero_does_not_show_daily_minimum_temperature(rendered_html):
+    soup = BeautifulSoup(rendered_html, "html.parser")
+    assert soup.find(id="day-temp-lo") is None
+
+
 def test_weather_text_shown_as_phrase(rendered_html, current_conditions):
     soup = BeautifulSoup(rendered_html, "html.parser")
     phrase = soup.find(id="day-phrase")
@@ -136,14 +141,25 @@ def test_hero_has_icon(rendered_html):
     assert hero.find("img", id="day-icon") is not None
 
 
-def test_date_shown_in_hero(rendered_html):
+def test_rounded_hour_shown_in_hero(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
     date_el = soup.find(id="day-date")
     assert date_el is not None
-    text = date_el.get_text()
-    assert "Thursday" in text
-    assert "21" in text
-    assert "May" in text
+    assert date_el.get_text(strip=True) == "9am"
+
+
+def test_time_rounds_to_nearest_hour_half_up():
+    cc = _get_current_conditions()
+    ds = _get_daily_summary()
+
+    with freeze_time("2026-05-21 11:58:00"):
+        page = CurrentPage(WIDTH, HEIGHT)
+        page.template(map_url=MAP_URL, current_conditions=cc, daily_summary=ds)
+
+    soup = BeautifulSoup(str(page.airium), "html.parser")
+    date_el = soup.find(id="day-date")
+    assert date_el is not None
+    assert date_el.get_text(strip=True) == "12pm"
 
 
 def test_no_rain_alert_when_probability_is_low():
