@@ -110,7 +110,7 @@ Pre-built firmware binaries in the [releases](https://github.com/chrisjtwomey/in
 **Recommended path (pre-built firmware):**
 
 1. Place a `config.yaml` in the root of your SD card (see [doc/config.yaml](doc/config.yaml) for an example).
-2. Download `firmware.bin` from the [latest release](https://github.com/chrisjtwomey/inkplate10-weather-cal/release/latest).
+2. Download `firmware.bin` from the [latest release](https://github.com/chrisjtwomey/inkplate10-weather-cal/releases/latest).
 3. Flash it using `esptool.py`:
 
 ```sh
@@ -200,7 +200,7 @@ See [server/README.md](server/README.md) for full server documentation.
 
 ## Client Configuration
 
-The client (Inkplate 10) configuration can be loaded from `config.yaml` on the SD card root when firmware provided in the [latest release](https://github.com/chrisjtwomey/inkplate10-weather-cal/release/latest). Use [doc/config.yaml](doc/config.yaml) as the starting template.
+The client (Inkplate 10) configuration can be loaded from `config.yaml` on the SD card root when firmware provided in the [latest release](https://github.com/chrisjtwomey/inkplate10-weather-cal/releases/latest). Use [doc/config.yaml](doc/config.yaml) as the starting template.
 
 There is on-firmware defaults in `src/defaults.cpp`. These are are compiled into the binary. Any missing keys from `config.yaml` will fall back to the firmware defaults.
 
