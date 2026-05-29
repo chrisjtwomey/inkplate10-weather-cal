@@ -1,5 +1,5 @@
 #include "display_utils.h"
-#include <Inkplate.h>
+#include "IBoard.h"
 #include <SPIFFS.h>
 #include "icon/icons_32x32.h"
 #include "font/Merienda_Regular12pt7b.h"
@@ -7,8 +7,8 @@
 
 #include "log_utils.h"
 
-// The Inkplate board driver instance.
-extern Inkplate board;
+// The board driver instance.
+extern IBoard& board;
 
 #define CALENDAR_CACHE_PATH "/calendar.png"
 
@@ -31,7 +31,7 @@ bool loadCalendarCache() {
     if (!buf) { f.close(); return false; }
     f.read(buf, len);
     f.close();
-    bool ok = board.image.drawPngFromBuffer(buf, len, 0, 0, false, true);
+    bool ok = board.drawPngFromBuffer(buf, len, 0, 0, false, true);
     free(buf);
     return ok;
 }
@@ -48,7 +48,7 @@ bool loadCalendarCache() {
 esp_err_t loadImage(const char* filePath) {
     logf(LOG_INFO, "drawing image from path: %s", filePath);
 
-    if (!board.image.drawPngFromSd(filePath, 0, 0, false, true)) {
+    if (!board.drawPngFromSd(filePath, 0, 0, false, true)) {
         return ESP_ERR_EDRAW;
     }
 
@@ -68,7 +68,7 @@ esp_err_t loadImage(const char* filePath) {
 esp_err_t loadImage(uint8_t* buf, int32_t len) {
     log(LOG_INFO, "drawing image from buffer");
 
-    if (!board.image.drawPngFromBuffer(buf, len, 0, 0, false, true)) {
+    if (!board.drawPngFromBuffer(buf, len, 0, 0, false, true)) {
         return ESP_ERR_EDRAW;
     }
 
@@ -87,7 +87,7 @@ esp_err_t loadImage(uint8_t* buf, int32_t len) {
 esp_err_t loadImage(uint8_t* buf, int x, int y, int w, int h) {
     log(LOG_DEBUG, "drawing image from byte array...");
 
-    if (!board.image.draw(buf, x, y, w, h, BLACK, WHITE)) {
+    if (!board.drawBitmap(buf, x, y, w, h, BLACK, WHITE)) {
         return ESP_ERR_EDRAW;
     }
 
@@ -109,7 +109,7 @@ void displayMessage(const char* msg, int batteryRemainingPercent) {
     // stays as-is (white from board.begin()) if no cache exists yet.
     loadCalendarCache();
 
-    int cX = E_INK_HEIGHT / 2;
+    int cX = board.getHeight() / 2;
     int cY = 16;  // 16pt font
     int16_t x, y;
     uint16_t w, h;
@@ -118,7 +118,7 @@ void displayMessage(const char* msg, int batteryRemainingPercent) {
     board.setTextColor(BLACK);
     board.setTextWrap(true);
     board.getTextBounds(msg, 0, 0, &x, &y, &w, &h);
-    board.fillRect(0, 0, E_INK_HEIGHT, h * 2.5, 0x8080);
+    board.fillRect(0, 0, board.getHeight(), h * 2.5, 0x8080);
     board.setCursor(cX - w / 2, cY + h * 1.5);
     board.setTextColor(0xFFFF);
     board.print(msg);
@@ -141,8 +141,8 @@ void displayMessage(const char* msg, int batteryRemainingPercent) {
 */
 void displayBatteryStatus(int batteryRemainingPercent, bool invert) {
     // PS apologies for all the hackiness here...
-    char msg[4];
-    sprintf(msg, "%d%%", batteryRemainingPercent);
+    char msg[5];
+    snprintf(msg, sizeof(msg), "%d%%", batteryRemainingPercent);
     board.setFont(&Merienda_Regular12pt7b);
     board.setTextSize(1);
     if (invert) {
@@ -153,7 +153,7 @@ void displayBatteryStatus(int batteryRemainingPercent, bool invert) {
 
     int16_t tX, tY;
     uint16_t tW, tH;
-    board.getTextBounds(msg, E_INK_HEIGHT * 0.9, batteryIconSize, &tX, &tY, &tW,
+    board.getTextBounds(msg, board.getHeight() * 0.9, batteryIconSize, &tX, &tY, &tW,
                         &tH);
     // who knows why 0.75 but that lines things up
     board.setCursor(tX, tY + tH * 0.75);

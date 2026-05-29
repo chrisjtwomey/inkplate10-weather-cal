@@ -49,6 +49,12 @@ jobs:
       - name: Run native unit tests
         run: pio test -e native
 
+      - name: Run native_mock tests
+        run: pio test -e native_mock
+
+      - name: Run native_integration tests
+        run: pio test -e native_integration
+
   server-tests:
     runs-on: ubuntu-latest
     defaults:

@@ -1,20 +1,20 @@
 #include "sleep_utils.h"
-#include <Inkplate.h>
+#include "IBoard.h"
+#include <WiFi.h>
 #include <driver/rtc_io.h>
-#include <rom/rtc.h>
 #include <ezTime.h>
 
 #include "log_utils.h"
 
-// The Inkplate board driver instance.
-extern Inkplate board;
+// The board driver instance.
+extern IBoard& board;
 
 /**
   Enter deep sleep for `seconds` from now. The external RTC alarm fires
   exactly `seconds` later — no timezone math, no DST handling on the client.
 */
 void sleep_for(uint32_t seconds) {
-    time_t targetWakeTime = board.rtc.getEpoch() + (time_t)seconds;
+    time_t targetWakeTime = board.rtcGetEpoch() + (time_t)seconds;
     logf(LOG_DEBUG, "sleeping for %u seconds (RTC alarm at epoch %ld)",
          seconds, (long)targetWakeTime);
     sleep(targetWakeTime);
@@ -23,7 +23,7 @@ void sleep_for(uint32_t seconds) {
 void sleep(time_t targetWakeTime) {
     logf(LOG_DEBUG, "setting deep sleep RTC wakeup on pin %d", GPIO_NUM_39);
 
-    board.rtc.setAlarmEpoch(targetWakeTime, RTC_ALARM_MATCH_DHHMMSS);
+    board.rtcSetAlarmEpoch(targetWakeTime);
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_39, 0);
 
     logf(LOG_DEBUG, "waking at %s", dateTime(targetWakeTime, RFC3339).c_str());

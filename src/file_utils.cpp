@@ -1,13 +1,17 @@
 #include "file_utils.h"
-#include <Inkplate.h>
+
+#if defined(USE_SDCARD)
+// InkplateBoard.h pulls in Inkplate.h -> SdFat.h, providing the full SdFat
+// definition needed by the getSdFat() call site below.
+#include "InkplateBoard.h"
 #include <ArduinoJson.h>
 #include <ArduinoYaml.h>
 #include <StreamUtils.h>
 
 #include "log_utils.h"
 
-// The Inkplate board driver instance.
-extern Inkplate board;
+// The board driver instance.
+extern IBoard& board;
 
 /**
   Write a data buffer a file at a given path. Store the file on disk at a given path.
@@ -22,7 +26,7 @@ extern Inkplate board;
 
 esp_err_t writeFile(uint8_t* buf, size_t size, const char* filePath) {
     logf(LOG_DEBUG, "writing file to path %s", filePath);
-    SdFat &sd = board.getSdFat();
+    SdFat &sd = static_cast<InkplateBoard&>(board).getSdFat();
 
     // Write image buffer to SD card.
     // Use SdFile (not File) and raw SdFat open flags rather than FILE_WRITE —
@@ -42,3 +46,4 @@ esp_err_t writeFile(uint8_t* buf, size_t size, const char* filePath) {
 
     return ESP_OK;
 }
+#endif
