@@ -1,5 +1,5 @@
 REPO_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-IMAGE_NAME ?= inkplate10-weather-cal-server
+IMAGE_NAME ?= ghcr.io/chrisjtwomey/inkplate10-weather-cal-server
 DOCKER_CONTEXT ?= ./server
 HOST_PORT ?= 8080
 RUN_ARGS ?=
