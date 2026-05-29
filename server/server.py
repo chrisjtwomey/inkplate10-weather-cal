@@ -357,6 +357,7 @@ def main():
             if force_refresh:
                 weather_svc.invalidate_forecast_cache()
             daily_summary = None
+            current_conditions = None
             if regen_today or regen_current or regen_hourly or regen_daily or regen_tomorrow:
                 daily_summary = weather_svc.get_daily_summary()
             if regen_today or regen_current:
