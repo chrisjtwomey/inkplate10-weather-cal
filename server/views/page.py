@@ -28,9 +28,12 @@ class Page:
         self.image_inner_height = inner_height if inner_height is not None else height
         self.image_inner_align_x = inner_align_x
         self.image_inner_align_y = inner_align_y
-        self.log = logging.getLogger(self.name)
 
-        self.airium = Airium()     
+        self.airium = Airium()
+
+    @property
+    def log(self):
+        return logging.getLogger(self.name)     
 
     def template(self, **kwargs):
         raise NotImplementedError(

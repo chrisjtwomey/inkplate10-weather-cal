@@ -5,6 +5,7 @@ import os
 import io
 import sys
 import time
+import json
 import yaml
 import signal
 import argparse
@@ -39,6 +40,20 @@ shutdown_event = threading.Event()
 
 
 _SUPPORTED_WEATHER_SERVICES = ("accuweather", "openweathermap", "mock")
+
+
+def _server_version() -> str:
+    try:
+        with open(os.path.join(cwd, "version.json")) as f:
+            version_info = json.load(f)
+    except Exception:
+        return "dev"
+
+    version = str(version_info.get("version") or "dev")
+    commit_sha = str(version_info.get("commitSha") or "").strip()
+    if commit_sha:
+        return f"{version}+{commit_sha}"
+    return version
 
 
 @dataclasses.dataclass
@@ -227,11 +242,10 @@ def main():
     config = yaml.safe_load(config_file)
 
     debug = get_prop(config, "debug", default=False)
-    log_ini_path = os.path.join(cwd, "logging.ini")
-    if debug:
-        logging.config.fileConfig(os.path.join(cwd, "logging.dev.ini"))
-    logging.config.fileConfig(log_ini_path)
+    log_ini_path = os.path.join(cwd, "logging.dev.ini" if debug else "logging.ini")
+    logging.config.fileConfig(log_ini_path, disable_existing_loggers=False)
     log = logging.getLogger("server")
+    log.info("Inkplate Weather Calendar Server version: %s", _server_version())
 
     cfg = validate_config(config)
 

@@ -69,5 +69,7 @@ jobs:
         with:
           context: ./server
           push: true
+          build-args: |
+            SERVER_VERSION=${{ github.event.release.tag_name }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
