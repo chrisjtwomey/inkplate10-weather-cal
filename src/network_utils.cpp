@@ -3,7 +3,6 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 
-#include "error_utils.h"
 #include "log_utils.h"
 #include "refresh_header.h"
 

@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include "InkplateBoard.h"
 #include "app.h"
 

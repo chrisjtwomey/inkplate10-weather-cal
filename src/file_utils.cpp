@@ -4,9 +4,6 @@
 // InkplateBoard.h pulls in Inkplate.h -> SdFat.h, providing the full SdFat
 // definition needed by the getSdFat() call site below.
 #include "InkplateBoard.h"
-#include <ArduinoJson.h>
-#include <ArduinoYaml.h>
-#include <StreamUtils.h>
 
 #include "log_utils.h"
 

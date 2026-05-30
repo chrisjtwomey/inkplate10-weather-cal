@@ -5,8 +5,6 @@
 #include <PubSubClient.h>
 #include <MqttLogger.h>
 
-#include "error_utils.h"
-
 // remote mqtt logger
 WiFiClient espClient;
 PubSubClient client(espClient);

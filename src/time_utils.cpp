@@ -3,7 +3,6 @@
 #include <Inkplate.h>
 #include <ezTime.h>
 
-#include "error_utils.h"
 #include "log_utils.h"
 
 // The timezone store

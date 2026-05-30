@@ -1,5 +1,4 @@
 #include "refresh_header.h"
-#include <stddef.h>
 
 bool parseRefreshTime(const char* headerVal, uint32_t* out) {
     if (!headerVal || !out || *headerVal == '\0') return false;
