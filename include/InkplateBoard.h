@@ -16,6 +16,7 @@ public:
     InkplateBoard();
 
     // Lifecycle
+    const char* deviceName() const override;
     void begin() override;
     void setRotation(uint8_t r) override;
     int16_t getWidth() const override;

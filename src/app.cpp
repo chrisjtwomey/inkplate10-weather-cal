@@ -20,6 +20,7 @@
 #include "error_utils.h"
 #include "log_utils.h"
 #include "network_utils.h"
+#include "version.h"
 #include "sleep_utils.h"
 #include "time_utils.h"
 
@@ -73,7 +74,8 @@ void run_app() {
     time_t bootTime = board.rtcGetEpoch();
     setTime(bootTime);
 
-    logf(LOG_NOTICE, "##### Inkplate10 Weather Calendar boot #%d #####", bootCount);
+    logf(LOG_NOTICE, "##### %s Weather Calendar boot #%d #####", board.deviceName(), bootCount);
+    logf(LOG_NOTICE, "############ Client version: %s ############", CLIENT_VERSION);
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
     switch (wakeup_reason) {
         case ESP_SLEEP_WAKEUP_EXT0:

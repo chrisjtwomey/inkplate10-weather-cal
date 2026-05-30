@@ -6,6 +6,10 @@ InkplateBoard::InkplateBoard() : _inkplate(INKPLATE_3BIT) {}
 // Lifecycle
 // -----------------------------------------------------------------------------
 
+const char* InkplateBoard::deviceName() const {
+    return "Inkplate10";
+}
+
 void InkplateBoard::begin() {
     _inkplate.begin();
 }

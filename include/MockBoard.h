@@ -83,6 +83,7 @@ public:
     // IBoard implementation
     // -------------------------------------------------------------------------
 
+    const char* deviceName() const override { return "MockBoard"; }
     void begin() override {}
     void setRotation(uint8_t) override {}
 
