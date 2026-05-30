@@ -7,6 +7,8 @@
 
 Display weather forecasts and a stylised map of your city on an Inkplate 10 that can last for months on a single battery. Four page layouts are available: a simplified today/tomorrow view, an hourly forecast table, and a 5-day daily summary.
 
+> **Using a different e-paper display?** The firmware is built around a hardware-agnostic [`IBoard`](include/IBoard.h) interface. See [doc/custom-board.md](doc/custom-board.md) to integrate your own device.
+
 <img src=https://user-images.githubusercontent.com/5797356/223708925-131d7ecc-5e95-453a-b687-427b75d959dd.jpg width=800 />
 
 <table align="center">
@@ -34,6 +36,7 @@ Display weather forecasts and a stylised map of your city on an Inkplate 10 that
 - Server guide: [server/README.md](server/README.md)
 - Weather provider API setup: [doc/weather-apis.md](doc/weather-apis.md)
 - Google Static Maps setup: [doc/google-static-maps.md](doc/google-static-maps.md)
+- **Integrating a custom board** — implement the `IBoard` interface to use any e-paper device: [doc/custom-board.md](doc/custom-board.md)
 - Contributor guide: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 
@@ -128,6 +131,7 @@ If you want firmware configured via `src/defaults.cpp` (no SD card), build from 
 
 - SD card support is intended for SolderedElectronics Inkplate 10 hardware.
 - Older E-Radionica Inkplate 10 boards can have [higher deep-sleep drain](https://github.com/chrisjtwomey/inkplate10-weather-cal/blob/main/doc/power-consumption.md#update-june-28-2023) when SD card is enabled.
+- Using a different e-paper device? See [doc/custom-board.md](doc/custom-board.md) for how to implement the `IBoard` interface and swap it in.
 
 ## Background
 
