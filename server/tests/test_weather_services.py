@@ -9,6 +9,7 @@ import responses
 from weather.accuweather.accuweather import AccuweatherService
 from weather.openweathermap.openweathermap import OpenWeatherMapService
 from weather.mock.mock import MockWeatherService
+from weather.meteireann.meteireann import MetEireannService
 from weather.registry import registered_services, _REGISTRY
 from weather.service import WeatherService
 
@@ -187,9 +188,84 @@ def test_weather_service_abc_cannot_be_instantiated_directly():
 def test_incomplete_service_raises_on_instantiation():
     """A subclass missing abstract methods must raise TypeError at instantiation."""
     class IncompleteService(WeatherService):
-        def get_current_conditions(self):
-            pass
+        def get_current_conditions(self) -> dict:  # type: ignore[override]
+            return {}
         # get_5day_forecast, get_daily_summary, get_hourly_forecast not implemented
 
     with pytest.raises(TypeError):
-        IncompleteService(apikey=None, baseurl=None, service_name="incomplete")
+        IncompleteService(apikey=None, baseurl=None, service_name="incomplete")  # type: ignore[abstract]
+
+
+# ====================================================================
+# Met Éireann
+# ====================================================================
+
+@pytest.fixture
+def meteirann_endpoints(fixtures_dir):
+    xml_body = (fixtures_dir / "meteirann_forecast.xml").read_text()
+    nominatim_response = [{"lat": "53.3498", "lon": "-6.2603", "display_name": "Dublin, Ireland"}]
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        rsps.add(rsps.GET,
+                 re.compile(r"https://nominatim\.openstreetmap\.org/search.*"),
+                 json=nominatim_response)
+        rsps.add(rsps.GET,
+                 re.compile(r"http://openaccess\.pf\.api\.met\.ie/metno-wdb2ts/locationforecast.*"),
+                 body=xml_body,
+                 content_type="application/xml")
+        yield rsps
+
+
+def test_meteirann_resolves_coords_on_init(meteirann_endpoints):
+    svc = MetEireannService(location="Dublin", num_hours=6, metric=True)
+    assert svc.lat == 53.3498
+    assert svc.lon == -6.2603
+
+
+def test_meteirann_raises_on_empty_geocode_response(fixtures_dir):
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        rsps.add(rsps.GET,
+                 re.compile(r"https://nominatim\.openstreetmap\.org/search.*"),
+                 json=[])
+        with pytest.raises(ValueError, match="no results"):
+            MetEireannService(location="Nowhereville")
+
+
+def test_meteirann_daily_summary_parses_metric(meteirann_endpoints):
+    svc = MetEireannService(location="Dublin", num_hours=6, metric=True)
+    summary = svc.get_daily_summary()
+    assert summary["temperature"]["unit"] == "\N{DEGREE SIGN}C"
+    assert summary["temperature"]["min"] <= summary["temperature"]["max"]
+    assert summary["temperature"]["feels_like"] is not None
+    assert summary["wind"]["unit"] == "kmh"
+    assert 0 <= summary["rain_probability"] <= 100
+    assert summary["pollen"] is None
+
+
+def test_meteirann_daily_summary_parses_imperial(meteirann_endpoints):
+    svc = MetEireannService(location="Dublin", num_hours=6, metric=False)
+    summary = svc.get_daily_summary()
+    assert summary["temperature"]["unit"] == "\N{DEGREE SIGN}F"
+    assert summary["wind"]["unit"] == "mph"
+    # Fahrenheit values should be higher than the Celsius originals
+    assert summary["temperature"]["max"] > 32
+
+
+def test_meteirann_hourly_forecast_returns_requested_count(meteirann_endpoints):
+    svc = MetEireannService(location="Dublin", num_hours=4, metric=True)
+    hourly = svc.get_hourly_forecast()
+    assert len(hourly) <= 4
+    if hourly:
+        first = hourly[0]
+        assert isinstance(first["dt"], datetime)
+        assert first["temperature"]["unit"] == "\N{DEGREE SIGN}C"
+        assert "value" in first["wind"]
+        assert "direction_degrees" in first["wind"]
+
+
+def test_meteirann_5day_forecast_returns_up_to_5_days(meteirann_endpoints):
+    svc = MetEireannService(location="Dublin", num_hours=6, metric=True)
+    forecast = svc.get_5day_forecast()
+    assert 1 <= len(forecast) <= 5
+    for entry in forecast:
+        assert isinstance(entry["dt"], datetime)
+        assert entry["temperature"]["min"] <= entry["temperature"]["max"]

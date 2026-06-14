@@ -10,6 +10,10 @@ _ACCUWEATHER_CACHE = (
     pathlib.Path(__file__).parent.parent
     / "weather" / "accuweather" / ".cache.json"
 )
+_METEIRANN_CACHE = (
+    pathlib.Path(__file__).parent.parent
+    / "weather" / "meteireann" / ".cache.json"
+)
 _GOOGLE_CACHE = (
     pathlib.Path(__file__).parent.parent
     / "google" / ".cache.json"
@@ -27,6 +31,14 @@ def clear_accuweather_cache():
     _ACCUWEATHER_CACHE.unlink(missing_ok=True)
     yield
     _ACCUWEATHER_CACHE.unlink(missing_ok=True)
+
+
+@pytest.fixture(autouse=True)
+def clear_meteirann_cache():
+    """Delete the Met Éireann disk cache before and after every test."""
+    _METEIRANN_CACHE.unlink(missing_ok=True)
+    yield
+    _METEIRANN_CACHE.unlink(missing_ok=True)
 
 
 @pytest.fixture(autouse=True)

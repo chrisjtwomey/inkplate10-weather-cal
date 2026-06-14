@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<weatherdata xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:noNamespaceSchemaLocation="https://www.met.ie/Open_Data/weatherapi-0.4.xsd"
+             created="2026-06-14T10:00:00Z">
+  <meta>
+    <model name="harmonie" termin="2026-06-14T06:00:00Z" runended="2026-06-14T09:00:00Z"
+           nextrun="2026-06-14T18:00:00Z" from="2026-06-14T10:00:00Z" to="2026-06-16T12:00:00Z"/>
+  </meta>
+  <product datatype="pointforecast" termin="2026-06-14T06:00:00Z">
+
+    <!-- ── Day 1: 2026-06-14 (today) ── -->
+
+    <!-- 10:00 instant -->
+    <time datatype="forecast" from="2026-06-14T10:00:00Z" to="2026-06-14T10:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="14.0"/>
+        <windDirection id="dd" deg="220.0" name="SW"/>
+        <windSpeed id="ff" mps="3.5" beaufort="2" name="Light breeze"/>
+        <humidity value="75.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1015.0"/>
+      </location>
+    </time>
+    <!-- 10:00–11:00 period -->
+    <time datatype="forecast" from="2026-06-14T10:00:00Z" to="2026-06-14T11:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="PartlyCloud" number="3"/>
+      </location>
+    </time>
+
+    <!-- 11:00 instant -->
+    <time datatype="forecast" from="2026-06-14T11:00:00Z" to="2026-06-14T11:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="15.2"/>
+        <windDirection id="dd" deg="215.0" name="SW"/>
+        <windSpeed id="ff" mps="4.0" beaufort="3" name="Gentle breeze"/>
+        <humidity value="70.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1015.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-14T11:00:00Z" to="2026-06-14T12:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="PartlyCloud" number="3"/>
+      </location>
+    </time>
+
+    <!-- 12:00 instant (noon) -->
+    <time datatype="forecast" from="2026-06-14T12:00:00Z" to="2026-06-14T12:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="16.5"/>
+        <windDirection id="dd" deg="210.0" name="SSW"/>
+        <windSpeed id="ff" mps="5.0" beaufort="3" name="Gentle breeze"/>
+        <humidity value="65.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1014.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-14T12:00:00Z" to="2026-06-14T13:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="PartlyCloud" number="3"/>
+      </location>
+    </time>
+
+    <!-- 13:00 instant -->
+    <time datatype="forecast" from="2026-06-14T13:00:00Z" to="2026-06-14T13:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="17.0"/>
+        <windDirection id="dd" deg="200.0" name="SSW"/>
+        <windSpeed id="ff" mps="5.5" beaufort="3" name="Gentle breeze"/>
+        <humidity value="63.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1014.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-14T13:00:00Z" to="2026-06-14T14:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.2"/>
+        <symbol id="LightRain" number="9"/>
+      </location>
+    </time>
+
+    <!-- 14:00 instant -->
+    <time datatype="forecast" from="2026-06-14T14:00:00Z" to="2026-06-14T14:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="16.8"/>
+        <windDirection id="dd" deg="200.0" name="SSW"/>
+        <windSpeed id="ff" mps="6.0" beaufort="4" name="Moderate breeze"/>
+        <humidity value="68.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1013.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-14T14:00:00Z" to="2026-06-14T15:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.4"/>
+        <symbol id="LightRain" number="9"/>
+      </location>
+    </time>
+
+    <!-- ── Day 2: 2026-06-15 ── -->
+
+    <time datatype="forecast" from="2026-06-15T06:00:00Z" to="2026-06-15T06:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="11.0"/>
+        <windDirection id="dd" deg="270.0" name="W"/>
+        <windSpeed id="ff" mps="4.0" beaufort="3" name="Gentle breeze"/>
+        <humidity value="85.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1012.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-15T06:00:00Z" to="2026-06-15T07:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="Cloud" number="4"/>
+      </location>
+    </time>
+
+    <time datatype="forecast" from="2026-06-15T12:00:00Z" to="2026-06-15T12:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="15.0"/>
+        <windDirection id="dd" deg="260.0" name="W"/>
+        <windSpeed id="ff" mps="5.0" beaufort="3" name="Gentle breeze"/>
+        <humidity value="72.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1013.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-15T12:00:00Z" to="2026-06-15T13:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="PartlyCloud" number="3"/>
+      </location>
+    </time>
+
+    <time datatype="forecast" from="2026-06-15T18:00:00Z" to="2026-06-15T18:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="13.5"/>
+        <windDirection id="dd" deg="255.0" name="WSW"/>
+        <windSpeed id="ff" mps="4.5" beaufort="3" name="Gentle breeze"/>
+        <humidity value="78.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1014.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-15T18:00:00Z" to="2026-06-15T19:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="PartlyCloud" number="3"/>
+      </location>
+    </time>
+
+    <!-- ── Day 3: 2026-06-16 ── -->
+
+    <time datatype="forecast" from="2026-06-16T06:00:00Z" to="2026-06-16T06:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="10.5"/>
+        <windDirection id="dd" deg="300.0" name="WNW"/>
+        <windSpeed id="ff" mps="6.0" beaufort="4" name="Moderate breeze"/>
+        <humidity value="80.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1016.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-16T06:00:00Z" to="2026-06-16T07:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="Sun" number="1"/>
+      </location>
+    </time>
+
+    <time datatype="forecast" from="2026-06-16T12:00:00Z" to="2026-06-16T12:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="17.0"/>
+        <windDirection id="dd" deg="310.0" name="NW"/>
+        <windSpeed id="ff" mps="5.0" beaufort="3" name="Gentle breeze"/>
+        <humidity value="60.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1017.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-16T12:00:00Z" to="2026-06-16T13:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="Sun" number="1"/>
+      </location>
+    </time>
+
+    <time datatype="forecast" from="2026-06-16T18:00:00Z" to="2026-06-16T18:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="15.0"/>
+        <windDirection id="dd" deg="315.0" name="NW"/>
+        <windSpeed id="ff" mps="4.0" beaufort="3" name="Gentle breeze"/>
+        <humidity value="62.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1018.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-16T18:00:00Z" to="2026-06-16T19:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="Sun" number="1"/>
+      </location>
+    </time>
+
+    <!-- ── Day 4: 2026-06-17 ── -->
+
+    <time datatype="forecast" from="2026-06-17T06:00:00Z" to="2026-06-17T06:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="12.0"/>
+        <windDirection id="dd" deg="180.0" name="S"/>
+        <windSpeed id="ff" mps="3.0" beaufort="2" name="Light breeze"/>
+        <humidity value="82.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1010.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-17T06:00:00Z" to="2026-06-17T07:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.3"/>
+        <symbol id="Rain" number="10"/>
+      </location>
+    </time>
+
+    <time datatype="forecast" from="2026-06-17T12:00:00Z" to="2026-06-17T12:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="14.5"/>
+        <windDirection id="dd" deg="185.0" name="S"/>
+        <windSpeed id="ff" mps="4.0" beaufort="3" name="Gentle breeze"/>
+        <humidity value="78.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1009.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-17T12:00:00Z" to="2026-06-17T13:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="1.2"/>
+        <symbol id="Rain" number="10"/>
+      </location>
+    </time>
+
+    <time datatype="forecast" from="2026-06-17T18:00:00Z" to="2026-06-17T18:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="13.0"/>
+        <windDirection id="dd" deg="190.0" name="S"/>
+        <windSpeed id="ff" mps="5.0" beaufort="3" name="Gentle breeze"/>
+        <humidity value="85.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1009.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-17T18:00:00Z" to="2026-06-17T19:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.6"/>
+        <symbol id="Rain" number="10"/>
+      </location>
+    </time>
+
+    <!-- ── Day 5: 2026-06-18 ── -->
+
+    <time datatype="forecast" from="2026-06-18T06:00:00Z" to="2026-06-18T06:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="11.5"/>
+        <windDirection id="dd" deg="240.0" name="WSW"/>
+        <windSpeed id="ff" mps="5.5" beaufort="3" name="Gentle breeze"/>
+        <humidity value="78.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1013.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-18T06:00:00Z" to="2026-06-18T07:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="PartlyCloud" number="3"/>
+      </location>
+    </time>
+
+    <time datatype="forecast" from="2026-06-18T12:00:00Z" to="2026-06-18T12:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="16.0"/>
+        <windDirection id="dd" deg="245.0" name="WSW"/>
+        <windSpeed id="ff" mps="6.0" beaufort="4" name="Moderate breeze"/>
+        <humidity value="68.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1014.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-18T12:00:00Z" to="2026-06-18T13:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="PartlyCloud" number="3"/>
+      </location>
+    </time>
+
+    <time datatype="forecast" from="2026-06-18T18:00:00Z" to="2026-06-18T18:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <temperature id="TTT" unit="celsius" value="14.0"/>
+        <windDirection id="dd" deg="250.0" name="WSW"/>
+        <windSpeed id="ff" mps="5.0" beaufort="3" name="Gentle breeze"/>
+        <humidity value="72.0" unit="percent"/>
+        <pressure id="pr" unit="hPa" value="1014.0"/>
+      </location>
+    </time>
+    <time datatype="forecast" from="2026-06-18T18:00:00Z" to="2026-06-18T19:00:00Z">
+      <location altitude="10" latitude="53.3498" longitude="-6.2603">
+        <precipitation unit="mm" value="0.0"/>
+        <symbol id="PartlyCloud" number="3"/>
+      </location>
+    </time>
+
+  </product>
+</weatherdata>

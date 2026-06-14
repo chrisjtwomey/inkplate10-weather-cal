@@ -44,6 +44,7 @@ shutdown_event = threading.Event()
 import weather.accuweather.accuweather  # noqa: F401
 import weather.openweathermap.openweathermap  # noqa: F401
 import weather.mock.mock  # noqa: F401
+import weather.meteireann.meteireann  # noqa: F401
 from weather.registry import create as _create_weather_service, registered_services
 
 

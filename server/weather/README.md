@@ -36,21 +36,10 @@ The registry is a module-level dict that maps service names (as used in `config.
 
 ## Built-in services
 
-### `accuweather`
-
-Backed by the [AccuWeather API](https://developer.accuweather.com/). Responses are cached to a local `.cache.json` for ~55 minutes to minimise API calls between image regenerations. The cache is invalidated automatically when a new image is generated on schedule.
-
-Requires: `weather.apikey`, `location`.
-
-### `openweathermap`
-
-Backed by the [OpenWeatherMap API](https://openweathermap.org/api). No server-side caching; fetches fresh data on every generation.
-
-Requires: `weather.apikey`, `location`.
-
-### `mock`
-
-Generates randomised but realistic weather data locally — no API key or network access needed. Useful for development, layout testing, and CI. Enable it by setting `weather.service: mock` in `config.yaml`.
+| `accuweather` | Backed by the [AccuWeather API](https://developer.accuweather.com/). Responses are cached server-side to minimize API calls between image regenerations. Requires: `weather.apikey`, `location`. |
+| `openweathermap` | Backed by the [OpenWeatherMap API](https://openweathermap.org/api). No server-side caching; fetches fresh data on every generation. Requires: `weather.apikey`, `location`. |
+| `meteireann` | Backed by [Met Éireann's forecast API](https://data.gov.ie/dataset/met-eireann-forecast-api) (Harmonie NWP model, ~2.5 km resolution). **Ireland only.** No API key required. Geocodes via Nominatim. Responses cached ~55 min. Requires: `location`. |
+| `mock` | Generates randomised but realistic weather data locally — no API key or network access needed. Useful for development, layout testing, and CI. Enable it by setting `weather.service: mock` in `config.yaml`. |
 
 ## Adding a custom weather service
 
