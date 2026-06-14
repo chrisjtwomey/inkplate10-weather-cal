@@ -1,0 +1,16 @@
+{
+  "results": [
+    {
+      "id": 2964574,
+      "name": "Dublin",
+      "latitude": 53.3331,
+      "longitude": -6.2489,
+      "elevation": 9.0,
+      "feature_code": "PPLC",
+      "country_code": "IE",
+      "country": "Ireland",
+      "timezone": "Europe/Dublin"
+    }
+  ],
+  "generationtime_ms": 0.8
+}

@@ -10,6 +10,7 @@ from weather.accuweather.accuweather import AccuweatherService
 from weather.openweathermap.openweathermap import OpenWeatherMapService
 from weather.mock.mock import MockWeatherService
 from weather.meteireann.meteireann import MetEireannService
+from weather.openmeteo.openmeteo import OpenMeteoService
 from weather.registry import registered_services, _REGISTRY
 from weather.service import WeatherService
 
@@ -269,3 +270,89 @@ def test_meteirann_5day_forecast_returns_up_to_5_days(meteirann_endpoints):
     for entry in forecast:
         assert isinstance(entry["dt"], datetime)
         assert entry["temperature"]["min"] <= entry["temperature"]["max"]
+
+
+# Open-Meteo
+# ====================================================================
+
+@pytest.fixture
+def openmeteo_endpoints(fixtures_dir):
+    geocoding_data = json.loads((fixtures_dir / "openmeteo_geocoding.json").read_text())
+    forecast_data = json.loads((fixtures_dir / "openmeteo_forecast.json").read_text())
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        rsps.add(rsps.GET,
+                 re.compile(r"https://geocoding-api\.open-meteo\.com/v1/search.*"),
+                 json=geocoding_data)
+        rsps.add(rsps.GET,
+                 re.compile(r"https://api\.open-meteo\.com/v1/forecast.*"),
+                 json=forecast_data)
+        yield rsps
+
+
+def test_openmeteo_resolves_coords_on_init(openmeteo_endpoints):
+    svc = OpenMeteoService(location="Dublin", num_hours=6, metric=True)
+    assert svc.lat == 53.3331
+    assert svc.lon == -6.2489
+
+
+def test_openmeteo_raises_on_empty_geocode_response(fixtures_dir):
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        rsps.add(rsps.GET,
+                 re.compile(r"https://geocoding-api\.open-meteo\.com/v1/search.*"),
+                 json={})
+        with pytest.raises(ValueError, match="no results"):
+            OpenMeteoService(location="Nowhereville")
+
+
+def test_openmeteo_daily_summary_parses_metric(openmeteo_endpoints):
+    svc = OpenMeteoService(location="Dublin", num_hours=6, metric=True)
+    summary = svc.get_daily_summary()
+    assert summary["temperature"]["unit"] == "\N{DEGREE SIGN}C"
+    assert summary["temperature"]["min"] <= summary["temperature"]["max"]
+    assert summary["temperature"]["feels_like"] is not None
+    assert summary["wind"]["unit"] == "kmh"
+    assert 0 <= summary["rain_probability"] <= 100
+    assert summary["pollen"] is None
+
+
+def test_openmeteo_daily_summary_parses_imperial(openmeteo_endpoints):
+    svc = OpenMeteoService(location="Dublin", num_hours=6, metric=False)
+    summary = svc.get_daily_summary()
+    assert summary["temperature"]["unit"] == "\N{DEGREE SIGN}F"
+    assert summary["wind"]["unit"] == "mph"
+
+
+def test_openmeteo_hourly_forecast_returns_requested_count(openmeteo_endpoints):
+    svc = OpenMeteoService(location="Dublin", num_hours=6, metric=True)
+    hourly = svc.get_hourly_forecast()
+    # Fixture has current.time = 2026-06-14T10:00 and hourly entries from 10:00 onward
+    assert len(hourly) == 6
+    first = hourly[0]
+    assert isinstance(first["dt"], datetime)
+    assert first["temperature"]["unit"] == "\N{DEGREE SIGN}C"
+    assert "value" in first["wind"]
+    assert "direction_degrees" in first["wind"]
+    assert 0 <= first["rain_probability"] <= 100
+
+
+def test_openmeteo_5day_forecast_returns_5_days(openmeteo_endpoints):
+    svc = OpenMeteoService(location="Dublin", num_hours=6, metric=True)
+    forecast = svc.get_5day_forecast()
+    assert len(forecast) == 5
+    for entry in forecast:
+        assert isinstance(entry["dt"], datetime)
+        assert entry["temperature"]["min"] <= entry["temperature"]["max"]
+        assert entry["sunrise"] is not None
+        assert entry["sunset"] is not None
+        assert entry["hours_of_sun"] is not None
+
+
+def test_openmeteo_current_conditions(openmeteo_endpoints):
+    svc = OpenMeteoService(location="Dublin", num_hours=6, metric=True)
+    cc = svc.get_current_conditions()
+    assert cc["temperature"]["unit"] == "\N{DEGREE SIGN}C"
+    assert cc["temperature"]["value"] == 14
+    assert cc["temperature"]["feels_like"] == 12
+    assert cc["humidity"] == 74
+    assert cc["wind"]["unit"] == "kmh"
+    assert cc["uv_index"] is None

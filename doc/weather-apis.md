@@ -52,3 +52,31 @@ Location is geocoded automatically via [Nominatim](https://nominatim.openstreetm
 ```yaml
 location: Dublin
 ```
+
+## Open-Meteo API
+
+[Open-Meteo](https://open-meteo.com/) provides global weather forecasts sourced from multiple NWP models (ECMWF IFS, GFS, DWD ICON, and others). It is **free for non-commercial use** with **no API key required**.
+
+Key characteristics:
+- **Global coverage** at 1–11 km resolution depending on the model and region
+- Uses **WMO standard weather codes** for condition icons
+- Provides native `apparent_temperature` (feels-like), `precipitation_probability`, `uv_index_max`, `sunrise`/`sunset`, and `sunshine_duration` — all without any derived calculations
+- Unit conversion (°C/°F, km/h/mph) handled server-side via API parameters
+- Single API call returns current conditions, hourly, and daily data
+
+Update your server config:
+
+```yaml
+weather:
+  service: openmeteo
+  # no apikey needed
+```
+
+Location is geocoded automatically via Open-Meteo's own geocoding API using the `location` value in your config:
+
+```yaml
+location: London
+```
+
+Forecast responses are cached for ~55 minutes to avoid redundant requests between display refreshes.
+

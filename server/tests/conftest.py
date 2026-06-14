@@ -14,6 +14,10 @@ _METEIRANN_CACHE = (
     pathlib.Path(__file__).parent.parent
     / "weather" / "meteireann" / ".cache.json"
 )
+_OPENMETEO_CACHE = (
+    pathlib.Path(__file__).parent.parent
+    / "weather" / "openmeteo" / ".cache.json"
+)
 _GOOGLE_CACHE = (
     pathlib.Path(__file__).parent.parent
     / "google" / ".cache.json"
@@ -39,6 +43,14 @@ def clear_meteirann_cache():
     _METEIRANN_CACHE.unlink(missing_ok=True)
     yield
     _METEIRANN_CACHE.unlink(missing_ok=True)
+
+
+@pytest.fixture(autouse=True)
+def clear_openmeteo_cache():
+    """Delete the Open-Meteo disk cache before and after every test."""
+    _OPENMETEO_CACHE.unlink(missing_ok=True)
+    yield
+    _OPENMETEO_CACHE.unlink(missing_ok=True)
 
 
 @pytest.fixture(autouse=True)
