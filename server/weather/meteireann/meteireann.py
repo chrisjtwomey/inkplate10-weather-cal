@@ -1,34 +1,20 @@
-import json
 import logging
-import os
-import time
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
 
 import requests
 
+from ..cache import DiskCache
 from ..service import WeatherService
 from ..registry import register
 
-_CACHE_TTL = 3300  # 55 minutes
 _NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 _FORECAST_URL = "http://openaccess.pf.api.met.ie/metno-wdb2ts/locationforecast"
 _USER_AGENT = "inkplate10-weather-cal/1.0"
 
 log = logging.getLogger(__name__)
-
-
-def _json_default(obj):
-    if isinstance(obj, datetime):
-        return {"__dt__": obj.isoformat()}
-    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
-
-def _json_hook(d):
-    if "__dt__" in d:
-        return datetime.fromisoformat(d["__dt__"])
-    return d
 
 
 def _parse_dt(s: str) -> datetime:
@@ -84,54 +70,21 @@ class MetEireannService(WeatherService):
             num_hours=num_hours,
             metric=metric,
         )
-        self._cache_path = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), ".cache.json"
-        )
+        self.cache = DiskCache(Path(__file__).parent / ".cache.json", "Met Éireann")
         if not location:
             raise ValueError("MetEireannService requires a location (e.g. 'Dublin')")
         self.lat, self.lon = self._get_coords(location)
 
-    # ── Cache helpers ────────────────────────────────────────────────────────
-
-    def _load_cache(self):
-        try:
-            with open(self._cache_path) as f:
-                return json.load(f, object_hook=_json_hook)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return {}
-
-    def _save_cache(self, cache):
-        try:
-            with open(self._cache_path, "w") as f:
-                json.dump(cache, f, default=_json_default)
-        except OSError as exc:
-            log.warning("Could not write Met Éireann cache: %s", exc)
-
-    def _get_cached(self, key, ttl=_CACHE_TTL):
-        entry = self._load_cache().get(key)
-        if entry and time.time() - entry["ts"] < ttl:
-            log.debug("Met Éireann cache hit: %s", key)
-            return entry["data"]
-        return None
-
-    def _set_cached(self, key, data):
-        cache = self._load_cache()
-        cache[key] = {"ts": time.time(), "data": data}
-        self._save_cache(cache)
-
     _FORECAST_KEYS = ("daily_summary", "hourly_forecast", "5day_forecast", "current_conditions")
 
     def invalidate_forecast_cache(self):
-        cache = self._load_cache()
-        for key in self._FORECAST_KEYS:
-            cache.pop(key, None)
-        self._save_cache(cache)
+        self.cache.delete(*self._FORECAST_KEYS)
         log.debug("Met Éireann forecast cache invalidated")
 
     # ── Geocoding ────────────────────────────────────────────────────────────
 
     def _get_coords(self, location: str) -> tuple[float, float]:
-        cached = self._load_cache().get("coords")
+        cached = self.cache.get("coords", ttl=None)
         if cached and cached.get("location") == location:
             log.debug("Met Éireann coords cache hit for %s", location)
             return cached["lat"], cached["lon"]
@@ -149,9 +102,7 @@ class MetEireannService(WeatherService):
         lat = round(float(data[0]["lat"]), 4)
         lon = round(float(data[0]["lon"]), 4)
 
-        cache = self._load_cache()
-        cache["coords"] = {"location": location, "lat": lat, "lon": lon}
-        self._save_cache(cache)
+        self.cache.set("coords", {"location": location, "lat": lat, "lon": lon})
 
         log.debug("Resolved %r → lat=%s lon=%s", location, lat, lon)
         return lat, lon
@@ -159,7 +110,7 @@ class MetEireannService(WeatherService):
     # ── XML fetch & parse ────────────────────────────────────────────────────
 
     def _fetch_xml(self) -> str:
-        cached = self._get_cached("xml_raw")
+        cached = self.cache.get("xml_raw")
         if cached is not None:
             return cached
 
@@ -167,7 +118,7 @@ class MetEireannService(WeatherService):
         res = requests.get(url, headers={"User-Agent": _USER_AGENT})
         res.raise_for_status()
         xml_text = res.text
-        self._set_cached("xml_raw", xml_text)
+        self.cache.set("xml_raw", xml_text)
         return xml_text
 
     def _parse_entries(self) -> tuple[dict, list]:
@@ -259,7 +210,7 @@ class MetEireannService(WeatherService):
     # ── Public interface ─────────────────────────────────────────────────────
 
     def get_current_conditions(self) -> dict:
-        cached = self._get_cached("current_conditions")
+        cached = self.cache.get("current_conditions")
         if cached is not None:
             return cached
 
@@ -306,11 +257,11 @@ class MetEireannService(WeatherService):
             "uv_index": None,
             "weather_text": None,
         }
-        self._set_cached("current_conditions", result)
+        self.cache.set("current_conditions", result)
         return result
 
     def get_daily_summary(self) -> dict:
-        cached = self._get_cached("daily_summary")
+        cached = self.cache.get("daily_summary")
         if cached is not None:
             return cached
 
@@ -370,11 +321,11 @@ class MetEireannService(WeatherService):
             "rain_probability": rain_prob,
             "pollen": None,
         }
-        self._set_cached("daily_summary", result)
+        self.cache.set("daily_summary", result)
         return result
 
     def get_hourly_forecast(self) -> list:
-        cached = self._get_cached("hourly_forecast")
+        cached = self.cache.get("hourly_forecast")
         if cached is not None:
             return cached
 
@@ -413,11 +364,11 @@ class MetEireannService(WeatherService):
                 "rain_probability": 0,  # individual hour probability not available
             })
 
-        self._set_cached("hourly_forecast", results)
+        self.cache.set("hourly_forecast", results)
         return results
 
     def get_5day_forecast(self) -> list:
-        cached = self._get_cached("5day_forecast")
+        cached = self.cache.get("5day_forecast")
         if cached is not None:
             return cached
 
@@ -472,5 +423,5 @@ class MetEireannService(WeatherService):
                 "night_phrase": None,
             })
 
-        self._set_cached("5day_forecast", results)
+        self.cache.set("5day_forecast", results)
         return results

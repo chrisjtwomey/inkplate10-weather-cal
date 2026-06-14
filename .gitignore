@@ -1,5 +1,8 @@
-# AccuWeather response cache
+# Weather service response caches
 server/weather/accuweather/.cache.json
+server/weather/openweathermap/.cache.json
+server/weather/meteireann/.cache.json
+server/weather/openmeteo/.cache.json
 
 # Google static map cache metadata (contains API-key-bearing URLs)
 server/google/.cache.json

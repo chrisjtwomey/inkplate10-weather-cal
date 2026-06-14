@@ -1,28 +1,13 @@
-import json
 import logging
-import os
-import time
 import requests
 from datetime import datetime
+from pathlib import Path
 from utils import even_select
+from ..cache import DiskCache
 from ..service import WeatherService
 from ..registry import register
 
-_CACHE_TTL = 3300  # 55 minutes — public API responses
-
 log = logging.getLogger(__name__)
-
-
-def _json_default(obj):
-    if isinstance(obj, datetime):
-        return {"__dt__": obj.isoformat()}
-    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
-
-def _json_hook(d):
-    if "__dt__" in d:
-        return datetime.fromisoformat(d["__dt__"])
-    return d
 
 
 @register("accuweather")
@@ -35,52 +20,18 @@ class AccuweatherService(WeatherService):
             num_hours,
             metric,
         )
-        self._cache_path = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), ".cache.json"
-        )
+        self.cache = DiskCache(Path(__file__).parent / ".cache.json", "AccuWeather")
         self.location_key = self._get_location_key(location)
-
-    # ── Cache helpers ────────────────────────────────────────────────────────
-
-    def _load_cache(self):
-        try:
-            with open(self._cache_path) as f:
-                return json.load(f, object_hook=_json_hook)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return {}
-
-    def _save_cache(self, cache):
-        try:
-            with open(self._cache_path, "w") as f:
-                json.dump(cache, f, default=_json_default)
-        except OSError as exc:
-            log.warning("Could not write AccuWeather cache: %s", exc)
-
-    def _get_cached(self, key, ttl=_CACHE_TTL):
-        entry = self._load_cache().get(key)
-        if entry and time.time() - entry["ts"] < ttl:
-            log.debug("AccuWeather cache hit: %s", key)
-            return entry["data"]
-        return None
-
-    def _set_cached(self, key, data):
-        # Reload before writing to avoid overwriting concurrent entries.
-        cache = self._load_cache()
-        cache[key] = {"ts": time.time(), "data": data}
-        self._save_cache(cache)
 
     _FORECAST_KEYS = ("daily_summary", "hourly_forecast", "5day_forecast", "current_conditions")
 
     def invalidate_forecast_cache(self):
         """Remove forecast entries from cache; location_key is preserved."""
-        cache = self._load_cache()
-        for key in self._FORECAST_KEYS:
-            cache.pop(key, None)
-        self._save_cache(cache)
+        self.cache.delete(*self._FORECAST_KEYS)
         log.debug("AccuWeather forecast cache invalidated")
 
     def get_daily_summary(self):
-        cached = self._get_cached("daily_summary")
+        cached = self.cache.get("daily_summary")
         if cached is not None:
             return cached
 
@@ -123,11 +74,11 @@ class AccuweatherService(WeatherService):
             "pollen": pollen or None,
         }
 
-        self._set_cached("daily_summary", forecast)
+        self.cache.set("daily_summary", forecast)
         return forecast
 
     def get_hourly_forecast(self):
-        cached = self._get_cached("hourly_forecast")
+        cached = self.cache.get("hourly_forecast")
         if cached is not None:
             return cached
 
@@ -166,11 +117,11 @@ class AccuweatherService(WeatherService):
 
             forecasts.append(forecast)
 
-        self._set_cached("hourly_forecast", forecasts)
+        self.cache.set("hourly_forecast", forecasts)
         return forecasts
 
     def get_5day_forecast(self):
-        cached = self._get_cached("5day_forecast")
+        cached = self.cache.get("5day_forecast")
         if cached is not None:
             return cached
 
@@ -251,11 +202,11 @@ class AccuweatherService(WeatherService):
                 "night_phrase": entry.get("Night", {}).get("ShortPhrase"),
             })
 
-        self._set_cached("5day_forecast", forecasts)
+        self.cache.set("5day_forecast", forecasts)
         return forecasts
 
     def _get_current_conditions(self):
-        cached = self._get_cached("current_conditions")
+        cached = self.cache.get("current_conditions")
         if cached is not None:
             return cached
 
@@ -293,7 +244,7 @@ class AccuweatherService(WeatherService):
             "weather_text": data.get("WeatherText"),
         }
 
-        self._set_cached("current_conditions", conditions)
+        self.cache.set("current_conditions", conditions)
         return conditions
 
     def get_current_conditions(self):
@@ -301,10 +252,10 @@ class AccuweatherService(WeatherService):
 
     def _get_location_key(self, location):
         # Cached indefinitely — only re-fetch if the location string has changed.
-        entry = self._load_cache().get("location_key")
+        entry = self.cache.get("location_key", ttl=None)
         if entry and entry.get("location") == location:
             log.debug("AccuWeather cache hit: location_key")
-            return entry["data"]
+            return entry["key"]
 
         # Location changed — bust the forecast cache so stale data isn't served.
         if entry and entry.get("location") != location:
@@ -325,7 +276,5 @@ class AccuweatherService(WeatherService):
             raise ValueError("Unexpected response from weather api: {}".format(data))
         location_key = data[0]["Key"]
 
-        cache = self._load_cache()
-        cache["location_key"] = {"ts": time.time(), "location": location, "data": location_key}
-        self._save_cache(cache)
+        self.cache.set("location_key", {"location": location, "key": location_key})
         return location_key
