@@ -44,7 +44,7 @@ Then edit `config.yaml` with your API keys, location, and schedule.
 | `server.timezone` | string (IANA timezone) | `Europe/Dublin` in example | Timezone used to interpret `display_schedule`; handles DST transitions server-side. |
 | `server.regen_lead_seconds` | integer | `120` | Seconds before each scheduled wake when the server regenerates the target image. |
 | `display_schedule` | mapping `HH:MM:SS -> endpoint` | `{"09:00:00": "today.png"}` if omitted | Defines which image to serve at each client wake time. |
-| `weather.service` | string enum | `accuweather` | Weather provider (`accuweather`, `openweathermap`, or `mock`). |
+| `weather.service` | string enum | `accuweather` | Weather provider (`accuweather`, `openweathermap`, or `mock`). Custom providers can be added — see [weather/README.md](weather/README.md). |
 | `weather.apikey` | string | `XXXX` placeholder | Weather provider API key. |
 | `weather.num_hourly_forecasts` | integer | `9` | Number of hourly forecast points to include in the hourly day view. |
 | `weather.metric` | boolean | `true` | Unit system toggle for weather values. |

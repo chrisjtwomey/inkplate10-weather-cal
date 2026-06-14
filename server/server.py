@@ -39,7 +39,12 @@ regen_lock = threading.Lock()
 shutdown_event = threading.Event()
 
 
-_SUPPORTED_WEATHER_SERVICES = ("accuweather", "openweathermap", "mock")
+# Import all service modules so that their @register decorators run and
+# populate the registry before validate_config() uses it.
+import weather.accuweather.accuweather  # noqa: F401
+import weather.openweathermap.openweathermap  # noqa: F401
+import weather.mock.mock  # noqa: F401
+from weather.registry import create as _create_weather_service, registered_services
 
 
 def _server_version() -> str:
@@ -97,9 +102,10 @@ def validate_config(config: dict) -> ServerConfig:
 
     # ---- weather ----
     weather_service = get_prop_by_keys(config, "weather", "service", required=True)
-    if weather_service not in _SUPPORTED_WEATHER_SERVICES:
+    _supported = registered_services()
+    if weather_service not in _supported:
         _err(f"weather.service '{weather_service}' is not supported "
-             f"(choose from: {', '.join(_SUPPORTED_WEATHER_SERVICES)})")
+             f"(choose from: {', '.join(_supported)})")
 
     weather_apikey = get_prop_by_keys(
         config, "weather", "apikey",
@@ -269,34 +275,14 @@ def main():
     map_url = gapi.get_static_map_local_src(cfg.staticmaps_mapid, cfg.location)
 
     if cfg.weather_service == "mock":
-        from weather.mock.mock import MockWeatherService
-
         log.info("Using mock weather service — randomised data")
-        weather_svc = MockWeatherService(
-            num_hours=cfg.num_hourly_forecasts,
-            metric=cfg.weather_metric,
-        )
-    elif cfg.weather_service == "accuweather":
-        from weather.accuweather.accuweather import AccuweatherService
-
-        weather_svc = AccuweatherService(
-            cfg.weather_apikey,
-            cfg.location,
-            metric=cfg.weather_metric,
-            num_hours=cfg.num_hourly_forecasts,
-        )
-    elif cfg.weather_service == "openweathermap":
-        from weather.openweathermap.openweathermap import OpenWeatherMapService
-
-        weather_svc = OpenWeatherMapService(
-            cfg.weather_apikey,
-            cfg.location,
-            metric=cfg.weather_metric,
-            num_hours=cfg.num_hourly_forecasts,
-        )
-    else:
-        log.error(f"not a supported weather service: {cfg.weather_service}")
-        sys.exit(1)
+    weather_svc = _create_weather_service(
+        cfg.weather_service,
+        apikey=cfg.weather_apikey,
+        location=cfg.location,
+        num_hours=cfg.num_hourly_forecasts,
+        metric=cfg.weather_metric,
+    )
 
     today_page = TodayPage(
         cfg.image_width,

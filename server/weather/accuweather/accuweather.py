@@ -6,6 +6,7 @@ import requests
 from datetime import datetime
 from utils import even_select
 from ..service import WeatherService
+from ..registry import register
 
 _CACHE_TTL = 3300  # 55 minutes — public API responses
 
@@ -24,8 +25,9 @@ def _json_hook(d):
     return d
 
 
+@register("accuweather")
 class AccuweatherService(WeatherService):
-    def __init__(self, apikey, location, num_hours=6, metric=True):
+    def __init__(self, *, apikey=None, location=None, num_hours=6, metric=True):
         super().__init__(
             apikey,
             "http://dataservice.accuweather.com",

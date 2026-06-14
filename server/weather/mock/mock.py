@@ -1,6 +1,7 @@
 import random
 import datetime as dt
 from ..service import WeatherService
+from ..registry import register
 
 
 # Icons available in server/views/html/icon/
@@ -49,8 +50,9 @@ _POLLEN_CATEGORIES = [
 ]
 
 
+@register("mock")
 class MockWeatherService(WeatherService):
-    def __init__(self, num_hours=6, metric=True):
+    def __init__(self, *, apikey=None, location=None, num_hours=6, metric=True):
         super().__init__(
             apikey=None,
             baseurl=None,

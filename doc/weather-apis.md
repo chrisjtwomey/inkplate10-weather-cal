@@ -28,3 +28,7 @@ Update your server config:
 - `weather.service`: `openweathermap`
 
 For Google Static Maps setup, see [google-static-maps.md](google-static-maps.md).
+
+## Custom weather service
+
+The server uses a pluggable interface — any weather source can be added without modifying the core server code. See [server/weather/README.md](../server/weather/README.md) for a step-by-step guide.

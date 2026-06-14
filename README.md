@@ -35,6 +35,7 @@ Display weather forecasts and a stylised map of your city on an Inkplate 10 that
 
 - Server guide: [server/README.md](server/README.md)
 - Weather provider API setup: [doc/weather-apis.md](doc/weather-apis.md)
+- **Adding a custom weather service** — implement the `WeatherService` interface to plug in any weather source: [server/weather/README.md](server/weather/README.md)
 - Google Static Maps setup: [doc/google-static-maps.md](doc/google-static-maps.md)
 - **Integrating a custom board** — implement the `IBoard` interface to use any e-paper device: [doc/custom-board.md](doc/custom-board.md)
 - Contributor guide: [CONTRIBUTING.md](CONTRIBUTING.md)

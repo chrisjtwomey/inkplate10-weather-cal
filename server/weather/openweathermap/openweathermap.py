@@ -2,10 +2,12 @@ import requests
 from collections import defaultdict
 from datetime import datetime, time as dt_time
 from ..service import WeatherService
+from ..registry import register
 
 
+@register("openweathermap")
 class OpenWeatherMapService(WeatherService):
-    def __init__(self, apikey, location, num_hours=6, metric=True):
+    def __init__(self, *, apikey=None, location=None, num_hours=6, metric=True):
         super().__init__(
             apikey,
             "https://api.openweathermap.org",

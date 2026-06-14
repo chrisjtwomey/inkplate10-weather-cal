@@ -1,8 +1,9 @@
 import os
 import json
+from abc import ABC, abstractmethod
 
 
-class WeatherService:
+class WeatherService(ABC):
     def __init__(
         self, apikey, baseurl, service_name, num_hours=6, metric=True
     ):
@@ -32,14 +33,35 @@ class WeatherService:
         """No-op for services that don't cache."""
         pass
 
-    def get_current_conditions(self):
-        raise NotImplementedError("get_current_conditions not implemented")
+    @abstractmethod
+    def get_current_conditions(self) -> dict:
+        """Return a dict of current weather conditions.
 
-    def get_5day_forecast(self):
-        raise NotImplementedError("get_5day_forecast not implemented")
+        Expected keys: icon, temperature (unit, value, feels_like),
+        wind (unit, value, direction_degrees), humidity, uv_index, weather_text.
+        """
 
-    def get_daily_summary(self):
-        raise NotImplementedError("get_daily_summary not implemented")
+    @abstractmethod
+    def get_5day_forecast(self) -> list:
+        """Return a list of dicts, one per day, for the next 5 days.
 
-    def get_hourly_forecast(self):
-        raise NotImplementedError("get_hourly_forecast not implemented")
+        Expected keys per entry: dt, icon, temperature (unit, min, max),
+        wind, rain_probability, uv_index, pollen, sunrise, sunset,
+        hours_of_sun, hours_of_rain, day_phrase, night_phrase.
+        """
+
+    @abstractmethod
+    def get_daily_summary(self) -> dict:
+        """Return a dict summarising today's forecast.
+
+        Expected keys: icon, temperature (unit, min, max, feels_like),
+        wind, humidity, rain_probability, pollen.
+        """
+
+    @abstractmethod
+    def get_hourly_forecast(self) -> list:
+        """Return a list of dicts for the next ``num_hours`` hours.
+
+        Expected keys per entry: dt, icon, temperature (unit, value),
+        wind (unit, value, direction_degrees), humidity, rain_probability.
+        """

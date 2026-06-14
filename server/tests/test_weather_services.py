@@ -8,6 +8,9 @@ import responses
 
 from weather.accuweather.accuweather import AccuweatherService
 from weather.openweathermap.openweathermap import OpenWeatherMapService
+from weather.mock.mock import MockWeatherService
+from weather.registry import registered_services, _REGISTRY
+from weather.service import WeatherService
 
 
 def _load(fixtures_dir, name):
@@ -43,12 +46,12 @@ def accuweather_endpoints(fixtures_dir):
 
 
 def test_accuweather_resolves_location_key_on_init(accuweather_endpoints):
-    svc = AccuweatherService("fake-key", "Cork", num_hours=6, metric=True)
+    svc = AccuweatherService(apikey="fake-key", location="Cork", num_hours=6, metric=True)
     assert svc.location_key == "213373"
 
 
 def test_accuweather_daily_summary_parses_metric(accuweather_endpoints):
-    svc = AccuweatherService("fake-key", "Cork", num_hours=6, metric=True)
+    svc = AccuweatherService(apikey="fake-key", location="Cork", num_hours=6, metric=True)
     summary = svc.get_daily_summary()
 
     assert summary["temperature"]["unit"] == "\N{DEGREE SIGN}C"
@@ -63,7 +66,7 @@ def test_accuweather_daily_summary_parses_metric(accuweather_endpoints):
 
 
 def test_accuweather_daily_summary_parses_imperial(accuweather_endpoints):
-    svc = AccuweatherService("fake-key", "Cork", num_hours=6, metric=False)
+    svc = AccuweatherService(apikey="fake-key", location="Cork", num_hours=6, metric=False)
     summary = svc.get_daily_summary()
     assert summary["temperature"]["unit"] == "\N{DEGREE SIGN}F"
     assert summary["wind"]["unit"] == "mph"
@@ -71,7 +74,7 @@ def test_accuweather_daily_summary_parses_imperial(accuweather_endpoints):
 
 
 def test_accuweather_hourly_forecast_returns_requested_count(accuweather_endpoints):
-    svc = AccuweatherService("fake-key", "Cork", num_hours=6, metric=True)
+    svc = AccuweatherService(apikey="fake-key", location="Cork", num_hours=6, metric=True)
     hourly = svc.get_hourly_forecast()
     assert len(hourly) == 6
 
@@ -92,7 +95,7 @@ def test_accuweather_raises_on_empty_location_response(fixtures_dir):
                  re.compile(r"http://dataservice\.accuweather\.com/locations/v1/search.*"),
                  json=[])
         with pytest.raises(ValueError, match="Unexpected response"):
-            AccuweatherService("fake-key", "Cork")
+            AccuweatherService(apikey="fake-key", location="Cork")
 
 
 # ====================================================================
@@ -118,14 +121,14 @@ def openweathermap_endpoints(fixtures_dir):
 
 
 def test_openweathermap_resolves_coords_on_init(openweathermap_endpoints):
-    svc = OpenWeatherMapService("fake-key", "Cork", num_hours=6, metric=True)
+    svc = OpenWeatherMapService(apikey="fake-key", location="Cork", num_hours=6, metric=True)
     # The service rounds its lat/lon at construction.
     assert svc.lat == 52       # round(51.8985)
     assert svc.lon == -8       # round(-8.4756)
 
 
 def test_openweathermap_daily_summary_parses(openweathermap_endpoints):
-    svc = OpenWeatherMapService("fake-key", "Cork", num_hours=6, metric=True)
+    svc = OpenWeatherMapService(apikey="fake-key", location="Cork", num_hours=6, metric=True)
     summary = svc.get_daily_summary()
     assert summary["temperature"]["min"] == 11   # round(11.0)
     assert summary["temperature"]["max"] == 18   # round(17.8)
@@ -133,7 +136,7 @@ def test_openweathermap_daily_summary_parses(openweathermap_endpoints):
 
 
 def test_openweathermap_hourly_forecast_parses(openweathermap_endpoints):
-    svc = OpenWeatherMapService("fake-key", "Cork", num_hours=6, metric=True)
+    svc = OpenWeatherMapService(apikey="fake-key", location="Cork", num_hours=6, metric=True)
     hourly = svc.get_hourly_forecast()
     assert len(hourly) == 6
     first = hourly[0]
@@ -154,6 +157,39 @@ def test_openweathermap_raises_on_non_200_forecast(fixtures_dir):
         rsps.add(rsps.GET,
                  re.compile(r"https://api\.openweathermap\.org/data/2\.5/forecast.*"),
                  json={"cod": "401", "message": "Invalid API key"})
-        svc = OpenWeatherMapService("fake-key", "Cork")
+        svc = OpenWeatherMapService(apikey="fake-key", location="Cork")
         with pytest.raises(ValueError, match="Non-200 response"):
             svc.get_hourly_forecast()
+
+
+# ====================================================================
+# Interface conformance
+# ====================================================================
+
+def test_all_registered_services_are_weather_service_subclasses():
+    """Every entry in the registry must be a concrete WeatherService subclass."""
+    assert len(_REGISTRY) > 0, "Registry is empty — service modules not imported"
+    for name, cls in _REGISTRY.items():
+        assert issubclass(cls, WeatherService), (
+            f"{name!r} ({cls.__name__}) is not a subclass of WeatherService"
+        )
+
+
+def test_weather_service_abc_cannot_be_instantiated_directly():
+    """WeatherService is abstract and must not be directly instantiatable."""
+    import pytest
+    with pytest.raises(TypeError):
+        WeatherService(  # type: ignore[abstract]
+            apikey=None, baseurl=None, service_name="test"
+        )
+
+
+def test_incomplete_service_raises_on_instantiation():
+    """A subclass missing abstract methods must raise TypeError at instantiation."""
+    class IncompleteService(WeatherService):
+        def get_current_conditions(self):
+            pass
+        # get_5day_forecast, get_daily_summary, get_hourly_forecast not implemented
+
+    with pytest.raises(TypeError):
+        IncompleteService(apikey=None, baseurl=None, service_name="incomplete")
