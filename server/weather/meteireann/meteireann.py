@@ -126,7 +126,8 @@ class MetEireannService(WeatherService):
 
         instants: dict mapping UTC datetime → dict of instant parameters
                   (temperature_c, wind_ms, wind_deg, humidity)
-        periods:  list of dicts with keys from_dt, to_dt, symbol, precip_mm
+        periods:  list of dicts with keys from_dt, to_dt, symbol,
+              precip_mm, precip_probability
         """
         xml_text = self._fetch_xml()
         root = ET.fromstring(xml_text)
@@ -165,11 +166,20 @@ class MetEireannService(WeatherService):
                 precip_el = loc.find("precipitation")
                 symbol_id = symbol_el.get("id", "") if symbol_el is not None else ""
                 precip = float(precip_el.get("value", 0)) if precip_el is not None else 0.0
+                precip_prob = None
+                if precip_el is not None:
+                    prob_raw = precip_el.get("probability")
+                    if prob_raw is not None:
+                        try:
+                            precip_prob = float(prob_raw)
+                        except ValueError:
+                            precip_prob = None
                 periods.append({
                     "from_dt": from_dt,
                     "to_dt": to_dt,
                     "symbol": symbol_id,
                     "precip_mm": precip,
+                    "precip_probability": precip_prob,
                 })
 
         return instants, periods
@@ -206,6 +216,22 @@ class MetEireannService(WeatherService):
             return ""
         # Most frequent symbol in the window
         return max(set(window), key=window.count)
+
+    def _daily_rain_probability(self, day_periods: list[dict]) -> int:
+        """Return daily rain probability from API values, with a precipitation fallback."""
+        if not day_periods:
+            return 0
+
+        api_probs = [
+            p["precip_probability"]
+            for p in day_periods
+            if p.get("precip_probability") is not None
+        ]
+        if api_probs:
+            return round(max(api_probs))
+
+        rainy = sum(1 for p in day_periods if p["precip_mm"] > 0.1)
+        return round(rainy / len(day_periods) * 100)
 
     # ── Public interface ─────────────────────────────────────────────────────
 
@@ -266,15 +292,26 @@ class MetEireannService(WeatherService):
             return cached
 
         instants, periods = self._parse_entries()
+        if not instants:
+            raise ValueError("No instant entries in Met Éireann response")
+
         now_utc = datetime.now(tz=timezone.utc)
         today = now_utc.date()
 
+        available_dates = sorted({dt.date() for dt in instants})
+        target_date = today
+        if target_date not in available_dates:
+            target_date = next((d for d in available_dates if d > today), available_dates[0])
+            log.warning(
+                "No Met Éireann entries for %s UTC; using nearest available date %s",
+                today,
+                target_date,
+            )
+
         today_instants = {
             dt: v for dt, v in instants.items()
-            if dt.date() == today
+            if dt.date() == target_date
         }
-        if not today_instants:
-            raise ValueError("No forecast entries for today in Met Éireann response")
 
         temps = [v["temperature_c"] for v in today_instants.values() if v["temperature_c"] is not None]
         winds = [v for v in today_instants.values() if v["wind_ms"] is not None]
@@ -288,16 +325,12 @@ class MetEireannService(WeatherService):
         to_dt = max(today_instants.keys())
         symbol = self._dominant_symbol(periods, from_dt, to_dt)
 
-        # Rain probability: fraction of today's 1h periods that have precipitation
+        # Prefer API probability; otherwise infer from rainy-hour fraction.
         today_periods = [
             p for p in periods
-            if p["from_dt"].date() == today
+            if p["from_dt"].date() == target_date
         ]
-        if today_periods:
-            rainy = sum(1 for p in today_periods if p["precip_mm"] > 0.1)
-            rain_prob = round(rainy / len(today_periods) * 100)
-        else:
-            rain_prob = 0
+        rain_prob = self._daily_rain_probability(today_periods)
 
         # Feels-like: use noon entry
         noon_temp_c = noon_entry[1]["temperature_c"] or 0
@@ -332,8 +365,8 @@ class MetEireannService(WeatherService):
         instants, periods = self._parse_entries()
         now_utc = datetime.now(tz=timezone.utc)
 
-        # Build a symbol lookup: period from_dt → symbol
-        symbol_by_hour: dict[datetime, str] = {p["from_dt"]: p["symbol"] for p in periods}
+        # Build period lookup by start hour.
+        period_by_hour: dict[datetime, dict] = {p["from_dt"]: p for p in periods}
 
         # Only future instants, in order
         future = sorted(
@@ -346,7 +379,12 @@ class MetEireannService(WeatherService):
             temp_c = entry["temperature_c"] or 0
             wind_ms = entry["wind_ms"] or 0.0
             humidity = entry["humidity"] or 0.0
-            symbol = symbol_by_hour.get(dt_key, "")
+            period = period_by_hour.get(dt_key)
+            symbol = period["symbol"] if period is not None else ""
+            if period is not None and period.get("precip_probability") is not None:
+                rain_probability = round(period["precip_probability"])
+            else:
+                rain_probability = 100 if period is not None and period["precip_mm"] > 0.1 else 0
 
             results.append({
                 "dt": dt_key.astimezone(tz=None).replace(tzinfo=None),
@@ -361,7 +399,7 @@ class MetEireannService(WeatherService):
                     "direction_degrees": round(entry["wind_deg"] or 0),
                 },
                 "humidity": round(humidity),
-                "rain_probability": 0,  # individual hour probability not available
+                "rain_probability": rain_probability,
             })
 
         self.cache.set("hourly_forecast", results)
@@ -399,6 +437,9 @@ class MetEireannService(WeatherService):
             to_dt = max(day_instants.keys())
             symbol = self._dominant_symbol(periods, from_dt, to_dt)
 
+            day_periods = [p for p in periods if p["from_dt"].date() == day]
+            rain_prob = self._daily_rain_probability(day_periods)
+
             results.append({
                 "dt": datetime(day.year, day.month, day.day),
                 "icon": self.get_icon(symbol),
@@ -412,7 +453,7 @@ class MetEireannService(WeatherService):
                     "value": self._wind_speed(noon_data["wind_ms"] or 0),
                     "direction_degrees": round(noon_data["wind_deg"] or 0),
                 },
-                "rain_probability": 0,
+                "rain_probability": rain_prob,
                 "uv_index": None,
                 "pollen": None,
                 "sunrise": None,
