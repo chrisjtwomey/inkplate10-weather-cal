@@ -8,3 +8,4 @@ Pillow==12.2.0
 requests==2.34.2
 Werkzeug==3.1.8
 paho-mqtt==2.1.0
+tzdata==2026.3; sys_platform == "win32"

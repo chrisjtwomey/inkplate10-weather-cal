@@ -265,7 +265,7 @@ def main():
     # Align the process timezone so Python's logging timestamps (which use
     # time.localtime) match the configured zone rather than UTC.
     tz_key = getattr(server_tz, "key", None)
-    if tz_key:
+    if tz_key and hasattr(time, "tzset"):
         os.environ["TZ"] = tz_key
         time.tzset()
 
