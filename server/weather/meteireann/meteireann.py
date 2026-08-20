@@ -1,7 +1,7 @@
 import logging
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -207,15 +207,25 @@ class MetEireannService(WeatherService):
     # ── Symbol lookup ────────────────────────────────────────────────────────
 
     def _dominant_symbol(self, periods: list[dict], from_dt: datetime, to_dt: datetime) -> str:
-        """Return the most common symbol code across periods in the given window."""
-        window = [
-            p["symbol"] for p in periods
-            if p["from_dt"] >= from_dt and p["to_dt"] <= to_dt and p["symbol"]
-        ]
-        if not window:
+        """Return the symbol that covers most of the given window."""
+        # A zero-width window asks "what is the weather now"; the next hour
+        # answers it. Happens late in the day when one instant remains.
+        if to_dt <= from_dt:
+            to_dt = from_dt + timedelta(hours=1)
+
+        # Weight by overlap seconds: the feed mixes 1-hour and 6-hour
+        # periods, so counting periods would over-weight the short ones.
+        coverage: dict[str, float] = defaultdict(float)
+        for p in periods:
+            if not p["symbol"]:
+                continue
+            overlap = (min(p["to_dt"], to_dt) - max(p["from_dt"], from_dt)).total_seconds()
+            if overlap > 0:
+                coverage[p["symbol"]] += overlap
+
+        if not coverage:
             return ""
-        # Most frequent symbol in the window
-        return max(set(window), key=window.count)
+        return max(coverage, key=lambda k: coverage[k])
 
     def _daily_rain_probability(self, day_periods: list[dict]) -> int:
         """Return daily rain probability from API values, with a precipitation fallback."""

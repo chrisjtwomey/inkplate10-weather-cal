@@ -1,7 +1,7 @@
 """Weather-service parsers driven by canned JSON fixtures via `responses`."""
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import responses
@@ -267,6 +267,28 @@ def test_meteirann_hourly_forecast_returns_requested_count(meteirann_endpoints):
         assert first["temperature"]["unit"] == "\N{DEGREE SIGN}C"
         assert "value" in first["wind"]
         assert "direction_degrees" in first["wind"]
+
+
+def test_meteirann_dominant_symbol_zero_width_window(meteirann_endpoints):
+    # Late in the day the live feed leaves one instant, so the daily summary
+    # builds a window with from_dt == to_dt. The symbol must still resolve
+    # from the next hour's period.
+    svc = MetEireannService(location="Dublin", num_hours=6, metric=True)
+    at = datetime(2026, 6, 14, 23, 0, tzinfo=timezone.utc)
+    periods = [{"from_dt": at, "to_dt": at + timedelta(hours=1), "symbol": "Sun"}]
+    assert svc._dominant_symbol(periods, at, at) == "Sun"
+
+
+def test_meteirann_dominant_symbol_weights_by_overlap(meteirann_endpoints):
+    # One 6-hour Cloud period must outweigh two 1-hour Sun periods.
+    svc = MetEireannService(location="Dublin", num_hours=6, metric=True)
+    day = datetime(2026, 6, 14, 6, 0, tzinfo=timezone.utc)
+    periods = [
+        {"from_dt": day, "to_dt": day + timedelta(hours=6), "symbol": "Cloud"},
+        {"from_dt": day + timedelta(hours=6), "to_dt": day + timedelta(hours=7), "symbol": "Sun"},
+        {"from_dt": day + timedelta(hours=7), "to_dt": day + timedelta(hours=8), "symbol": "Sun"},
+    ]
+    assert svc._dominant_symbol(periods, day, day + timedelta(hours=8)) == "Cloud"
 
 
 def test_meteirann_5day_forecast_returns_up_to_5_days(meteirann_endpoints):
