@@ -5,6 +5,7 @@ from datetime import datetime
 
 import pytest
 import responses
+from freezegun import freeze_time
 
 from weather.accuweather.accuweather import AccuweatherService
 from weather.openweathermap.openweathermap import OpenWeatherMapService
@@ -205,7 +206,12 @@ def test_incomplete_service_raises_on_instantiation():
 def meteirann_endpoints(fixtures_dir):
     xml_body = (fixtures_dir / "meteirann_forecast.xml").read_text()
     nominatim_response = [{"lat": "53.3498", "lon": "-6.2603", "display_name": "Dublin, Ireland"}]
-    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+    # The parsers keep only entries at or after now, and the canned forecast runs
+    # from 2026-06-14T10:00Z to 2026-06-18T18:00Z.
+    with (
+        freeze_time("2026-06-14 09:00:00"),
+        responses.RequestsMock(assert_all_requests_are_fired=False) as rsps,
+    ):
         rsps.add(rsps.GET,
                  re.compile(r"https://nominatim\.openstreetmap\.org/search.*"),
                  json=nominatim_response)
