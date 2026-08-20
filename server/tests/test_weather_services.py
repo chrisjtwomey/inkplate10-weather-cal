@@ -291,6 +291,33 @@ def test_meteirann_dominant_symbol_weights_by_overlap(meteirann_endpoints):
     assert svc._dominant_symbol(periods, day, day + timedelta(hours=8)) == "Cloud"
 
 
+def test_meteirann_is_night_tracks_cork_sun_times(meteirann_endpoints):
+    svc = MetEireannService(location="Dublin", num_hours=6, metric=True)
+    svc.lat, svc.lon = 51.8985, -8.4726  # Cork
+    # Mid-June: sun up ~04:57-21:04 UTC. Mid-December: ~08:38-16:33 UTC.
+    assert not svc._is_night(datetime(2026, 6, 14, 12, 0, tzinfo=timezone.utc))
+    assert svc._is_night(datetime(2026, 6, 14, 23, 0, tzinfo=timezone.utc))
+    assert not svc._is_night(datetime(2026, 12, 21, 12, 0, tzinfo=timezone.utc))
+    assert svc._is_night(datetime(2026, 12, 21, 17, 30, tzinfo=timezone.utc))
+
+
+def test_meteirann_icon_for_uses_night_variant(meteirann_endpoints):
+    svc = MetEireannService(location="Dublin", num_hours=6, metric=True)
+    noon = datetime(2026, 6, 14, 12, 0, tzinfo=timezone.utc)
+    midnight = datetime(2026, 6, 14, 23, 30, tzinfo=timezone.utc)
+    assert svc._icon_for("Sun", noon) == "icon/day/clear.png"
+    assert svc._icon_for("Sun", midnight) == "icon/night/clear.png"
+
+
+def test_meteirann_hourly_icons_use_night_variants(meteirann_endpoints, monkeypatch):
+    # The first fixture hour is PartlyCloud; at night it must map to the
+    # night icon, not the day one.
+    monkeypatch.setattr(MetEireannService, "_is_night", lambda self, dt: True)
+    svc = MetEireannService(location="Dublin", num_hours=1, metric=True)
+    hourly = svc.get_hourly_forecast()
+    assert hourly[0]["icon"] == "icon/night/partly-clear.png"
+
+
 def test_meteirann_5day_forecast_returns_up_to_5_days(meteirann_endpoints):
     svc = MetEireannService(location="Dublin", num_hours=6, metric=True)
     forecast = svc.get_5day_forecast()

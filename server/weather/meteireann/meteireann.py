@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
+from astral import Observer
+from astral import sun
 
 from ..cache import DiskCache
 from ..service import WeatherService
@@ -13,6 +15,10 @@ from ..registry import register
 _NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 _FORECAST_URL = "http://openaccess.pf.api.met.ie/metno-wdb2ts/locationforecast"
 _USER_AGENT = "inkplate10-weather-cal/1.0"
+
+# The standard sunrise/sunset definition: the sun's centre 50 arcminutes
+# below the horizon (34' atmospheric refraction + 16' solar semi-diameter).
+_HORIZON_ELEVATION_DEG = -0.833
 
 log = logging.getLogger(__name__)
 
@@ -227,6 +233,17 @@ class MetEireannService(WeatherService):
             return ""
         return max(coverage, key=lambda k: coverage[k])
 
+    def _is_night(self, dt: datetime) -> bool:
+        """Return True when the sun is below the horizon at this location."""
+        # The feed sends day symbols only and no sunrise times.
+        return sun.elevation(Observer(self.lat, self.lon), dt) < _HORIZON_ELEVATION_DEG
+
+    def _icon_for(self, symbol: str, dt: datetime) -> str:
+        """Return the icon path for a symbol, using the night variant after sunset."""
+        if symbol and self._is_night(dt):
+            return self.get_icon(f"Night_{symbol}") or self.get_icon(symbol)
+        return self.get_icon(symbol)
+
     def _daily_rain_probability(self, day_periods: list[dict]) -> int:
         """Return daily rain probability from API values, with a precipitation fallback."""
         if not day_periods:
@@ -268,12 +285,13 @@ class MetEireannService(WeatherService):
         humidity = entry["humidity"] or 0.0
 
         result = {
-            "icon": self.get_icon(  # best effort — no per-instant symbol
+            "icon": self._icon_for(  # best effort — no per-instant symbol
                 self._dominant_symbol(
                     self._parse_entries()[1],
                     dt_key,
                     dt_key.replace(hour=dt_key.hour + 1) if dt_key.hour < 23 else dt_key,
-                )
+                ),
+                dt_key,
             ),
             "temperature": {
                 "unit": self._temp_unit,
@@ -348,7 +366,7 @@ class MetEireannService(WeatherService):
         noon_wind_ms = noon_entry[1]["wind_ms"] or 0
 
         result = {
-            "icon": self.get_icon(symbol),
+            "icon": self._icon_for(symbol, now_utc),
             "temperature": {
                 "unit": self._temp_unit,
                 "min": self._temp(min(temps)),
@@ -398,7 +416,7 @@ class MetEireannService(WeatherService):
 
             results.append({
                 "dt": dt_key.astimezone(tz=None).replace(tzinfo=None),
-                "icon": self.get_icon(symbol),
+                "icon": self._icon_for(symbol, dt_key),
                 "temperature": {
                     "unit": self._temp_unit,
                     "value": self._temp(temp_c),
