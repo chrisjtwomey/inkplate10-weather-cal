@@ -1,5 +1,11 @@
 # Project rules
 
+## Sign every commit
+
+The `main` branch rules require verified signatures. Git is configured to
+GPG-sign commits and tags with key `2FAEAB8A2DB5FE61`. If a commit fails to
+sign, fix the signing setup — do not commit unsigned.
+
 ## Verify image changes visually
 
 When a change affects the rendered calendar images, do not stop at the tests.
