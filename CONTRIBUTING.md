@@ -103,13 +103,29 @@ pio run -e release_sdcard
 
 ### Automated Tests
 
-This project includes native, host-side automated tests for client-side pure logic such as back-off timing, battery capacity, refresh header parsing, and scheduling. You do not need a device to run them.
+The client firmware and its tests live in
+[epd](https://github.com/chrisjtwomey/epd). This repo keeps only
+`src/main.cpp` (which board to use) and `src/defaults.cpp` (credentials and
+server URL), so there is no client test suite here.
 
-Run the client test suite from the repository root:
+To run the client tests, clone epd beside this repo and run them there.
+No device is needed — all three environments are host-only:
 
 ```sh
-pio test -e native
+cd ../epd/firmware
+pio test -e native              # back-off, battery, refresh header parsing
+pio test -e native_mock         # display + sleep against MockBoard
+pio test -e native_integration  # the full run_app() control flow
 ```
+
+The server test suite still lives here:
+
+```sh
+cd server && pytest
+```
+
+Building firmware from this repo needs epd checked out alongside it,
+because `lib_deps` points at `symlink://../epd/firmware`.
 
 
 ## Making Changes

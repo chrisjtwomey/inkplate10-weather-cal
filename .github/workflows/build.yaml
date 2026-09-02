@@ -4,10 +4,22 @@ on: [push, pull_request]
 
 jobs:
   build:
+    name: Build firmware
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: inkplate10-weather-cal
 
     steps:
+      # Checked out side by side so lib_deps' symlink://../epd/... paths
+      # resolve. The client's own tests live in epd and run in its CI.
       - uses: actions/checkout@v6
+        with:
+          path: inkplate10-weather-cal
+      - uses: actions/checkout@v6
+        with:
+          repository: chrisjtwomey/epd
+          path: epd
       - uses: actions/cache@v5
         with:
           path: |
@@ -25,35 +37,6 @@ jobs:
 
       - name: Build firmware (debug + release)
         run: pio run
-
-  client-tests:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cache/pip
-            ~/.platformio/.cache
-          key: ${{ runner.os }}-pio-native
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-      - name: Install PlatformIO Core
-        run: pip install --upgrade platformio
-
-      - name: Create defaults.cpp from example
-        run: cp src/defaults.example.cpp src/defaults.cpp
-
-      - name: Run native unit tests
-        run: pio test -e native
-
-      - name: Run native_mock tests
-        run: pio test -e native_mock
-
-      - name: Run native_integration tests
-        run: pio test -e native_integration
 
   server-tests:
     runs-on: ubuntu-latest

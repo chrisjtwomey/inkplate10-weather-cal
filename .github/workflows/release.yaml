@@ -9,8 +9,20 @@ jobs:
     name: Attach firmware binary to release
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: inkplate10-weather-cal
+
     steps:
+      # Checked out side by side so lib_deps' symlink://../epd/... paths
+      # resolve.
       - uses: actions/checkout@v6
+        with:
+          path: inkplate10-weather-cal
+      - uses: actions/checkout@v6
+        with:
+          repository: chrisjtwomey/epd
+          path: epd
       - uses: actions/cache@v5
         with:
           path: |
@@ -33,7 +45,7 @@ jobs:
       - name: Upload firmware.bin to release assets
         uses: softprops/action-gh-release@v3
         with:
-          files: .pio/build/release_sdcard/firmware.bin
+          files: inkplate10-weather-cal/.pio/build/release_sdcard/firmware.bin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
