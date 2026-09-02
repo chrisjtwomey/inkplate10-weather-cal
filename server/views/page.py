@@ -24,7 +24,9 @@ class Page(_Page):
         inner_height=None,
         inner_align_x="center",
         inner_align_y="center",
+        **kwargs,
     ):
+        # kwargs lets a caller pass renderer= / quantiser= through unchanged.
         super().__init__(
             name,
             width,
@@ -35,4 +37,5 @@ class Page(_Page):
             inner_align_y,
             html_dir=HTML_DIR,
             png_dir=PNG_DIR,
+            **kwargs,
         )
