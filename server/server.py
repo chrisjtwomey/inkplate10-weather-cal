@@ -13,7 +13,9 @@ import dataclasses
 import threading
 from typing import Any
 import logging.config
+from typing import NoReturn
 from utils import get_prop, get_prop_by_keys
+from epd_server.config import ConfigError, load_core_config
 from epd_server.mqtt import client_log_subscriber
 from epd_server.pipeline import regenerate as regenerate_pages
 from epd_server.source import CompositeSource, StaticSource
@@ -21,7 +23,6 @@ from epd_server.scheduling import (
     next_regen as _next_regen,
     next_wake as _next_wake,
     seconds_until,
-    validate_time_list,
 )
 from views.hourly import HourlyPage
 from views.today import TodayPage
@@ -32,7 +33,6 @@ from google.api import GoogleAPIService
 from werkzeug.serving import make_server
 from flask import Flask, make_response, send_file, abort
 from datetime import datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 log = logging.getLogger("server")
@@ -102,129 +102,70 @@ class ServerConfig:
 def validate_config(config: dict) -> ServerConfig:
     """Parse the raw config dict, apply defaults, and validate all values.
 
+    The generic blocks (server, image, mqtt, display_schedule, debug) are
+    validated by epd_server.config.load_core_config. This function adds the
+    keys only this project has (weather, google, location), then flattens
+    everything into ServerConfig for main().
+
     Logs a clear error and exits immediately on any invalid value rather than
     letting a bad entry surface as an obscure exception later at runtime.
     """
-    def _err(msg: str):
+    def _err(msg: str) -> NoReturn:
         log.error(msg)
         sys.exit(1)
 
-    # ---- weather ----
-    weather_service = get_prop_by_keys(config, "weather", "service", required=True)
-    _supported = registered_services()
-    if weather_service not in _supported:
-        _err(f"weather.service '{weather_service}' is not supported "
-             f"(choose from: {', '.join(_supported)})")
-
-    weather_apikey = get_prop_by_keys(
-        config, "weather", "apikey",
-        required=(weather_service != "mock"),
-        default=None,
-    )
-    weather_metric = get_prop_by_keys(config, "weather", "metric", default=True)
-    num_hourly_forecasts = get_prop_by_keys(
-        config, "weather", "num_hourly_forecasts", default=6
-    )
-    if num_hourly_forecasts < 0:
-        _err(f"weather.num_hourly_forecasts must be non-negative (got {num_hourly_forecasts})")
-
-    # ---- google ----
-    google_apikey = get_prop_by_keys(config, "google", "apikey", required=True)
-    staticmaps_mapid = get_prop_by_keys(config, "google", "staticmaps_mapid", required=True)
-
-    # ---- location ----
-    location = get_prop(config, "location", required=True).strip()
-
-    # ---- server ----
-    port = get_prop_by_keys(config, "server", "port", default=8080)
-    regen_lead_seconds = get_prop_by_keys(config, "server", "regen_lead_seconds", default=120)
-    if not isinstance(regen_lead_seconds, int) or regen_lead_seconds < 0:
-        _err("server.regen_lead_seconds must be a non-negative integer (seconds)")
-
-    raw_schedule = get_prop_by_keys(config, "display_schedule",
-                                    default={"09:00:00": "today.png"})
-    if not isinstance(raw_schedule, dict) or not raw_schedule:
-        _err("display_schedule must be a non-empty mapping of HH:MM:SS times to image filenames")
-    _validate_time_list("display_schedule", list(raw_schedule.keys()))
-    display_schedule = sorted(
-        [(str(t).strip(), str(p).strip()) for t, p in raw_schedule.items()],
-        key=lambda x: x[0],
-    )
-
-    tz = datetime.now().astimezone().tzinfo  # default: system local tz
-    tz_name = get_prop_by_keys(config, "server", "timezone", default=None)
-    if tz_name:
-        try:
-            tz = ZoneInfo(str(tz_name))
-        except ZoneInfoNotFoundError:
-            _err(f"server.timezone '{tz_name}' is not a valid IANA zone (e.g. Europe/Dublin)")
-
-    # ---- image ----
-    image_width = get_prop_by_keys(config, "image", "width", default=825)
-    image_height = get_prop_by_keys(config, "image", "height", default=1200)
-    image_inner_width = get_prop_by_keys(config, "image", "innerWidth", default=image_width)
-    image_inner_height = get_prop_by_keys(config, "image", "innerHeight", default=image_height)
-    image_inner_align_x = str(
-        get_prop_by_keys(config, "image", "innerAlignX", default="center")
-    ).strip().lower()
-    image_inner_align_y = str(
-        get_prop_by_keys(config, "image", "innerAlignY", default="center")
-    ).strip().lower()
-
-    image_keys = {
-        "image.width": image_width,
-        "image.height": image_height,
-        "image.innerWidth": image_inner_width,
-        "image.innerHeight": image_inner_height,
-    }
-    for key, value in image_keys.items():
-        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-            _err(f"{key} must be a positive integer (got {value!r})")
-
-    if image_inner_width > image_width:
-        _err(
-            f"image.innerWidth ({image_inner_width}) cannot be greater than "
-            f"image.width ({image_width})"
-        )
-    if image_inner_height > image_height:
-        _err(
-            f"image.innerHeight ({image_inner_height}) cannot be greater than "
-            f"image.height ({image_height})"
+    try:
+        core = load_core_config(
+            config,
+            default_schedule={"09:00:00": "today.png"},
+            default_mqtt_topic="mqtt/eink-cal-client",
         )
 
-    allowed_align_x = {"left", "center", "right"}
-    allowed_align_y = {"top", "center", "bottom"}
-    if image_inner_align_x not in allowed_align_x:
-        _err(
-            "image.innerAlignX must be one of "
-            f"{sorted(allowed_align_x)} (got {image_inner_align_x!r})"
-        )
-    if image_inner_align_y not in allowed_align_y:
-        _err(
-            "image.innerAlignY must be one of "
-            f"{sorted(allowed_align_y)} (got {image_inner_align_y!r})"
-        )
+        # ---- weather ----
+        weather_service = get_prop_by_keys(config, "weather", "service", required=True)
+        _supported = registered_services()
+        if weather_service not in _supported:
+            raise ConfigError(
+                f"weather.service '{weather_service}' is not supported "
+                f"(choose from: {', '.join(_supported)})"
+            )
 
-    # ---- mqtt ----
-    mqtt_enabled = get_prop_by_keys(config, "mqtt", "enabled", default=False)
-    mqtt_host = get_prop_by_keys(config, "mqtt", "host", default="localhost")
-    mqtt_port = get_prop_by_keys(config, "mqtt", "port", default=1883)
-    mqtt_topic = get_prop_by_keys(config, "mqtt", "topic", default="mqtt/eink-cal-client")
+        weather_apikey = get_prop_by_keys(
+            config, "weather", "apikey",
+            required=(weather_service != "mock"),
+            default=None,
+        )
+        weather_metric = get_prop_by_keys(config, "weather", "metric", default=True)
+        num_hourly_forecasts = get_prop_by_keys(
+            config, "weather", "num_hourly_forecasts", default=6
+        )
+        if num_hourly_forecasts < 0:
+            raise ConfigError(
+                f"weather.num_hourly_forecasts must be non-negative (got {num_hourly_forecasts})"
+            )
 
-    # ---- debug ----
-    debug = get_prop(config, "debug", default=False)
+        # ---- google ----
+        google_apikey = get_prop_by_keys(config, "google", "apikey", required=True)
+        staticmaps_mapid = get_prop_by_keys(config, "google", "staticmaps_mapid", required=True)
+
+        # ---- location ----
+        location = get_prop(config, "location", required=True).strip()
+    except (ConfigError, KeyError) as exc:
+        # KeyError comes from a required key that is absent; its arg is the
+        # user-facing message.
+        _err(exc.args[0] if exc.args else str(exc))
 
     return ServerConfig(
-        port=port,
-        timezone=tz,
-        display_schedule=display_schedule,
-        regen_lead_seconds=regen_lead_seconds,
-        image_width=image_width,
-        image_height=image_height,
-        image_inner_width=image_inner_width,
-        image_inner_height=image_inner_height,
-        image_inner_align_x=image_inner_align_x,
-        image_inner_align_y=image_inner_align_y,
+        port=core.server.port,
+        timezone=core.server.timezone,
+        display_schedule=core.server.display_schedule,
+        regen_lead_seconds=core.server.regen_lead_seconds,
+        image_width=core.image.width,
+        image_height=core.image.height,
+        image_inner_width=core.image.inner_width,
+        image_inner_height=core.image.inner_height,
+        image_inner_align_x=core.image.inner_align_x,
+        image_inner_align_y=core.image.inner_align_y,
         weather_service=weather_service,
         weather_apikey=weather_apikey,
         weather_metric=weather_metric,
@@ -232,13 +173,12 @@ def validate_config(config: dict) -> ServerConfig:
         google_apikey=google_apikey,
         staticmaps_mapid=staticmaps_mapid,
         location=location,
-        mqtt_enabled=mqtt_enabled,
-        mqtt_host=mqtt_host,
-        mqtt_port=mqtt_port,
-        mqtt_topic=mqtt_topic,
-        debug=debug,
+        mqtt_enabled=core.mqtt.enabled,
+        mqtt_host=core.mqtt.host,
+        mqtt_port=core.mqtt.port,
+        mqtt_topic=core.mqtt.topic,
+        debug=core.server.debug,
     )
-
 
 def main():
     global log, server_display_schedule, server_regen_lead_seconds, server_tz
@@ -402,15 +342,6 @@ def main():
 def get_client_mqtt_logging(host, port, topic):
     return client_log_subscriber(host, port, topic, client_id="eink-cal-server")
 
-
-def _validate_time_list(config_key, times):
-    """Validate that every entry in `times` is a valid HH:MM:SS string.
-    Exits with an error message if any entry is malformed."""
-    try:
-        validate_time_list(config_key, times)
-    except ValueError as exc:
-        log.error(str(exc))
-        sys.exit(1)
 
 
 def get_next_wake():
