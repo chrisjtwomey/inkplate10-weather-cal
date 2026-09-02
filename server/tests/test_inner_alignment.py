@@ -1,7 +1,6 @@
 import pytest
 
 from server import validate_config
-from views.page import Page
 
 
 def _base_config():
@@ -69,21 +68,3 @@ def test_rejects_invalid_alignment_values(key, value):
 
     with pytest.raises(SystemExit):
         validate_config(config)
-
-
-def test_layout_css_variables_reflect_left_bottom_alignment():
-    page = Page(
-        "dummy",
-        825,
-        1200,
-        inner_width=650,
-        inner_height=900,
-        inner_align_x="left",
-        inner_align_y="bottom",
-    )
-    style = page.layout_css_variables()
-
-    assert "--inner-pad-left:0px;" in style
-    assert "--inner-pad-right:175px;" in style
-    assert "--inner-pad-top:300px;" in style
-    assert "--inner-pad-bottom:0px;" in style

@@ -10,3 +10,8 @@ Werkzeug==3.1.8
 paho-mqtt==2.1.0
 astral==3.2
 tzdata==2026.3; sys_platform == "win32"
+# Generic server core (config, registry, cache, Page, scheduling, MQTT relay).
+# pip only honours #subdirectory= for VCS URLs, so this needs a git binary
+# (the Dockerfile installs one). Pin a tag instead of @main for releases.
+# For local development against a checkout instead:  pip install -e ../../epd/server
+epd-server @ git+https://github.com/chrisjtwomey/epd.git@main#subdirectory=server

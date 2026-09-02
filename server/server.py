@@ -13,9 +13,14 @@ import dataclasses
 import threading
 from typing import Any
 import logging.config
-import paho.mqtt.client as mqtt
-from paho.mqtt.enums import CallbackAPIVersion
 from utils import get_prop, get_prop_by_keys
+from epd_server.mqtt import client_log_subscriber
+from epd_server.scheduling import (
+    next_regen as _next_regen,
+    next_wake as _next_wake,
+    seconds_until,
+    validate_time_list,
+)
 from views.hourly import HourlyPage
 from views.today import TodayPage
 from views.current import CurrentPage
@@ -443,106 +448,17 @@ def main():
 
 
 def get_client_mqtt_logging(host, port, topic):
-    mqtt_client = mqtt.Client(CallbackAPIVersion.VERSION2, "eink-cal-server")
-    client_log = logging.getLogger("client")
-
-    def on_connect(_client, _userdata, _flags, reason_code, _properties):
-        if reason_code.is_failure:
-            log.error("Connection to client logging broker failed")
-
-        log.info("Connected to client logging broker")
-
-    def on_disconnect(_client, _userdata, _disconnect_flags, reason_code, _properties):
-        if reason_code.is_failure:
-            log.error("Unexpected broker disconnection")
-
-        log.info("Disconnected from client logging broker")
-
-    def on_message(_client, _userdata, message):
-        if message.retain:
-            # ignore stale messages
-            return
-
-        client_log.info(message.payload.decode())
-
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_disconnect = on_disconnect
-    mqtt_client.on_message = on_message
-    try:
-        mqtt_client.connect(host, port, 60)
-        mqtt_client.subscribe(topic)
-        mqtt_client.loop_start()
-
-        return mqtt_client
-    except Exception as e:
-        log.error(f"Connection to client logging broker failed: {e}")
-
-    return None
+    return client_log_subscriber(host, port, topic, client_id="eink-cal-server")
 
 
 def _validate_time_list(config_key, times):
     """Validate that every entry in `times` is a valid HH:MM:SS string.
     Exits with an error message if any entry is malformed."""
-    for t in times:
-        try:
-            datetime.strptime(t, "%H:%M:%S")
-        except ValueError:
-            log.error(
-                f"{config_key}: '{t}' is not a valid time — expected HH:MM:SS "
-                f"(e.g. '09:00:00')"
-            )
-            sys.exit(1)
-
-
-def _next_regen(display_schedule, tz, lead_seconds=120, now=None):
-    """
-    Return (regen_dt, wake_dt, url_path) for the next scheduled regeneration.
-
-    Regen fires `lead_seconds` seconds before the corresponding client wake
-    time.  The strict `regen_dt > now` check ensures that after a regen fires,
-    the next loop iteration advances to the following wake slot rather than
-    re-triggering the same one immediately.
-
-    All wall-clock arithmetic is anchored in `tz` so DST transitions are
-    handled correctly.
-    """
-    if now is None:
-        now = datetime.now(tz=tz)
-    regen_lead = timedelta(seconds=lead_seconds)
-    today = now.date()
-    for time_str, url_path in display_schedule:
-        t = datetime.strptime(time_str, "%H:%M:%S").time()
-        wake_dt = datetime.combine(today, t, tzinfo=tz)
-        regen_dt = wake_dt - regen_lead
-        if regen_dt > now:
-            return regen_dt, wake_dt, url_path
-    tomorrow = today + timedelta(days=1)
-    time_str, url_path = display_schedule[0]
-    t = datetime.strptime(time_str, "%H:%M:%S").time()
-    wake_dt = datetime.combine(tomorrow, t, tzinfo=tz)
-    return wake_dt - regen_lead, wake_dt, url_path
-
-
-def _next_wake(wake_schedule, tz, now=None):
-    """
-    Return (next_dt, url_path) for the next scheduled client wake.
-
-    wake_schedule is a sorted list of (time_str, url_path) tuples.
-    All wall-clock arithmetic is anchored in `tz` so DST transitions are
-    handled correctly.
-    """
-    if now is None:
-        now = datetime.now(tz=tz)
-    today = now.date()
-    for time_str, url_path in wake_schedule:
-        t = datetime.strptime(time_str, "%H:%M:%S").time()
-        dt = datetime.combine(today, t, tzinfo=tz)
-        if dt > now:
-            return dt, url_path
-    tomorrow = today + timedelta(days=1)
-    time_str, url_path = wake_schedule[0]
-    t = datetime.strptime(time_str, "%H:%M:%S").time()
-    return datetime.combine(tomorrow, t, tzinfo=tz), url_path
+    try:
+        validate_time_list(config_key, times)
+    except ValueError as exc:
+        log.error(str(exc))
+        sys.exit(1)
 
 
 def get_next_wake():
@@ -553,7 +469,7 @@ def get_next_wake():
     global server_display_schedule, server_tz
     now = datetime.now(tz=server_tz)
     next_dt, url_path = _next_wake(server_display_schedule, server_tz, now=now)
-    return max(0, int(next_dt.timestamp() - now.timestamp())), url_path
+    return seconds_until(now, next_dt), url_path
 
 
 class ServerThread(threading.Thread):

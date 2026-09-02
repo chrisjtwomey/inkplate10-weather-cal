@@ -11,6 +11,7 @@ ENV PYTHONUNBUFFERED=1 \
     SERVER_COMMIT_SHA=${SERVER_COMMIT_SHA}
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
+        git \
         chromium \
         chromium-driver \
         fonts-dejavu-core \
