@@ -1,9 +1,21 @@
 import os
 import json
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+
+from epd_server.source import DataSource
 
 
-class WeatherService(ABC):
+class WeatherService(DataSource):
+    """A weather provider, exposed to pages as four named datasets.
+
+    Subclasses implement the four ``get_*`` methods. ``datasets()`` maps them
+    to the names the views declare in ``Page.requires``:
+
+        current_conditions, daily_summary, hourly_forecasts, daily_forecasts
+
+    Nothing is fetched until a page that needs it is regenerated.
+    """
+
     def __init__(
         self, apikey, baseurl, service_name, num_hours=6, metric=True
     ):
@@ -32,6 +44,19 @@ class WeatherService(ABC):
     def invalidate_forecast_cache(self):
         """No-op for services that don't cache."""
         pass
+
+    # ── DataSource ────────────────────────────────────────────────────────
+
+    def datasets(self):
+        return {
+            "current_conditions": self.get_current_conditions,
+            "daily_summary": self.get_daily_summary,
+            "hourly_forecasts": self.get_hourly_forecast,
+            "daily_forecasts": self.get_5day_forecast,
+        }
+
+    def invalidate(self):
+        self.invalidate_forecast_cache()
 
     @abstractmethod
     def get_current_conditions(self) -> dict:

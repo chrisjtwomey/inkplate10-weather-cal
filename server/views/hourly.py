@@ -4,6 +4,8 @@ from .detailed import DetailedPage
 
 
 class HourlyPage(DetailedPage):
+    requires = ("map_url", "daily_summary", "hourly_forecasts")
+
     def __init__(
         self,
         width,

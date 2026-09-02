@@ -3,6 +3,8 @@ from .simplified import SimplifiedPage
 
 
 class CurrentPage(SimplifiedPage):
+    requires = ("map_url", "current_conditions", "daily_summary")
+
     def __init__(
         self,
         width,

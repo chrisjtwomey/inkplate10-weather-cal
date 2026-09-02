@@ -15,6 +15,8 @@ from typing import Any
 import logging.config
 from utils import get_prop, get_prop_by_keys
 from epd_server.mqtt import client_log_subscriber
+from epd_server.pipeline import regenerate as regenerate_pages
+from epd_server.source import CompositeSource, StaticSource
 from epd_server.scheduling import (
     next_regen as _next_regen,
     next_wake as _next_wake,
@@ -29,7 +31,7 @@ from views.tomorrow import TomorrowPage
 from google.api import GoogleAPIService
 from werkzeug.serving import make_server
 from flask import Flask, make_response, send_file, abort
-from datetime import datetime, timedelta, date as _date
+from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 cwd = os.path.dirname(os.path.realpath(__file__))
@@ -332,75 +334,25 @@ def main():
         cfg.image_inner_align_y,
     )
 
-    def regenerate(image_name=None, force_refresh=False):
-        """Regenerate one or more page images.
+    # Every page the server serves, and where their content comes from.
+    # Each page declares the datasets it needs in Page.requires; the pipeline
+    # fetches each one once per regeneration and passes it to the pages that
+    # asked for it. map_url is a constant, so it comes from a StaticSource.
+    pages = [today_page, current_page, hourly_page, daily_page, tomorrow_page]
+    source = CompositeSource(StaticSource(map_url=map_url), weather_svc)
 
-        image_name:    'today.png', 'current.png', 'hourly.png', 'daily.png', 'tomorrow.png',
-                       or None to regenerate all.
+    def regenerate(image_name=None, force_refresh=False):
+        """Regenerate one page image, or all of them when image_name is None.
+
         force_refresh: if True, bypass any cached weather data before fetching.
         """
-        regen_today    = image_name is None or image_name == "today.png"
-        regen_current  = image_name is None or image_name == "current.png"
-        regen_hourly   = image_name is None or image_name == "hourly.png"
-        regen_daily    = image_name is None or image_name == "daily.png"
-        regen_tomorrow = image_name is None or image_name == "tomorrow.png"
         with regen_lock:
             label = image_name if image_name else "all images"
             log.info(f"Regenerating {label}")
-            if force_refresh:
-                weather_svc.invalidate_forecast_cache()
-            daily_summary = None
-            current_conditions = None
-            if regen_today or regen_current or regen_hourly or regen_daily or regen_tomorrow:
-                daily_summary = weather_svc.get_daily_summary()
-            if regen_today or regen_current:
-                current_conditions = weather_svc.get_current_conditions()
-            if regen_today:
-                today_page.template(
-                    map_url=map_url,
-                    current_conditions=current_conditions,
-                    daily_summary=daily_summary,
-                )
-                today_page.save()
-            if regen_current:
-                current_page.template(
-                    map_url=map_url,
-                    current_conditions=current_conditions,
-                    daily_summary=daily_summary,
-                )
-                current_page.save()
-            if regen_hourly:
-                hourly_forecasts = weather_svc.get_hourly_forecast()
-                hourly_page.template(
-                    map_url=map_url,
-                    daily_summary=daily_summary,
-                    hourly_forecasts=hourly_forecasts,
-                )
-                hourly_page.save()
-            if regen_daily or regen_tomorrow:
-                five_day_forecasts = weather_svc.get_5day_forecast()
-                if regen_daily:
-                    daily_page.template(
-                        map_url=map_url,
-                        daily_summary=daily_summary,
-                        daily_forecasts=five_day_forecasts,
-                    )
-                    daily_page.save()
-                if regen_tomorrow:
-                    tomorrow_date = _date.today() + timedelta(days=1)
-                    tomorrow_fc = next(
-                        (f for f in five_day_forecasts if f["dt"].date() == tomorrow_date),
-                        None,
-                    )
-                    if tomorrow_fc is not None:
-                        tomorrow_page.template(
-                            map_url=map_url,
-                            tomorrow_forecast=tomorrow_fc,
-                        )
-                        tomorrow_page.save()
-                    else:
-                        log.warning("No forecast data for tomorrow (%s), skipping", tomorrow_date)
-            log.info("Regeneration complete")
+            rendered = regenerate_pages(pages, source, only=image_name,
+                                        force_refresh=force_refresh)
+            log.info("Regeneration complete: %s",
+                     ", ".join(p.png_filename for p in rendered) or "nothing rendered")
 
     regenerate()
 
