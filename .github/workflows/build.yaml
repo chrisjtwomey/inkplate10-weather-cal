@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           path: inkplate10-weather-cal
+          # Tags, so scripts/version.py can derive CLIENT_VERSION.
+          fetch-depth: 0
       - uses: actions/checkout@v6
         with:
           repository: chrisjtwomey/epd
