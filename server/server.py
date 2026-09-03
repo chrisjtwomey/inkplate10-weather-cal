@@ -228,16 +228,22 @@ def main():
     # Page.requires.
     source = CompositeSource(StaticSource(map_url=map_url), weather_svc)
 
-    server = DisplayServer(
-        pages=pages,
-        source=source,
-        schedule=cfg.display_schedule,
-        tz=cfg.timezone,
-        regen_lead_seconds=cfg.regen_lead_seconds,
-        port=cfg.port,
-        mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_topic),
-        mqtt_client_id="eink-cal-server",
-    )
+    try:
+        server = DisplayServer(
+            pages=pages,
+            source=source,
+            schedule=cfg.display_schedule,
+            tz=cfg.timezone,
+            regen_lead_seconds=cfg.regen_lead_seconds,
+            port=cfg.port,
+            mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_topic),
+            mqtt_client_id="eink-cal-server",
+        )
+    except ValueError as exc:
+        # The schedule names a page that does not exist. Report it like every
+        # other config error rather than as a traceback.
+        log.error(str(exc))
+        sys.exit(1)
     server.run(once=args.once)
 
 
