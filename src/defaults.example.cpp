@@ -14,7 +14,7 @@
  */
 
 // The URL on the server which the client will try to download from.
-char serverURL[] = "http://YOUR_SERVER_HOST:8080/calendar.png";
+char serverURL[] = "http://YOUR_SERVER_HOST:8080/today.png";
 // The number of times to attempt downloading or drawing the server image.
 int serverRetries = 3;
 // Fallback seconds-until-next-refresh when the server hasn't dictated one

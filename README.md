@@ -217,7 +217,7 @@ If you are not using an SD Card to configure the client, see [Choose your config
 
 | Key | Type | Default (firmware) | What it does |
 |---|---|---|---|
-| `server.url` | string | `http://YOUR_SERVER_HOST:8080/calendar.png` | Initial image URL to fetch (`/today.png`, `/tomorrow.png`, `/hourly.png`, `/daily.png`). |
+| `server.url` | string | `http://YOUR_SERVER_HOST:8080/today.png` | Initial image URL to fetch (`/today.png`, `/current.png`, `/tomorrow.png`, `/hourly.png`, `/daily.png`). |
 | `server.retries` | integer | `3` | Number of retry attempts for image download and draw operations. |
 | `server.default_refresh_seconds` | integer | `3600` | Fallback sleep interval in seconds when the server has not provided `X-Next-Refresh-Seconds`. |
 | `wifi.ssid` | string | `XXXX` | WiFi SSID used by the client. |
