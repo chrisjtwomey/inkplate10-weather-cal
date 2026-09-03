@@ -202,6 +202,12 @@ def test_incomplete_service_raises_on_instantiation():
 # Met Éireann
 # ====================================================================
 
+# The fixture XML covers 2026-06-14 to 2026-06-18, and both the hourly and
+# 5-day parsers drop entries earlier than now. Without a frozen clock the
+# 5-day test fails and the hourly one passes vacuously on an empty list.
+METEIRANN_FIXTURE_START = "2026-06-14 00:00:00"
+
+
 @pytest.fixture
 def meteirann_endpoints(fixtures_dir):
     xml_body = (fixtures_dir / "meteirann_forecast.xml").read_text()
@@ -260,13 +266,12 @@ def test_meteirann_daily_summary_parses_imperial(meteirann_endpoints):
 def test_meteirann_hourly_forecast_returns_requested_count(meteirann_endpoints):
     svc = MetEireannService(location="Dublin", num_hours=4, metric=True)
     hourly = svc.get_hourly_forecast()
-    assert len(hourly) <= 4
-    if hourly:
-        first = hourly[0]
-        assert isinstance(first["dt"], datetime)
-        assert first["temperature"]["unit"] == "\N{DEGREE SIGN}C"
-        assert "value" in first["wind"]
-        assert "direction_degrees" in first["wind"]
+    assert 1 <= len(hourly) <= 4
+    first = hourly[0]
+    assert isinstance(first["dt"], datetime)
+    assert first["temperature"]["unit"] == "\N{DEGREE SIGN}C"
+    assert "value" in first["wind"]
+    assert "direction_degrees" in first["wind"]
 
 
 def test_meteirann_dominant_symbol_zero_width_window(meteirann_endpoints):
