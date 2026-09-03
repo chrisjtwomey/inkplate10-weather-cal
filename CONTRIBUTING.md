@@ -12,11 +12,21 @@ You can run the server directly with Python for development or advanced usage:
 ```sh
 git clone https://github.com/chrisjtwomey/inkplate10-weather-cal.git
 cd inkplate10-weather-cal
-python3 -m pip install -r server/requirements.txt
+python3 -m venv server/.venv && source server/.venv/bin/activate
+python3 -m pip install -r server/requirements-dev.txt
 cp server/config.example.yaml server/config.yaml
 # Edit server/config.yaml and fill in your API keys, map ID, and location
 cd server
 python3 server.py
+```
+
+`requirements-dev.txt` includes `requirements.txt` plus the test tools. The
+generic server code comes from the [epd](https://github.com/chrisjtwomey/epd)
+package, which `requirements.txt` pulls from GitHub at `main`. To develop
+against a local checkout of epd instead, install it editable on top:
+
+```sh
+python3 -m pip install -e ../epd/server
 ```
 
 - The server listens on the port configured in `config.yaml` (default `8080`).
@@ -24,7 +34,7 @@ python3 server.py
 
 ```sh
 cd server && python3 server.py --once
-# Output: server/views/calendar.png
+# Output: server/views/today.png, current.png, hourly.png, daily.png, tomorrow.png
 ```
 
 - For production deployment and advanced server configuration, see [server/README.md](server/README.md).
@@ -42,20 +52,20 @@ pytest
 
 The server uses Selenium + Chrome to render HTML templates into PNGs. When running locally, you may need to set the `CHROME_BIN` environment variable:
 
-### macOS
+#### macOS
 ```sh
 export CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 # or, if using Chromium via Homebrew:
 # export CHROME_BIN="/Applications/Chromium.app/Contents/MacOS/Chromium"
 ```
 
-### Linux
+#### Linux
 ```sh
 sudo apt install chromium chromium-driver   # Debian/Ubuntu
 export CHROME_BIN="/usr/bin/chromium"
 ```
 
-### Windows
+#### Windows
 ```powershell
 $env:CHROME_BIN = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 ```
@@ -118,15 +128,8 @@ pio test -e native_mock         # display + sleep against MockBoard
 pio test -e native_integration  # the full run_app() control flow
 ```
 
-The server test suite still lives here:
-
-```sh
-cd server && pytest
-```
-
 Building firmware from this repo needs epd checked out alongside it,
 because `lib_deps` points at `symlink://../epd/firmware`.
-
 
 ## Making Changes
 
@@ -137,14 +140,14 @@ because `lib_deps` points at `symlink://../epd/firmware`.
 
 ## AI-Assisted Code
 
-If your change was written by an AI tool (such as GitHub Copilot, Claude, or similar), add a `Co-authored-by` trailer in your commit message to acknowledge AI assistance.
+If your change was written by an AI tool (such as GitHub Copilot, Claude, or similar), add a `Co-Authored-By` trailer to the commit message naming the tool.
 
 Example commit message:
 
 ```
 Add new feature X
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ## Submitting Pull Requests

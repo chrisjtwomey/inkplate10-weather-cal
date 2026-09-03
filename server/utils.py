@@ -1,8 +1,7 @@
 """Config helpers.
 
-Config resolution now lives in ``epd_server.config``; the names are
-re-exported here so existing imports keep working. ``even_select`` is a
-weather-specific sampling helper and stays local.
+Re-exports the resolver from ``epd_server.config`` under this module's
+import path, and holds ``even_select``, a weather-specific sampling helper.
 """
 from epd_server.config import (  # noqa: F401  (re-exported)
     _coerce_env,
