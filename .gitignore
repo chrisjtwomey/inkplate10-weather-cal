@@ -113,3 +113,5 @@ src/defaults.cpp
 .vscode/launch.json
 .vscode/ipch
 .vscode/extensions.json
+# Firmware images the board updates itself from
+server/firmware/

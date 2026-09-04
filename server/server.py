@@ -109,6 +109,7 @@ def validate_config(config: dict) -> ServerConfig:
             config,
             default_display=DEFAULT_DISPLAY,
             default_firmware_product="inkplate10-weather-cal",
+            base_dir=cwd,
             default_mqtt_topic="mqtt/eink-cal-client",
         )
 

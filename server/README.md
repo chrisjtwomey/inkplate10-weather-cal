@@ -58,6 +58,14 @@ Then edit `config.yaml` with your API keys, location, and schedule.
 | `image.innerHeight` | integer | `image.height` | Inner HTML/CSS layout height in pixels. Overflow is clipped at this boundary. Must be `<= image.height`. |
 | `image.innerAlignX` | string enum | `center` | Horizontal alignment for inner bounds inside the output canvas (`left`, `center`, `right`). |
 | `image.innerAlignY` | string enum | `center` | Vertical alignment for inner bounds inside the output canvas (`top`, `center`, `bottom`). |
+| `firmware.enabled` | boolean | `false` | Offer firmware updates to the boards this server serves. |
+| `firmware.dir` | string | `firmware` | Directory of `<version>.bin` images, relative to `config.yaml`. The newest file is the one offered. |
+| `firmware.product` | string | `inkplate10-weather-cal` | The client name a board reports. An image is offered only to boards of that product. |
+| `firmware.offer_dev_builds` | boolean | `false` | Also offer to boards not built from a tag. For a bench board only. |
+| `firmware.source.github` | string `owner/repo` | unset | Optional. Watch this repository's releases and fill `dir` from them. |
+| `firmware.source.asset` | string | `firmware.bin` | The release asset to take. |
+| `firmware.source.poll_seconds` | integer | `3600` | How often to ask GitHub for the latest release. |
+| `firmware.source.token` | string | empty | For a private repository. Set `FIRMWARE_SOURCE_TOKEN` instead of writing it here. |
 | `mqtt.enabled` | boolean | `false` | Enables MQTT subscription so the server can listen for client logs. |
 | `mqtt.host` | string | `localhost` | MQTT broker host. |
 | `mqtt.port` | integer | `1883` | MQTT broker port. |
@@ -229,6 +237,32 @@ Tips:
 - Keep `innerWidth <= width` and `innerHeight <= height`.
 - Keep reducing inner bounds until no critical content is hidden by the mat.
 - Use `python3 server.py --once` to iterate quickly while tuning values.
+
+## Firmware updates
+
+The calendar hangs in a frame, so updating it over USB means taking it off
+the wall. With `firmware.enabled`, it updates itself instead.
+
+Publish a release of this repository and its workflow attaches
+`firmware.bin` to it. A server with a `firmware.source` block takes that
+asset and holds it; a server without one takes whatever you copy into
+`firmware/`, named for its version:
+
+```sh
+cp firmware.bin server/firmware/v1.6.0.bin
+```
+
+Either way, the next page fetch from a board running another version
+carries the offer, and the board flashes itself after it has drawn. It
+keeps the new image only once it has drawn a page with it, and boots the
+previous one otherwise. Below 20% battery the update waits.
+
+The board on the wall needs one USB flash first, with an OTA-capable build
+and your real `src/defaults.cpp`. That flash stores its WiFi credentials
+and server URL on the board, which is what lets every later image — built
+by CI, with placeholders — connect at all.
+
+To force an update rather than wait for the next wake, press RST.
 
 ## MQTT
 
