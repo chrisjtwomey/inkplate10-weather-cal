@@ -57,6 +57,14 @@ image:
   # Vertical alignment for the inner bounds within the full canvas.
   # Allowed: top, center, bottom.
   innerAlignY: center
+# Server-driven firmware updates. The board is offered the image on its
+# next page fetch, and flashes itself after it has drawn.
+firmware:
+  enabled: false
+  # A directory of <version>.bin; the newest file is the image offered.
+  dir: firmware
+  # true also offers to boards not built from a tag. For a bench board only.
+  offer_dev_builds: false
 mqtt:
   enabled: false
   host: localhost

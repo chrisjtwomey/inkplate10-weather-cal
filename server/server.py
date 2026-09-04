@@ -85,6 +85,7 @@ class ServerConfig:
     mqtt_host: Any
     mqtt_port: Any
     mqtt_topic: Any
+    firmware: Any             # FirmwareSettings; server-driven client updates
     debug: Any
 
 
@@ -107,6 +108,7 @@ def validate_config(config: dict) -> ServerConfig:
         core = load_core_config(
             config,
             default_display=DEFAULT_DISPLAY,
+            default_firmware_product="inkplate10-weather-cal",
             default_mqtt_topic="mqtt/eink-cal-client",
         )
 
@@ -166,6 +168,7 @@ def validate_config(config: dict) -> ServerConfig:
         mqtt_host=core.mqtt.host,
         mqtt_port=core.mqtt.port,
         mqtt_topic=core.mqtt.topic,
+        firmware=core.firmware,
         debug=core.server.debug,
     )
 
@@ -242,6 +245,7 @@ def main():
             port=cfg.port,
             mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_topic),
             mqtt_client_id="eink-cal-server",
+            firmware=cfg.firmware,
         )
     except ValueError as exc:
         # The schedule names a page that does not exist. Report it like every
