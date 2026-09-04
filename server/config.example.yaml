@@ -1,7 +1,7 @@
 ---
 server:
   port: 8080
-  # IANA timezone in which display_schedule times are interpreted
+  # IANA timezone in which display.schedule times are interpreted
   # (e.g. Europe/Dublin, Europe/London, America/New_York). Handles DST transitions
   # automatically. If omitted, the server's OS-level timezone is used (UTC in
   # Docker by default, which is rarely what you want).
@@ -9,19 +9,28 @@ server:
   # Seconds before each scheduled wake time at which the server regenerates
   # the corresponding image. Defaults to 120 (2 minutes) if omitted.
   regen_lead_seconds: 120
-# Maps each client wake time (HH:MM:SS, in server.timezone) to the image the
-# server should serve at that wake. The server regenerates each image 120 seconds
-# before the scheduled wake, then communicates the next wake time and URL via
-# the X-Next-Refresh-Seconds and X-Next-URL response headers.
-# Defaults to {"09:00:00": "today.png"} if omitted.
-display_schedule:
-  "08:00:00": today.png
-  "10:00:00": hourly.png
-  "12:00:00": daily.png
-  "14:00:00": current.png
-  "16:00:00": daily.png
-  "18:00:00": hourly.png
-  "20:00:00": tomorrow.png
+# What the client shows, and when. Each pool is a list of images read in
+# turn; here every pool is one image. The schedule names a pool at each wake
+# time (HH:MM:SS, in server.timezone). The server regenerates the image
+# regen_lead_seconds before the wake, then tells the client the next wake
+# time and URL in the X-Next-Refresh-Seconds and X-Next-URL headers.
+# Defaults to today.png at 09:00:00 if omitted.
+display:
+  pools:
+    today: [today.png]
+    hourly: [hourly.png]
+    daily: [daily.png]
+    current: [current.png]
+    tomorrow: [tomorrow.png]
+  schedule:
+    type: times
+    "08:00:00": today
+    "10:00:00": hourly
+    "12:00:00": daily
+    "14:00:00": current
+    "16:00:00": daily
+    "18:00:00": hourly
+    "20:00:00": tomorrow
 weather:
   service: accuweather
   apikey: XXXX

@@ -33,17 +33,18 @@ Then edit `config.yaml` with your API keys, location, and schedule.
 
 - The server reads `config.yaml` at startup.
 - Most scalar keys can be overridden by environment variables. See [section on this](#configuration-via-environment-variables) below.
-- `display_schedule` is a mapping and should be configured in YAML (not env vars).
-- If `display_schedule` is omitted, it defaults to a single wake: `09:00:00 -> today.png`.
+- `display` is a block and should be configured in YAML (not env vars).
+- If `display` is omitted, it defaults to a single wake: `09:00:00 -> today.png`.
 
 ### Parameters
 
 | Key | Type | Default | What it does |
 |---|---|---|---|
 | `server.port` | integer | `8080` | HTTP port to bind. |
-| `server.timezone` | string (IANA timezone) | `Europe/Dublin` in example | Timezone used to interpret `display_schedule`; handles DST transitions server-side. |
+| `server.timezone` | string (IANA timezone) | `Europe/Dublin` in example | Timezone used to interpret `display.schedule`; handles DST transitions server-side. |
 | `server.regen_lead_seconds` | integer | `120` | Seconds before each scheduled wake when the server regenerates the target image. |
-| `display_schedule` | mapping `HH:MM:SS -> endpoint` | `{"09:00:00": "today.png"}` if omitted | Defines which image to serve at each client wake time. |
+| `display.pools` | mapping `name -> [images]` | `today: [today.png]` if omitted | What can show. Each pool is read in turn; here every pool is one image. |
+| `display.schedule` | `type: times`, then `HH:MM:SS -> pool` | `09:00:00: today` if omitted | When each pool shows. |
 | `weather.service` | string enum | `accuweather` | Weather provider (`accuweather`, `openweathermap`, or `mock`). Custom providers can be added — see [weather/README.md](weather/README.md). |
 | `weather.apikey` | string | `XXXX` placeholder | Weather provider API key. |
 | `weather.num_hourly_forecasts` | integer | `9` | Number of hourly forecast points to include in the hourly day view. |
@@ -78,7 +79,7 @@ upper-cased and joined with `_`. For example:
 | `server.regen_lead_seconds` | `SERVER_REGEN_LEAD_SECONDS` |
 | `mqtt.enabled`            | `MQTT_ENABLED` (`true`/`false`) |
 
-> **Note:** `display_schedule` is a YAML mapping and cannot be set via a
+> **Note:** `display` is a YAML block and cannot be set via a
 > single environment variable. Use a mounted `config.yaml` (see below) to
 > customise the wake schedule.
 
@@ -97,7 +98,7 @@ docker run --rm -p 8080:8080 \
 
 ### Mounting a custom config.yaml
 
-To customise `display_schedule` or any other setting that cannot be expressed
+To customise `display` or any other setting that cannot be expressed
 as an environment variable, mount your own config file over the default one
 baked into the image:
 
@@ -124,19 +125,27 @@ services:
 The server is typically a long-running process: it generates all images at startup,
 then regenerates each image shortly before its next scheduled client wake.
 
-The schedule for regenerating the images is configured via `display_schedule` — a mapping of
-`HH:MM:SS` wake times (in `server.timezone`) to the image the client should
-fetch at that wake. 
+What shows and when is the `display` block: `pools` of images, and a
+`schedule` of type `times` mapping `HH:MM:SS` wake times (in
+`server.timezone`) to the pool the client should fetch at that wake. Here
+every pool is one image.
 
 The server regenerates that image `server.regen_lead_seconds`
 seconds (default 120) before the wake so a fresh image is always ready.
 
 ```yaml
-display_schedule:
-  "08:00:00": today.png
-  "12:00:00": hourly.png
-  "16:00:00": daily.png
-  "20:00:00": tomorrow.png
+display:
+  pools:
+    today: [today.png]
+    hourly: [hourly.png]
+    daily: [daily.png]
+    tomorrow: [tomorrow.png]
+  schedule:
+    type: times
+    "08:00:00": today
+    "12:00:00": hourly
+    "16:00:00": daily
+    "20:00:00": tomorrow
 ```
 
 ### Pages 
@@ -149,7 +158,7 @@ The server exposes four page endpoints, each suited to a different time of day:
 | `hourly.png` | Detailed — hourly table: icon, temp, wind direction/speed, precipitation bars | Daytime |
 | `daily.png` | Detailed — 5-day table: icon, temp range, wind, precipitation, sun hours | Afternoon / Evening |
 
-Configure which page the client fetches at each wake time via `display_schedule` in `config.yaml`.
+Configure which page the client fetches at each wake time via `display.schedule` in `config.yaml`.
 
 ### Telling the client when to wake next
 

@@ -36,7 +36,8 @@ class FakeRenderer:
 def project_dir(tmp_path, monkeypatch):
     config = {
         "server": {"port": 8080, "timezone": "Europe/Dublin"},   # --once never binds it
-        "display_schedule": {"08:00:00": "today.png", "20:00:00": "tomorrow.png"},
+        "display": {"pools": {"today": ["today.png"], "tomorrow": ["tomorrow.png"]},
+                    "schedule": {"type": "times", "08:00:00": "today", "20:00:00": "tomorrow"}},
         "weather": {"service": "mock", "num_hourly_forecasts": 6},
         "google": {"apikey": "G", "staticmaps_mapid": "M"},
         "location": "Dublin",
@@ -72,12 +73,12 @@ def test_main_once_renders_every_page_and_exits(project_dir, caplog):
 
 def test_main_exits_on_bad_config(project_dir, caplog):
     cfg = yaml.safe_load((project_dir / "config.yaml").read_text())
-    cfg["display_schedule"] = {"08:00:00": "nope.png"}
+    cfg["display"] = {"pools": {"nope": ["nope.png"]}, "schedule": {"type": "times", "08:00:00": "nope"}}
     (project_dir / "config.yaml").write_text(yaml.safe_dump(cfg))
     # A schedule naming a page that does not exist is caught by DisplayServer
     # at construction, before anything is rendered, and reported like any
     # other config error.
     with pytest.raises(SystemExit):
         server.main()
-    assert "display_schedule names ['nope.png']" in caplog.text
+    assert "display.schedule names ['nope.png']" in caplog.text
     assert not (project_dir / "out").exists()

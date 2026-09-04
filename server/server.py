@@ -30,6 +30,10 @@ from epd_server.source import CompositeSource, StaticSource
 cwd = os.path.dirname(os.path.realpath(__file__))
 log = logging.getLogger("server")
 
+# One wake a day when config.yaml has no display block.
+DEFAULT_DISPLAY = {"pools": {"today": ["today.png"]},
+                   "schedule": {"type": "times", "09:00:00": "today"}}
+
 
 # Import all service modules so that their @register decorators run and
 # populate the registry before validate_config() uses it.
@@ -62,7 +66,7 @@ class ServerConfig:
     # is enforced by the validation logic in validate_config(), not here.
     port: Any
     timezone: Any             # tzinfo / ZoneInfo
-    display_schedule: Any        # sorted (time_str, url_path) tuples; drives both regen and client wakes
+    schedule: Any                # WakeSchedule from the display block; drives both regen and client wakes
     regen_lead_seconds: Any    # int; seconds before wake time to regenerate the image
     image_width: Any
     image_height: Any
@@ -87,7 +91,7 @@ class ServerConfig:
 def validate_config(config: dict) -> ServerConfig:
     """Parse the raw config dict, apply defaults, and validate all values.
 
-    The generic blocks (server, image, mqtt, display_schedule, debug) are
+    The generic blocks (server, image, mqtt, display, debug) are
     validated by epd_server.config.load_core_config. This function adds the
     keys only this project has (weather, google, location), then flattens
     everything into ServerConfig for main().
@@ -102,7 +106,7 @@ def validate_config(config: dict) -> ServerConfig:
     try:
         core = load_core_config(
             config,
-            default_schedule={"09:00:00": "today.png"},
+            default_display=DEFAULT_DISPLAY,
             default_mqtt_topic="mqtt/eink-cal-client",
         )
 
@@ -143,7 +147,7 @@ def validate_config(config: dict) -> ServerConfig:
     return ServerConfig(
         port=core.server.port,
         timezone=core.server.timezone,
-        display_schedule=core.server.display_schedule,
+        schedule=core.server.schedule,
         regen_lead_seconds=core.server.regen_lead_seconds,
         image_width=core.image.width,
         image_height=core.image.height,
@@ -192,7 +196,7 @@ def main():
     # Logging timestamps follow the process TZ, not cfg.timezone; align them.
     align_process_timezone(cfg.timezone)
     log.info(f"timezone: {cfg.timezone}")
-    log.info(f"display_schedule: {cfg.display_schedule}")
+    log.info(f"display: {cfg.schedule.describe()}")
     log.info(f"regen_lead_seconds: {cfg.regen_lead_seconds}")
 
     gapi = GoogleAPIService(cfg.google_apikey)
@@ -232,7 +236,7 @@ def main():
         server = DisplayServer(
             pages=pages,
             source=source,
-            schedule=cfg.display_schedule,
+            schedule=cfg.schedule,
             tz=cfg.timezone,
             regen_lead_seconds=cfg.regen_lead_seconds,
             port=cfg.port,

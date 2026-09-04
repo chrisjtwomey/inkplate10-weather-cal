@@ -10,7 +10,7 @@ def _base_config():
             "timezone": "Europe/Dublin",
             "regen_lead_seconds": 120,
         },
-        "display_schedule": {"09:00:00": "today.png"},
+        "display": {"pools": {"today": ["today.png"]}, "schedule": {"type": "times", "09:00:00": "today"}},
         "weather": {
             "service": "mock",
             "apikey": "XXXX",

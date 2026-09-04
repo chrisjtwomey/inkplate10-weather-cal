@@ -10,7 +10,8 @@ from server import validate_config
 def base():
     return {
         "server": {"port": 8080, "timezone": "Europe/Dublin"},
-        "display_schedule": {"09:00:00": "today.png", "18:00:00": "hourly.png"},
+        "display": {"pools": {"today": ["today.png"], "hourly": ["hourly.png"]},
+                    "schedule": {"type": "times", "09:00:00": "today", "18:00:00": "hourly"}},
         "weather": {"service": "mock", "num_hourly_forecasts": 9, "metric": True},
         "google": {"apikey": "G", "staticmaps_mapid": "M"},
         "location": "  Dublin ",
@@ -23,7 +24,8 @@ def test_happy_path_flattens_core_and_project_keys():
     cfg = validate_config(base())
     assert cfg.port == 8080
     assert str(cfg.timezone) == "Europe/Dublin"
-    assert cfg.display_schedule == [("09:00:00", "today.png"), ("18:00:00", "hourly.png")]
+    assert list(cfg.schedule) == [("09:00:00", "today"), ("18:00:00", "hourly")]
+    assert cfg.schedule.pages() == {"today.png", "hourly.png"}
     assert cfg.regen_lead_seconds == 120                       # core default
     assert (cfg.image_width, cfg.image_inner_width) == (825, 825)
     assert cfg.weather_service == "mock" and cfg.weather_apikey is None
