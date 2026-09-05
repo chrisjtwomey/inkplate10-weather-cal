@@ -1,5 +1,5 @@
 /**
- * The settings this image is built with.
+ * The settings this build carries.
  *
  * Copy this file to src/defaults.cpp and fill in your own values.
  * src/defaults.cpp is gitignored, so your credentials stay local.
@@ -14,7 +14,7 @@
  */
 #include "settings.h"
 
-ClientConfig compiledDefaults() {
+ClientConfig builtInSettings() {
     ClientConfig cfg = {};
 
     // The first page to fetch. After that the server names the next one.

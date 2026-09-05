@@ -131,7 +131,7 @@ void test_first_boot_downloads_from_default_server_url() {
 
     run_app();
 
-    TEST_ASSERT_EQUAL_STRING(compiledDefaults().serverURL, netStubs.lastDownloadURL);
+    TEST_ASSERT_EQUAL_STRING(builtInSettings().serverURL, netStubs.lastDownloadURL);
 }
 
 void test_subsequent_boot_uses_server_provided_next_url() {

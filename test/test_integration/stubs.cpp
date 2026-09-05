@@ -23,7 +23,7 @@
 #include "ota.h"              // otaTrialPending(), otaConfirm(), otaRollback(),
                               // applyFirmwareUpdate()
 #include "wake.h"             // the steps run_app() is built from
-#include "app.h"              // compiledDefaults()
+#include "app.h"              // builtInSettings()
 #include "settings.h"         // loadConfig()
 #include "WiFi.h"
 #include "SPIFFS.h"

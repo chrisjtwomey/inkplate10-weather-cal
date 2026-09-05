@@ -99,7 +99,7 @@ void run_app() {
 
     const int batteryPercent = readBatteryPercent();
 
-    ClientConfig cfg = loadConfig(compiledDefaults());
+    ClientConfig cfg = loadConfig(builtInSettings());
     const bool cardPresent = applySdConfig(&cfg);
 
     if (batteryPercent <= BATTERY_CRITICAL_PERCENT) {

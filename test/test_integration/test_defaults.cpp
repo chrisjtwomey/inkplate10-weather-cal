@@ -7,7 +7,7 @@
 
 #include "app.h"
 
-ClientConfig compiledDefaults() {
+ClientConfig builtInSettings() {
     ClientConfig cfg = {};
 
     cfg.serverURL = "http://test.local:8080/image.png";
