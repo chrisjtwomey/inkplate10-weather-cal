@@ -1,5 +1,5 @@
 // Stub implementations for all free functions called by app.cpp that are NOT
-// compiled in the native_integration environment (network_utils, display_utils,
+// compiled in the native_integration environment (network_utils, image,
 // sleep_utils, battery, log_utils, time_utils).
 //
 // Each stub records the call in the corresponding *Stubs struct so tests can
@@ -14,7 +14,7 @@
 // Pull in headers that declare the functions we are defining.
 #include "log_utils.h"        // log(), logf(), configureMQTT()
 #include "network_utils.h"    // configureWiFi(), configureTime(), downloadFile()
-#include "display_utils.h"
+#include "image.h"
 #include "panel.h"    // loadImage(), displayBatteryStatus(), displayMessage(),
                               // saveImageCache()
 #include "sleep_utils.h"      // sleep_for(), sleep(), deepSleep()
@@ -144,7 +144,7 @@ esp_err_t applyFirmwareUpdate(const char* url, const char* version, const char*)
 ClientConfig loadConfig(const ClientConfig& compiled) { return compiled; }
 
 // ---------------------------------------------------------------------------
-// display_utils stubs
+// image stubs
 // ---------------------------------------------------------------------------
 esp_err_t loadImage(const char*) {
     dispStubs.loadImageCallCount++;

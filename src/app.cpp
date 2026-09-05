@@ -14,7 +14,7 @@
 #include "epd.h"
 #include "app.h"
 #include "backoff.h"
-#include "display_utils.h"
+#include "image.h"
 #include "panel.h"
 #include "error_utils.h"
 #include "log_utils.h"

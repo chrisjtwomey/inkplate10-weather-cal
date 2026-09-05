@@ -1,7 +1,7 @@
 #include "panel.h"
 
 #include "epd.h"
-#include "display_utils.h"
+#include "image.h"
 #include "font/Merienda_Regular12pt7b.h"
 #include "font/Merienda_Regular16pt7b.h"
 #include "icon/icons_32x32.h"
