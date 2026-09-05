@@ -7,13 +7,17 @@ services:
       - "8080:8080"
     # Recommended: mount your config.yaml for server configuration
     volumes:
-      - ./server/config.yaml:/app/server/config.yaml:ro
-      # Firmware images the board updates itself from. Keep it outside the
-      # image so a release survives a container rebuild.
-      - ./server/firmware:/app/firmware
+      - ./server/config.yaml:/app/config.yaml:ro
+      # Firmware images the board updates itself from. A named volume, not a
+      # host path: the container runs as uid 1000 and could not write to a
+      # directory the host owns. Omit it entirely when client.firmware.source
+      # is set, because the server re-fetches the release as it starts.
+      - weather-cal-firmware:/app/firmware
     # Only override these if needed; most config is in config.yaml
     environment:
       LOCATION: "Cork"         # Optional: override location
       SERVER_PORT: "8080"      # Optional: override port
       # A token for a private firmware repository. Keep it out of config.yaml.
       # CLIENT_FIRMWARE_SOURCE_TOKEN: "${CLIENT_FIRMWARE_SOURCE_TOKEN}"
+volumes:
+  weather-cal-firmware:
