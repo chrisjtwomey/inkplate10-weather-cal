@@ -16,4 +16,4 @@ services:
       LOCATION: "Cork"         # Optional: override location
       SERVER_PORT: "8080"      # Optional: override port
       # A token for a private firmware repository. Keep it out of config.yaml.
-      # FIRMWARE_SOURCE_TOKEN: "${FIRMWARE_SOURCE_TOKEN}"
+      # CLIENT_FIRMWARE_SOURCE_TOKEN: "${CLIENT_FIRMWARE_SOURCE_TOKEN}"

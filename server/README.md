@@ -58,14 +58,14 @@ Then edit `config.yaml` with your API keys, location, and schedule.
 | `image.innerHeight` | integer | `image.height` | Inner HTML/CSS layout height in pixels. Overflow is clipped at this boundary. Must be `<= image.height`. |
 | `image.innerAlignX` | string enum | `center` | Horizontal alignment for inner bounds inside the output canvas (`left`, `center`, `right`). |
 | `image.innerAlignY` | string enum | `center` | Vertical alignment for inner bounds inside the output canvas (`top`, `center`, `bottom`). |
-| `firmware.enabled` | boolean | `false` | Offer firmware updates to the boards this server serves. |
-| `firmware.dir` | string | `firmware` | Directory of `<version>.bin` images, relative to `config.yaml`. The newest file is the one offered. |
-| `firmware.product` | string | `inkplate10-weather-cal` | The client name a board reports. An image is offered only to boards of that product. |
-| `firmware.offer_dev_builds` | boolean | `false` | Also offer to boards not built from a tag. For a bench board only. |
-| `firmware.source.github` | string `owner/repo` | unset | Optional. Watch this repository's releases and fill `dir` from them. |
-| `firmware.source.asset` | string | `firmware.bin` | The release asset to take. |
-| `firmware.source.poll_seconds` | integer | `3600` | How often to ask GitHub for the latest release. |
-| `firmware.source.token` | string | empty | For a private repository. Set `FIRMWARE_SOURCE_TOKEN` instead of writing it here. |
+| `client.firmware.enabled` | boolean | `false` | Offer firmware updates to the boards this server serves. |
+| `client.firmware.dir` | string | `firmware` | Directory of `<version>.bin` images, relative to `config.yaml`. The newest file is the one offered. |
+| `client.firmware.product` | string | `inkplate10-weather-cal` | The client name a board reports. An image is offered only to boards of that product. |
+| `client.firmware.offer_dev_builds` | boolean | `false` | Also offer to boards not built from a tag. For a bench board only. |
+| `client.firmware.source.github` | string `owner/repo` | unset | Optional. Watch this repository's releases and fill `dir` from them. |
+| `client.firmware.source.asset` | string | `firmware.bin` | The release asset to take. |
+| `client.firmware.source.poll_seconds` | integer | `3600` | How often to ask GitHub for the latest release. |
+| `client.firmware.source.token` | string | empty | For a private repository. Set `CLIENT_FIRMWARE_SOURCE_TOKEN` instead of writing it here. |
 | `mqtt.enabled` | boolean | `false` | Enables MQTT subscription so the server can listen for client logs. |
 | `mqtt.host` | string | `localhost` | MQTT broker host. |
 | `mqtt.port` | integer | `1883` | MQTT broker port. |
@@ -240,11 +240,11 @@ Tips:
 
 ## Firmware updates
 
-With `firmware.enabled`, the board updates itself from the server. No
-cable, and no need to reach the board.
+With `client.firmware.enabled`, the board updates itself from the server.
+No cable, and no need to reach the board.
 
 Publish a release of this repository and its workflow attaches
-`firmware.bin` to it. A server with a `firmware.source` block takes that
+`firmware.bin` to it. A server with a `client.firmware.source` block takes that
 asset and holds it; a server without one takes whatever you copy into
 `firmware/`, named for its version:
 
