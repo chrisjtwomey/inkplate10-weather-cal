@@ -33,11 +33,13 @@ char ntpHost[] = "pool.ntp.org";
 // The timezone you live in ("Olson" format), e.g. Europe/Dublin.
 char ntpTimezone[] = "Europe/Dublin";
 
-// Remote logging config.
+// Remote logging config. These are kept on the board, so an image built by
+// CI — which has only the placeholder below — uses whatever the board was
+// last told. Leave the broker as XXXX and this block comes from the store.
 // Set to true to send publish logs to an MQTT broker.
 bool mqttLoggerEnabled = false;
 // The MQTT broker to publish logs to.
-char mqttLoggerBroker[] = "localhost";
+char mqttLoggerBroker[] = "XXXX";
 // The port of the MQTT broker.
 int mqttLoggerPort = 1883;
 // The unique identifier for this project in your MQTT broker.
