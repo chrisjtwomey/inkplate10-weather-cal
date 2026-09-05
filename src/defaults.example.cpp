@@ -1,51 +1,49 @@
-#ifndef __DEFAULTS_H__
-#define __DEFAULTS_H__
-#include <stdint.h>
 /**
- * Manually define config params.
+ * The settings this image is built with.
  *
- * Only use this if you are not using the SD card (Inkplate10 V1).
- * Otherwise add USE_SDCARD flag to load from SD card config.yaml
+ * Copy this file to src/defaults.cpp and fill in your own values.
+ * src/defaults.cpp is gitignored, so your credentials stay local.
  *
- * These parameters are overriden by the config.yaml if SD card is enabled.
+ * Three of these are also kept on the board itself, and a real value here is
+ * written there as it passes: the server URL, the WiFi credentials, and the
+ * whole MQTT block. That is what lets an image built by CI — which has only
+ * the placeholders below — still reach your network and your broker. So one
+ * flash over USB with real values provisions the board for good.
  *
- * To use: copy this file to src/defaults.cpp and fill in your real values.
- * src/defaults.cpp is gitignored so your credentials stay local.
+ * With USE_SDCARD, a config.yaml on the card overrides any of it.
  */
+#include "settings.h"
 
-// The URL on the server which the client will try to download from.
-char serverURL[] = "http://YOUR_SERVER_HOST:8080/today.png";
-// The number of times to attempt downloading or drawing the server image.
-int serverRetries = 3;
-// Fallback seconds-until-next-refresh when the server hasn't dictated one
-// yet (cold boot, or server unreachable). 3600 = 1 hour retry.
-uint32_t serverDefaultRefreshSeconds = 3600;
+ClientConfig compiledDefaults() {
+    ClientConfig cfg = {};
 
-// Wifi config.
-char wifiSSID[] = "XXXX";
-char wifiPass[] = "XXXX";
-// The number of times to attempt WiFi connection before timeout.
-int wifiRetries = 10;
+    // The first page to fetch. After that the server names the next one.
+    cfg.serverURL = "http://YOUR_SERVER_HOST:8080/today.png";
+    // How many further attempts at downloading or drawing a page.
+    cfg.serverRetries = 3;
+    // How long to sleep when the server has not said — a cold boot, or every
+    // attempt failed. 3600 = retry in an hour.
+    cfg.defaultRefreshSeconds = 3600;
 
-// NTP config.
-// The time server (keep as pool.ntp.org if in doubt).
-char ntpHost[] = "pool.ntp.org";
-// The timezone you live in ("Olson" format), e.g. Europe/Dublin.
-char ntpTimezone[] = "Europe/Dublin";
+    cfg.wifiSSID = "XXXX";
+    cfg.wifiPass = "XXXX";
+    // How many attempts before giving up on WiFi for this wake.
+    cfg.wifiRetries = 10;
 
-// Remote logging config. These are kept on the board, so an image built by
-// CI — which has only the placeholder below — uses whatever the board was
-// last told. Leave the broker as XXXX and this block comes from the store.
-// Set to true to send publish logs to an MQTT broker.
-bool mqttLoggerEnabled = false;
-// The MQTT broker to publish logs to.
-char mqttLoggerBroker[] = "XXXX";
-// The port of the MQTT broker.
-int mqttLoggerPort = 1883;
-// The unique identifier for this project in your MQTT broker.
-char mqttLoggerClientID[] = "inkplate10-weather-client";
-// The name of the MQTT topic to publish to.
-char mqttLoggerTopic[] = "mqtt/eink-cal-client";
-// The number of times to attempt MQTT connection before timeout.
-int mqttLoggerRetries = 3;
-#endif
+    // The time server (keep as pool.ntp.org if in doubt) and your timezone
+    // in "Olson" format, e.g. Europe/Dublin.
+    cfg.ntpHost = "pool.ntp.org";
+    cfg.ntpTimezone = "Europe/Dublin";
+
+    // Remote logging. Leave the broker as XXXX and the whole block comes from
+    // the board's own store instead, which is what a CI image relies on.
+    cfg.mqttEnabled = false;
+    cfg.mqttBroker = "XXXX";
+    cfg.mqttPort = 1883;
+    cfg.mqttClientID = "inkplate10-weather-client";
+    cfg.mqttTopic = "mqtt/eink-cal-client";
+    // How many attempts before giving up on the broker.
+    cfg.mqttRetries = 3;
+
+    return cfg;
+}

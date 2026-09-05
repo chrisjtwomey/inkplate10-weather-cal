@@ -12,6 +12,7 @@
 #include <unity.h>
 #include <string.h>
 #include "MockBoard.h"
+#include "epd.h"
 #include "IBoard.h"
 #include "app.h"
 #include "backoff.h"
@@ -21,10 +22,9 @@
 #include "WiFi.h"
 
 // ---------------------------------------------------------------------------
-// Global board instance (satisfies extern IBoard& board in app.cpp)
+// The board run_app() draws on. setUp() hands it to epd the way main.cpp does.
 // ---------------------------------------------------------------------------
 static MockBoard mockBoard;
-IBoard& board = mockBoard;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,6 +40,7 @@ static void resetAll() {
     resetAllStubs();
     WiFi.disconnectCount = 0;
     mockBoard = MockBoard(); // reset all call counters and return values
+    epdBegin(mockBoard);
     // Default wakeup cause: cold boot (power-on reset)
     extern esp_sleep_wakeup_cause_t g_wakeup_cause;
     g_wakeup_cause = ESP_SLEEP_WAKEUP_UNDEFINED;
@@ -130,8 +131,7 @@ void test_first_boot_downloads_from_default_server_url() {
 
     run_app();
 
-    extern char serverURL[];
-    TEST_ASSERT_EQUAL_STRING(serverURL, netStubs.lastDownloadURL);
+    TEST_ASSERT_EQUAL_STRING(compiledDefaults().serverURL, netStubs.lastDownloadURL);
 }
 
 void test_subsequent_boot_uses_server_provided_next_url() {

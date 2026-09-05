@@ -23,8 +23,8 @@
 #include "ota.h"              // otaTrialPending(), otaConfirm(), otaRollback(),
                               // applyFirmwareUpdate()
 #include "wake.h"             // the steps run_app() is built from
+#include "app.h"              // compiledDefaults()
 #include "settings.h"         // loadConfig()
-#include "defaults.h"         // the compiled values loadConfig() reports
 #include "WiFi.h"
 #include "SPIFFS.h"
 #include "Arduino.h"          // HardwareSerial, g_wakeup_cause
@@ -139,17 +139,9 @@ esp_err_t applyFirmwareUpdate(const char* url, const char* version, const char*)
 }
 
 // ---------------------------------------------------------------------------
-// settings stub: the config the test image was "flashed" with
+// settings stub: no NVS on the host, so the image's own values stand
 // ---------------------------------------------------------------------------
-ClientConfig loadConfig() {
-    return ClientConfig{
-        serverURL, serverRetries, serverDefaultRefreshSeconds,
-        wifiSSID, wifiPass, wifiRetries,
-        ntpHost, ntpTimezone,
-        mqttLoggerEnabled, mqttLoggerBroker, mqttLoggerPort,
-        mqttLoggerClientID, mqttLoggerTopic, mqttLoggerRetries,
-    };
-}
+ClientConfig loadConfig(const ClientConfig& compiled) { return compiled; }
 
 // ---------------------------------------------------------------------------
 // display_utils stubs

@@ -3,14 +3,24 @@
 
 #include <stdint.h>
 
+#include "settings.h"
+
 /**
  * Main application logic (body of Arduino setup()).
  *
- * The IBoard& board global must be defined by the calling translation unit.
- * Extracted here so integration tests can invoke run_app() directly with a
+ * epdBegin() must have been called first, so the library has a board. Kept
+ * out of main.cpp so integration tests can invoke run_app() directly with a
  * MockBoard and controllable free-function stubs.
  */
 void run_app();
+
+/**
+ * The settings this image was built with, from src/defaults.cpp.
+ *
+ * epd declares no settings symbols of its own, so where a project hard-codes
+ * its own is the project's business. This is ours.
+ */
+ClientConfig compiledDefaults();
 
 #ifdef NATIVE
 // In native (test) builds, expose the RTC-backed persistent state so tests

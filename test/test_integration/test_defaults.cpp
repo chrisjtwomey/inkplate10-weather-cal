@@ -1,29 +1,34 @@
-// Definitions for the config symbols declared in defaults.h.
+// The settings run_app() is tested against.
 //
-// A consuming project supplies these in its own src/defaults.cpp. The library
-// only declares them, so the integration test provides its own copy rather
-// than compiling a defaults.cpp out of the library sources.
+// The project's own are in src/defaults.cpp, which is gitignored and holds
+// real credentials, so the test supplies its own rather than compiling that.
 
 #ifdef NATIVE
 
-#include <stdint.h>
+#include "app.h"
 
-char     serverURL[]  = "http://test.local:8080/image.png";
-int      serverRetries = 3;
-uint32_t serverDefaultRefreshSeconds = 3600;
+ClientConfig compiledDefaults() {
+    ClientConfig cfg = {};
 
-char wifiSSID[] = "test-ssid";
-char wifiPass[] = "test-pass";
-int  wifiRetries = 10;
+    cfg.serverURL = "http://test.local:8080/image.png";
+    cfg.serverRetries = 3;
+    cfg.defaultRefreshSeconds = 3600;
 
-char ntpHost[]     = "pool.ntp.org";
-char ntpTimezone[] = "Europe/Dublin";
+    cfg.wifiSSID = "test-ssid";
+    cfg.wifiPass = "test-pass";
+    cfg.wifiRetries = 10;
 
-bool mqttLoggerEnabled = false;
-char mqttLoggerBroker[] = "localhost";
-int  mqttLoggerPort = 1883;
-char mqttLoggerClientID[] = "epaper-test-client";
-char mqttLoggerTopic[] = "mqtt/epaper-test";
-int  mqttLoggerRetries = 3;
+    cfg.ntpHost = "pool.ntp.org";
+    cfg.ntpTimezone = "Europe/Dublin";
+
+    cfg.mqttEnabled = false;
+    cfg.mqttBroker = "localhost";
+    cfg.mqttPort = 1883;
+    cfg.mqttClientID = "epaper-test-client";
+    cfg.mqttTopic = "mqtt/epaper-test";
+    cfg.mqttRetries = 3;
+
+    return cfg;
+}
 
 #endif // NATIVE

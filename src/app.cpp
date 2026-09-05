@@ -11,7 +11,7 @@
 
 #include <WiFi.h>
 
-#include "IBoard.h"
+#include "epd.h"
 #include "app.h"
 #include "backoff.h"
 #include "display_utils.h"
@@ -43,9 +43,6 @@
 // How long to wait after WiFi did not connect. Short: the network is the
 // most likely thing to come back on its own.
 #define WIFI_RETRY_SECONDS 60
-
-// Provided by main.cpp (firmware) or test_main.cpp (tests).
-extern IBoard& board;
 
 // RTC_DATA_ATTR marks variables that survive deep-sleep cycles on ESP32.
 // On the host (NATIVE) they are plain globals.
@@ -89,9 +86,9 @@ void run_app() {
 
     startBoard(PANEL_ROTATION);
     startImageCache();
-    logf(LOG_NOTICE, "##### %s boot #%d #####", board.deviceName(), bootCount);
+    logf(LOG_NOTICE, "##### %s boot #%d #####", epdBoard().deviceName(), bootCount);
     logf(LOG_NOTICE, "############ Client version: %s ############", CLIENT_VERSION);
-    logf(LOG_INFO, "User-Agent: %s", clientUserAgent(board.deviceName()));
+    logf(LOG_INFO, "User-Agent: %s", clientUserAgent(epdBoard().deviceName()));
 
     // A freshly written image is on trial: the bootloader takes it back
     // unless this boot draws a page. Every exit below settles that.
@@ -102,13 +99,13 @@ void run_app() {
 
     const int batteryPercent = readBatteryPercent();
 
-    ClientConfig cfg = loadConfig();
+    ClientConfig cfg = loadConfig(compiledDefaults());
     const bool cardPresent = applySdConfig(&cfg);
 
     if (batteryPercent <= BATTERY_CRITICAL_PERCENT) {
         log(LOG_NOTICE, "battery critical! - sleeping until charged");
         displayMessage("Battery critical, please charge!", batteryPercent);
-        sleep(board.rtcGetEpoch() + SECONDS_IN_YEAR);
+        sleep(epdBoard().rtcGetEpoch() + SECONDS_IN_YEAR);
         return;  // terminal
     }
     if (batteryPercent <= BATTERY_LOW_PERCENT) log(LOG_WARNING, "battery low, charge soon!");
@@ -122,16 +119,16 @@ void run_app() {
             return;  // terminal
         }
         // Not the server's fault, so the back-off step is left alone.
-        sleep(board.rtcGetEpoch() + WIFI_RETRY_SECONDS);
+        sleep(epdBoard().rtcGetEpoch() + WIFI_RETRY_SECONDS);
         return;  // terminal
     }
 
     const char* errMsg = nullptr;
     PageFetch page = {};
-    page.length = board.getWidth() * board.getHeight() * 8 + 100;
+    page.length = epdBoard().getWidth() * epdBoard().getHeight() * 8 + 100;
 
     const char* fetchURL = nextServerURL[0] ? nextServerURL : cfg.serverURL;
-    if (!fetchPage(fetchURL, clientUserAgent(board.deviceName()), cfg.serverRetries, &page,
+    if (!fetchPage(fetchURL, clientUserAgent(epdBoard().deviceName()), cfg.serverRetries, &page,
                    &errMsg)) {
         endFailedWake(errMsg, batteryPercent, trialBoot);
         return;  // terminal
@@ -181,7 +178,7 @@ void run_app() {
     if (trialBoot) otaConfirm();
 
     // Still on the network, because this is what needs it most.
-    takeOfferedUpdate(page.response, clientUserAgent(board.deviceName()), batteryPercent,
+    takeOfferedUpdate(page.response, clientUserAgent(epdBoard().deviceName()), batteryPercent,
                       BATTERY_FOR_UPDATE_PERCENT);
 
     log(LOG_NOTICE, "disconnecting WiFi radio...");
