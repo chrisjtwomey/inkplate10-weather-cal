@@ -113,23 +113,32 @@ pio run -e release_sdcard
 
 ### Automated Tests
 
-The client firmware and its tests live in
-[epd](https://github.com/chrisjtwomey/epd). This repo keeps only
-`src/main.cpp` (which board to use) and `src/defaults.cpp` (credentials and
-server URL), so there is no client test suite here.
+`src/app.cpp` holds the order of one wake and every decision about how one
+ends: the battery thresholds, how many times to retry, when to back off, and
+when to take a firmware update. That order is this project's, so its test is
+here. No device is needed.
 
-To run the client tests, clone epd beside this repo and run them there.
-No device is needed — all three environments are host-only:
+```sh
+pio test -e native_integration
+```
+
+It runs `run_app()` on the host against `MockBoard`, with every
+hardware-dependent call replaced by a stub in `test/test_integration/`. The
+stub headers and `MockBoard.h` come from epd, which ships them for this.
+
+`pio test` with no environment does nothing, because the board environments
+ignore tests rather than try to upload one. Name the environment.
+
+The steps `app.cpp` is built from are the kit's, and so are their tests:
 
 ```sh
 cd ../epd/firmware
 pio test -e native              # back-off, battery, refresh header parsing
 pio test -e native_mock         # display + sleep against MockBoard
-pio test -e native_integration  # the full run_app() control flow
 ```
 
-Building firmware from this repo needs epd checked out alongside it,
-because `lib_deps` points at `symlink://../epd/firmware`.
+Building anything here needs epd checked out alongside this repo, because
+`lib_deps` and the test environment both point at `../epd/firmware`.
 
 ## Making Changes
 
