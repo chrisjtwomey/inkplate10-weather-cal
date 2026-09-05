@@ -202,12 +202,6 @@ def test_incomplete_service_raises_on_instantiation():
 # Met Éireann
 # ====================================================================
 
-# The fixture XML covers 2026-06-14 to 2026-06-18, and both the hourly and
-# 5-day parsers drop entries earlier than now. Without a frozen clock the
-# 5-day test fails and the hourly one passes vacuously on an empty list.
-METEIRANN_FIXTURE_START = "2026-06-14 00:00:00"
-
-
 @pytest.fixture
 def meteirann_endpoints(fixtures_dir):
     xml_body = (fixtures_dir / "meteirann_forecast.xml").read_text()
