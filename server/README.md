@@ -240,8 +240,8 @@ Tips:
 
 ## Firmware updates
 
-The calendar hangs in a frame, so updating it over USB means taking it off
-the wall. With `firmware.enabled`, it updates itself instead.
+With `firmware.enabled`, the board updates itself from the server. No
+cable, and no need to reach the board.
 
 Publish a release of this repository and its workflow attaches
 `firmware.bin` to it. A server with a `firmware.source` block takes that
@@ -257,8 +257,12 @@ carries the offer, and the board flashes itself after it has drawn. It
 keeps the new image only once it has drawn a page with it, and boots the
 previous one otherwise. Below 20% battery the update waits.
 
-The board on the wall needs one USB flash first, with an OTA-capable build
-and your real `src/defaults.cpp`. That flash stores its WiFi credentials
+A board that rolled back remembers the version it rejected and will not
+take it again, so a bad release does not loop. Publish the fix under a new
+version.
+
+The board needs one USB flash first, with an OTA-capable build and your
+real `src/defaults.cpp`. That flash stores its WiFi credentials
 and server URL on the board, which is what lets every later image — built
 by CI, with placeholders — connect at all.
 
