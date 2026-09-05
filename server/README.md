@@ -280,15 +280,15 @@ An example of server logs with captured client logs from the MQTT topic:
 2026-05-27 08:28:03 - simplified - INFO - Screenshot captured and saved to file.
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - NOTICE - ##### Inkplate10 Weather Calendar boot #78 #####
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - INFO - battery voltage: 4.21v
-2026-05-27 08:30:11 - werkzeug - INFO - 192.168.1.181 - - [27/May/2026 08:30:11] "GET /today.png HTTP/1.1" 200 -
+2026-05-27 08:30:11 - werkzeug - INFO - 192.168.1.42 - - [27/May/2026 08:30:11] "GET /today.png HTTP/1.1" 200 -
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - INFO - approx battery capacity: 98%
-2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - INFO - connecting to WiFi SSID VM6088281...
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - INFO - connecting to WiFi SSID my-network...
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - configuring network time and RTC...
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - configuring remote MQTT logging...
-2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - connected to MQTT broker roci.local:1883
-2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - downloading file at URL http://roci.local:8081/today.png
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - connected to MQTT broker calendar.local:1883
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - downloading file at URL http://calendar.local:8081/today.png
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header X-Next-Refresh-Seconds: 3588
-2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header X-Next-URL: http://roci.local:8081/hourly.png
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header X-Next-URL: http://calendar.local:8081/hourly.png
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - next refresh in 3588 seconds
 ```
 
