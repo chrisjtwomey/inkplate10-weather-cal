@@ -15,6 +15,7 @@
 #include "IBoard.h"
 #include "app.h"
 #include "backoff.h"
+#include "version.h"
 #include "time_utils.h"      // SECONDS_IN_DAY / SECONDS_IN_YEAR macros
 #include "integration_stubs.h"
 #include "WiFi.h"
@@ -81,6 +82,16 @@ void test_happy_path_displays_battery_status() {
     TEST_ASSERT_EQUAL(1, dispStubs.displayBatteryCallCount);
     TEST_ASSERT_EQUAL(55, dispStubs.lastBatteryPercent);
     TEST_ASSERT_FALSE(dispStubs.lastBatteryInvert);
+}
+
+void test_happy_path_prints_the_running_version_on_the_page() {
+    happyPathStubs();
+
+    run_app();
+
+    // Drawn in the same overlay as the battery, so it lands on the page
+    // itself rather than on an error banner.
+    TEST_ASSERT_NOT_NULL(strstr(mockBoard.printedText.c_str(), CLIENT_VERSION));
 }
 
 void test_happy_path_calls_board_display() {
@@ -501,6 +512,7 @@ int main(int argc, char** argv) {
     // Happy path
     RUN_TEST(test_happy_path_sleeps_for_server_refresh_seconds);
     RUN_TEST(test_happy_path_displays_battery_status);
+    RUN_TEST(test_happy_path_prints_the_running_version_on_the_page);
     RUN_TEST(test_happy_path_calls_board_display);
     RUN_TEST(test_happy_path_saves_image_cache);
     RUN_TEST(test_happy_path_resets_backoff_step);
