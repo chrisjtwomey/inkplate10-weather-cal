@@ -15,4 +15,4 @@ tzdata==2026.3; sys_platform == "win32"
 # (the Dockerfile installs one). Pinned to a tag so a rebuild of this
 # release gets the same epd. Bump it deliberately.
 # For local development against a checkout instead:  pip install -e ../../epd/server
-epd-server @ git+https://github.com/chrisjtwomey/epd.git@v0.2.0#subdirectory=server
+epd-server @ git+https://github.com/chrisjtwomey/epd.git@v0.3.1#subdirectory=server
