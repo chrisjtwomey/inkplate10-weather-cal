@@ -14,7 +14,8 @@
 // Pull in headers that declare the functions we are defining.
 #include "log_utils.h"        // log(), logf(), configureMQTT()
 #include "network_utils.h"    // configureWiFi(), configureTime(), downloadFile()
-#include "display_utils.h"    // loadImage(), displayBatteryStatus(), displayMessage(),
+#include "display_utils.h"
+#include "panel.h"    // loadImage(), displayBatteryStatus(), displayMessage(),
                               // saveImageCache()
 #include "sleep_utils.h"      // sleep_for(), sleep(), deepSleep()
 #include "battery.h"          // getBatteryCapacity()
@@ -163,16 +164,13 @@ esp_err_t loadImage(uint8_t*, int32_t) {
     return dispStubs.loadImageResult;
 }
 
-esp_err_t loadImage(uint8_t*, int, int, int, int) {
-    dispStubs.loadImageCallCount++;
-    return dispStubs.loadImageResult;
-}
-
 void displayBatteryStatus(int percent, bool invert) {
     dispStubs.displayBatteryCallCount++;
     dispStubs.lastBatteryPercent = percent;
     dispStubs.lastBatteryInvert  = invert;
 }
+
+void drawClientVersion() { dispStubs.clientVersionDrawn = true; }
 
 void displayMessage(const char* msg, int) {
     dispStubs.displayMessageCalled = true;

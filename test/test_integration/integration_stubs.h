@@ -58,6 +58,7 @@ extern NetworkStubs netStubs;
 //                saveImageCache)
 // ---------------------------------------------------------------------------
 struct DisplayStubs {
+    bool clientVersionDrawn;
     // --- inputs ---
     esp_err_t loadImageResult         = ESP_OK;
     bool      saveImageCacheResult = true;

@@ -91,7 +91,7 @@ void test_happy_path_prints_the_running_version_on_the_page() {
 
     // Drawn in the same overlay as the battery, so it lands on the page
     // itself rather than on an error banner.
-    TEST_ASSERT_NOT_NULL(strstr(mockBoard.printedText.c_str(), CLIENT_VERSION));
+    TEST_ASSERT_TRUE(dispStubs.clientVersionDrawn);
 }
 
 void test_happy_path_calls_board_display() {

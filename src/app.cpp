@@ -13,9 +13,9 @@
 
 #include "IBoard.h"
 #include "app.h"
-#include "font/Merienda_Regular12pt7b.h"
 #include "backoff.h"
 #include "display_utils.h"
+#include "panel.h"
 #include "error_utils.h"
 #include "log_utils.h"
 #include "network_utils.h"
@@ -43,10 +43,6 @@
 // How long to wait after WiFi did not connect. Short: the network is the
 // most likely thing to come back on its own.
 #define WIFI_RETRY_SECONDS 60
-// Where the running version sits: top-left, clear of the battery indicator
-// in the opposite corner.
-#define VERSION_TEXT_X 12
-#define VERSION_TEXT_Y 32
 
 // Provided by main.cpp (firmware) or test_main.cpp (tests).
 extern IBoard& board;
@@ -73,17 +69,6 @@ void reset_app_state() {
     nextServerURL[0] = '\0';
 }
 #endif
-
-// The version, small, in the corner of every page. It is the only proof from
-// across the room that an update landed: the number changes and nobody went
-// near the board.
-static void drawClientVersion() {
-    board.setFont(&Merienda_Regular12pt7b);
-    board.setTextSize(1);
-    board.setTextColor(BLACK);
-    board.setCursor(VERSION_TEXT_X, VERSION_TEXT_Y);
-    board.print(CLIENT_VERSION);
-}
 
 // Every failed wake ends the same way: say so on the panel, give up on an
 // image that is still on trial, then back off and sleep.
