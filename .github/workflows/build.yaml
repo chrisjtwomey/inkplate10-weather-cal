@@ -22,6 +22,9 @@ jobs:
         with:
           repository: chrisjtwomey/epd
           path: epd
+          # The firmware libraries come from the registry, but the host tests
+          # compile epd's sources directly. Same version either way.
+          ref: v0.2.0
       - uses: actions/cache@v5
         with:
           path: |
