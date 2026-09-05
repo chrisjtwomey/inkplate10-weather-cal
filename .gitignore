@@ -115,3 +115,8 @@ src/defaults.cpp
 .vscode/extensions.json
 # Firmware images the board updates itself from
 server/firmware/
+
+# Backups and merge leftovers. defaults.cpp is ignored, but a copy of it
+# under another name would not be, and it holds real credentials.
+*.orig
+*.bak
