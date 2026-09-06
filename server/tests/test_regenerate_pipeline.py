@@ -9,7 +9,7 @@ import datetime as dt
 import pytest
 from PIL import Image
 
-import weather.mock.mock  # noqa: F401  (registers "mock")
+from weather.mock import mock as _mock_service  # noqa: F401  (registers "mock")
 from epd_server.pipeline import regenerate
 from epd_server.source import CompositeSource, StaticSource
 from views.current import CurrentPage
@@ -99,6 +99,7 @@ def test_tomorrow_page_picks_tomorrow_from_daily_forecasts():
         {"dt": dt.datetime(2026, 7, 3, 12)},
     ]
     picked = TomorrowPage.pick_tomorrow(forecasts, today=today)
+    assert picked is not None
     assert picked["marker"] == "tomorrow"
     assert TomorrowPage.pick_tomorrow(forecasts[:1], today=today) is None
 

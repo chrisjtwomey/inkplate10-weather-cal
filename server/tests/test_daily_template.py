@@ -10,6 +10,7 @@ import pytest
 from bs4 import BeautifulSoup
 from freezegun import freeze_time
 
+from tests.html import attr, one
 from views.daily import DailyPage
 from weather.mock.mock import MockWeatherService
 
@@ -58,17 +59,17 @@ def test_inner_canvas_wrapper_and_layout_variables_present(rendered_html):
     assert outer is not None
     assert inner is not None
     assert inner.find(id="top-banner") is not None
-    assert "--outer-width:825px" in soup.body.get("style", "")
-    assert "--outer-height:1200px" in soup.body.get("style", "")
+    style = attr(one(soup, "body"), "style")
+    assert "--outer-width:825px" in style
+    assert "--outer-height:1200px" in style
 
 
 def test_header_shows_frozen_date_and_location(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
-    banner = soup.find(id="top-banner")
-    assert banner is not None
+    banner = one(soup, id="top-banner")
 
-    assert banner.find(id="date").get_text(strip=True) == "19"
-    assert banner.find(id="month").get_text(strip=True) == "May"
+    assert one(banner, id="date").get_text(strip=True) == "19"
+    assert one(banner, id="month").get_text(strip=True) == "May"
 
     # temp and icon come from daily_summary, same as the today page
     assert banner.find(id="temp") is not None
@@ -108,10 +109,9 @@ def test_temp_bar_canvas_positions_are_valid(rendered_html):
     assert len(tracks) == 5
 
     for track in tracks:
-        canvas = track.find("canvas", class_="temp-bar-canvas")
-        assert canvas is not None, "temp-bar-track missing temp-bar-canvas child"
-        left_pct  = float(canvas.get("data-left",  "0"))
-        right_pct = float(canvas.get("data-right", "0"))
+        canvas = one(track, "canvas", class_="temp-bar-canvas")
+        left_pct  = float(attr(canvas, "data-left")  or "0")
+        right_pct = float(attr(canvas, "data-right") or "0")
         assert 0.0 <= left_pct  <= 100.0
         assert 0.0 <= right_pct <= 100.0
         assert left_pct + right_pct < 100.0, "pill canvas has no visible width"
@@ -124,7 +124,7 @@ def test_precip_cells_show_icon_and_percentage(rendered_html):
 
     for cell in cells:
         assert cell.find("img", class_="precip-icon") is not None
-        pct_text = cell.find("span", class_="precip-value").get_text(strip=True)
+        pct_text = one(cell, "span", class_="precip-value").get_text(strip=True)
         pct = int(pct_text.rstrip("%"))
         assert 0 <= pct <= 100
 
@@ -169,8 +169,8 @@ def test_sun_cells_present_with_mock_data(rendered_html):
 
 def test_roughjs_is_loaded(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
-    srcs = {s.get("src") for s in soup.find_all("script") if s.get("src")}
-    assert any("rough" in (s or "") for s in srcs), "roughjs script tag should be present"
+    srcs = {attr(s, "src") for s in soup.find_all("script") if attr(s, "src")}
+    assert any("rough" in s for s in srcs), "roughjs script tag should be present"
 
 
 def test_stylesheets_loaded(rendered_html):

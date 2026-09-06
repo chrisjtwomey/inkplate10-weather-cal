@@ -6,6 +6,7 @@ import pytest
 from bs4 import BeautifulSoup
 from freezegun import freeze_time
 
+from tests.html import attr, one
 from views.today import TodayPage
 from weather.mock.mock import MockWeatherService
 
@@ -52,8 +53,9 @@ def test_inner_canvas_wrapper_and_layout_variables_present(rendered_html):
     assert outer is not None
     assert inner is not None
     assert inner.find(id="day-map-wrapper") is not None
-    assert "--outer-width:825px" in soup.body.get("style", "")
-    assert "--outer-height:1200px" in soup.body.get("style", "")
+    style = attr(one(soup, "body"), "style")
+    assert "--outer-width:825px" in style
+    assert "--outer-height:1200px" in style
 
 
 def test_loads_day_and_today_css(rendered_html):

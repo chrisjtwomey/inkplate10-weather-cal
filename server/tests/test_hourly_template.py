@@ -13,6 +13,7 @@ import pytest
 from bs4 import BeautifulSoup
 from freezegun import freeze_time
 
+from tests.html import attr, one
 from views.hourly import HourlyPage
 from weather.mock.mock import MockWeatherService
 
@@ -51,17 +52,17 @@ def test_inner_canvas_wrapper_and_layout_variables_present(rendered_html):
     assert outer is not None
     assert inner is not None
     assert inner.find(id="top-banner") is not None
-    assert "--outer-width:825px" in soup.body.get("style", "")
-    assert "--outer-height:1200px" in soup.body.get("style", "")
+    style = attr(one(soup, "body"), "style")
+    assert "--outer-width:825px" in style
+    assert "--outer-height:1200px" in style
 
 
 def test_top_banner_has_date_month_temp_icon(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
-    banner = soup.find(id="top-banner")
-    assert banner is not None
+    banner = one(soup, id="top-banner")
 
-    assert banner.find(id="date").get_text(strip=True) == "19"             # frozen day
-    assert banner.find(id="month").get_text(strip=True) == "May"
+    assert one(banner, id="date").get_text(strip=True) == "19"             # frozen day
+    assert one(banner, id="month").get_text(strip=True) == "May"
 
     temp_el = banner.find(id="temp")
     assert temp_el is not None
@@ -109,16 +110,15 @@ def test_forecast_table_has_one_cell_per_hour_per_row(rendered_html):
     # Each data cell in row 4 (precip) holds a <canvas> with a data_precip attribute;
     # skip the first (legend) cell.
     for cell in rows[4].find_all("td")[1:]:
-        canvas = cell.find("canvas")
-        assert canvas is not None
-        pct = int(canvas["data_precip"])
+        canvas = one(cell, "canvas")
+        pct = int(attr(canvas, "data_precip"))
         assert 0 <= pct <= 100
 
 
 def test_external_chart_libraries_are_loaded(rendered_html):
     """Roughjs + Chart.js are required by the precipitation canvas script."""
     soup = BeautifulSoup(rendered_html, "html.parser")
-    srcs = {s.get("src") for s in soup.find_all("script") if s.get("src")}
+    srcs = {attr(s, "src") for s in soup.find_all("script") if attr(s, "src")}
     assert any("rough" in s for s in srcs), "expected roughjs to be loaded"
     assert any("chart.js" in s for s in srcs), "expected chart.js to be loaded"
 
