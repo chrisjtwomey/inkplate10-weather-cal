@@ -43,6 +43,14 @@ jobs:
       - name: Build firmware (debug + release)
         run: pio run
 
+      # This project's own logic, on the host: the order of a wake, and what
+      # it draws over a page. Neither runs in epd's CI, because neither is
+      # epd's to decide.
+      - name: Run host tests
+        run: |
+          pio test -e native_integration
+          pio test -e native_panel
+
   server-tests:
     runs-on: ubuntu-latest
     defaults:
