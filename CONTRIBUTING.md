@@ -22,8 +22,9 @@ python3 server.py
 
 `requirements-dev.txt` includes `requirements.txt` plus the test tools. The
 generic server code comes from the [epd](https://github.com/chrisjtwomey/epd)
-package, which `requirements.txt` pulls from GitHub at `main`. To develop
-against a local checkout of epd instead, install it editable on top:
+package, which `requirements.txt` pins to a release tag on GitHub. To
+develop against a local checkout of epd instead, install it editable on top,
+after the requirements: a later `pip install -r` puts the pinned release back.
 
 ```sh
 python3 -m pip install -e ../epd/server
