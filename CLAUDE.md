@@ -1,13 +1,25 @@
 # Inkplate 10 Weather Calendar
 
-**Read [CONTRIBUTING.md](CONTRIBUTING.md) first.** It covers the repository layout, how to run the tests, and how to build and run things locally.
-
 ## This repo
 
 - A thin consumer of [epd](https://github.com/chrisjtwomey/epd). Firmware here is only `src/main.cpp` (board choice) and `src/defaults.cpp` (credentials); the rest is the `EpdClient` and `EpdBoardInkplate` libraries. The server is `server/server.py` (config keys, weather service, five pages, one `DisplayServer(...).run()`), the weather providers under `server/weather/`, and the views under `server/views/`.
 - epd must be checked out beside this repo: `lib_deps` uses `symlink://../epd/firmware`. To develop against a local kit checkout, `pip install -e ../epd/server` in the server venv.
 - Generic code does not belong here. If a change is not about weather, maps, or these five pages, it goes in epd with its tests, and this repo consumes it.
 - Each view declares the datasets it needs in `Page.requires`; `WeatherService.datasets()` names what it provides. Keep the two in step — `tests/test_regenerate_pipeline.py` checks it.
+
+## Docs
+
+Read a doc only when the task needs it.
+
+| When the task | Read |
+|---|---|
+| Sets up the server, runs it, or runs its tests | [CONTRIBUTING.md](CONTRIBUTING.md), "Server Development Setup" |
+| Builds, flashes or tests the firmware | [CONTRIBUTING.md](CONTRIBUTING.md), "Client Firmware Development (PlatformIO)" |
+| Changes what a user builds, sets up or sees | [README.md](README.md) |
+| Changes the server's config keys, pages or deployment | [server/README.md](server/README.md) |
+| Adds or changes a weather provider | [server/weather/README.md](server/weather/README.md) |
+| Changes the weather API or map API setup | [doc/weather-apis.md](doc/weather-apis.md), [doc/google-static-maps.md](doc/google-static-maps.md) |
+| Changes the board's power use | [doc/power-consumption.md](doc/power-consumption.md) |
 
 ## Verify image changes visually
 
