@@ -27,13 +27,8 @@ ClientConfig builtInSettings() {
 
     cfg.wifiSSID = "XXXX";
     cfg.wifiPass = "XXXX";
-    // How many attempts before giving up on WiFi for this wake.
-    cfg.wifiRetries = 10;
-
-    // The time server (keep as pool.ntp.org if in doubt) and your timezone
-    // in "Olson" format, e.g. Europe/Dublin.
-    cfg.ntpHost = "pool.ntp.org";
-    cfg.ntpTimezone = "Europe/Dublin";
+    // How long to wait for WiFi before giving up on this wake.
+    cfg.wifiConnectTimeoutSeconds = 10;
 
     // Remote logging. Leave the broker as XXXX and the whole block comes from
     // the board's own store instead, which is what a CI image relies on.
@@ -41,7 +36,8 @@ ClientConfig builtInSettings() {
     cfg.mqttBroker = "XXXX";
     cfg.mqttPort = 1883;
     cfg.mqttClientID = "inkplate10-weather-client";
-    cfg.mqttTopic = "mqtt/eink-cal-client";
+    // Each board logs to <prefix>/<CLIENT_NAME>.
+    cfg.mqttPrefix = "mqtt/weather-cal";
     // How many attempts before giving up on the broker.
     cfg.mqttRetries = 3;
 

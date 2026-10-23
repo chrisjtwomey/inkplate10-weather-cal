@@ -14,12 +14,11 @@
 #include <time.h>
 
 // ---------------------------------------------------------------------------
-// Network stubs  (configureWiFi / configureTime / configureMQTT / downloadFile)
+// Network stubs  (configureWiFi / configureMQTT / downloadFile)
 // ---------------------------------------------------------------------------
 struct NetworkStubs {
     // --- inputs ---
     esp_err_t wifiResult = ESP_OK;
-    esp_err_t timeResult = ESP_OK;
     esp_err_t mqttResult = ESP_OK;
 
     // downloadFile: return nullptr to simulate failure, or set downloadBuf to
@@ -38,7 +37,6 @@ struct NetworkStubs {
 
     void reset() {
         wifiResult = ESP_OK;
-        timeResult = ESP_OK;
         mqttResult = ESP_OK;
         downloadBuf = nullptr;
         downloadBufLen = 0;
@@ -54,14 +52,14 @@ struct NetworkStubs {
 extern NetworkStubs netStubs;
 
 // ---------------------------------------------------------------------------
-// Display stubs (loadImage / displayBatteryStatus / displayMessage /
-//                saveImageCache)
+// Display stubs (drawImage / displayBatteryStatus / displayMessage /
+//                savePageCache)
 // ---------------------------------------------------------------------------
 struct DisplayStubs {
     bool clientVersionDrawn;
     // --- inputs ---
-    esp_err_t loadImageResult         = ESP_OK;
-    bool      saveImageCacheResult = true;
+    esp_err_t drawImageResult      = ESP_OK;
+    bool      savePageCacheResult  = true;
 
     // --- observations ---
     bool        displayMessageCalled    = false;
@@ -69,38 +67,38 @@ struct DisplayStubs {
     int         displayBatteryCallCount = 0;
     int         lastBatteryPercent      = -1;
     bool        lastBatteryInvert       = false;
-    int         loadImageCallCount      = 0;
-    bool        saveImageCacheCalled = false;
+    int         drawImageCallCount      = 0;
+    bool        savePageCacheCalled     = false;
 
     void reset() {
-        loadImageResult = ESP_OK;
-        saveImageCacheResult = true;
+        drawImageResult = ESP_OK;
+        savePageCacheResult = true;
         displayMessageCalled = false;
         lastDisplayMsg = nullptr;
         displayBatteryCallCount = 0;
         lastBatteryPercent = -1;
         lastBatteryInvert = false;
-        loadImageCallCount = 0;
-        saveImageCacheCalled = false;
+        drawImageCallCount = 0;
+        savePageCacheCalled = false;
     }
 };
 extern DisplayStubs dispStubs;
 
 // ---------------------------------------------------------------------------
-// Sleep stubs  (sleep_for / sleep / deepSleep)
+// Sleep stubs  (sleepFor / sleepUntil / deepSleep)
 // ---------------------------------------------------------------------------
 struct SleepStubs {
     // --- observations ---
     bool     sleepForCalled   = false;
     uint32_t lastSleepForSecs = 0;
-    bool     sleepCalled      = false;
-    time_t   lastSleepEpoch   = 0;
+    bool     sleepUntilCalled    = false;
+    time_t   lastSleepUntilEpoch = 0;
 
     void reset() {
         sleepForCalled = false;
         lastSleepForSecs = 0;
-        sleepCalled = false;
-        lastSleepEpoch = 0;
+        sleepUntilCalled = false;
+        lastSleepUntilEpoch = 0;
     }
 };
 extern SleepStubs sleepStubs;
@@ -137,13 +135,13 @@ struct OtaStubs {
 extern OtaStubs otaStubs;
 
 // ---------------------------------------------------------------------------
-// Battery stub  (getBatteryCapacity)
+// Battery stub  (batteryPercent)
 // ---------------------------------------------------------------------------
 struct BatteryStubs {
     // --- inputs ---
-    int capacity = 75; // percent returned for any voltage
+    int percent = 75; // returned for any voltage
 
-    void reset() { capacity = 75; }
+    void reset() { percent = 75; }
 };
 extern BatteryStubs batteryStubs;
 

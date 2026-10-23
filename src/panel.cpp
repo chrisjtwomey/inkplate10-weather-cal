@@ -31,7 +31,7 @@ void displayMessage(const char* msg, int batteryRemainingPercent) {
     // pixel of the full-size PNG, so no clearDisplay() is needed before
     // or after — it either fills the buffer with the image, or the buffer
     // stays as-is (white from epdBoard().begin()) if no cache exists yet.
-    loadImageCache();
+    drawCachedPage();
 
     int cX = epdBoard().getHeight() / 2;
     int cY = 16;  // 16pt font

@@ -3,7 +3,7 @@
 ## This repo
 
 - A thin consumer of [epd](https://github.com/chrisjtwomey/epd). Firmware here is only `src/main.cpp` (board choice) and `src/defaults.cpp` (credentials); the rest is the `EpdClient` and `EpdBoardInkplate` libraries. The server is `server/server.py` (config keys, weather service, five pages, one `DisplayServer(...).run()`), the weather providers under `server/weather/`, and the views under `server/views/`.
-- epd must be checked out beside this repo: `lib_deps` uses `symlink://../epd/firmware`. To develop against a local kit checkout, `pip install -e ../epd/server` in the server venv.
+- epd comes from the PlatformIO registry and PyPI, at one pinned release: `platformio.ini` `[epd]` and `server/requirements.txt` move together. Each `*-dev` environment builds against an epd checkout beside this repo (`symlink://../epd/firmware`). To develop the server against a checkout, `pip install -e ../epd/server` in the server venv, after the requirements.
 - Generic code does not belong here. If a change is not about weather, maps, or these five pages, it goes in epd with its tests, and this repo consumes it.
 - Each view declares the datasets it needs in `Page.requires`; `WeatherService.datasets()` names what it provides. Keep the two in step — `tests/test_regenerate_pipeline.py` checks it.
 

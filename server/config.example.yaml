@@ -78,4 +78,4 @@ mqtt:
   enabled: false
   host: localhost
   port: 1883
-  topic: mqtt/eink-cal-client
+  prefix: mqtt/weather-cal

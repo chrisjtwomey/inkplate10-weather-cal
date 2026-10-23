@@ -31,7 +31,7 @@ def test_happy_path_flattens_core_and_project_keys():
     assert cfg.weather_service == "mock" and cfg.weather_apikey is None
     assert cfg.num_hourly_forecasts == 9
     assert cfg.location == "Dublin"                            # stripped
-    assert cfg.mqtt_topic == "mqtt/eink-cal-client"            # project default
+    assert cfg.mqtt_prefix == "mqtt/weather-cal"               # project default
     assert cfg.debug is False
 
 

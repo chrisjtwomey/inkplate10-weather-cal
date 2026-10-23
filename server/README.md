@@ -69,7 +69,7 @@ Then edit `config.yaml` with your API keys, location, and schedule.
 | `mqtt.enabled` | boolean | `false` | Enables MQTT subscription so the server can listen for client logs. |
 | `mqtt.host` | string | `localhost` | MQTT broker host. |
 | `mqtt.port` | integer | `1883` | MQTT broker port. |
-| `mqtt.topic` | string | `mqtt/eink-cal-client` | MQTT topic the server subscribes to for client logs. |
+| `mqtt.prefix` | string | `mqtt/weather-cal` | The server subscribes to `<prefix>/+`: each board logs to `<prefix>/<board>`. |
 
 ### Configuration via environment variables
 
@@ -170,16 +170,16 @@ Configure which page the client fetches at each wake time via `display.schedule`
 
 ### Telling the client when to wake next
 
-Each response to any image endpoint (e.g. `GET /today.png`) includes an `X-Next-Refresh-Seconds`
+Each response to any image endpoint (e.g. `GET /today.png`) includes an `EPD-Next-Display-Refresh-Seconds`
 header: an integer number of seconds from now until the next scheduled
-refresh, computed from `server.refresh_times` in the configured timezone.
+refresh, computed from `display.schedule` in the configured timezone.
 The Inkplate client treats this as authoritative — it simply sets its RTC
 alarm to "wake `N` seconds from now" and doesn't need its own timezone
 awareness for scheduling.
 
 ```sh
-$ curl -sI http://localhost:8080/today.png | grep -i x-next-refresh
-x-next-refresh-seconds: 17602
+$ curl -sI http://localhost:8080/today.png | grep -i next-display-refresh
+epd-next-display-refresh-seconds: 17602
 ```
 
 All daylight-saving / timezone math happens server-side. If the client is
@@ -283,12 +283,11 @@ An example of server logs with captured client logs from the MQTT topic:
 2026-05-27 08:30:11 - werkzeug - INFO - 192.168.1.42 - - [27/May/2026 08:30:11] "GET /today.png HTTP/1.1" 200 -
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - INFO - approx battery capacity: 98%
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:07-00:00 - INFO - connecting to WiFi SSID my-network...
-2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - configuring network time and RTC...
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - configuring remote MQTT logging...
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - connected to MQTT broker calendar.local:1883
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - downloading file at URL http://calendar.local:8081/today.png
-2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header X-Next-Refresh-Seconds: 3588
-2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header X-Next-URL: http://calendar.local:8081/hourly.png
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header EPD-Next-Display-Refresh-Seconds: 3588
+2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header EPD-Next-URL: http://calendar.local:8081/hourly.png
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - next refresh in 3588 seconds
 ```
 
@@ -296,8 +295,8 @@ An example of server logs with captured client logs from the MQTT topic:
 
 - The client publishes logs using the `mqtt_logger.*` settings in the client `config.yaml`.
 - The server subscribes using the `mqtt.*` settings in the server `config.yaml`.
-- Both sides must point at the same broker and use the same topic.
-- The default topic in this repository is `mqtt/eink-cal-client`.
+- Both sides must point at the same broker and use the same prefix.
+- The default prefix in this repository is `mqtt/weather-cal`. The board logs to `mqtt/weather-cal/inkplate10-weather-cal`.
 
 ### Deploying a broker
 

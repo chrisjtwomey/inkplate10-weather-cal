@@ -2,7 +2,7 @@
 # of your SD card. The values in these parameters are just examples
 # so be sure to update them to suit your own setup.
 #
-# These parameters override what is set in config.h if SD card is enabled.
+# These parameters override what is set in src/defaults.cpp if SD card is enabled.
 server:
   # The URL on the server which the client will attempt to download the first image from.
   # Available pages: /today.png (simplified today), /tomorrow.png (simplified tomorrow),
@@ -13,13 +13,8 @@ server:
 wifi:
   ssid: XXXX
   pass: XXXX
-  # The number of times to attempt WiFi connection before timeout.
-  retries: 6
-ntp:
-  # The time server host (keep as pool.ntp.org if in doubt).
-  host: pool.ntp.org
-  # The timezone you live in ("Olson" format).
-  timezone: Europe/Dublin
+  # How long to wait for WiFi, in seconds, before giving up on this wake.
+  connect_timeout_seconds: 10
 mqtt_logger:
   # Set to true to send publish logs to an MQTT broker.
   enabled: false
@@ -29,7 +24,8 @@ mqtt_logger:
   port: 1883
   # The unique identifier for this project in your MQTT broker.
   clientId: inkplate10-weather-calendar
-  # The name of the MQTT topic to publish to.
-  topic: mqtt/inkplate10-weather-calendar
+  # The board logs to <prefix>/inkplate10-weather-cal. broker, clientId and
+  # prefix come together: give all three, or the board keeps its own.
+  prefix: mqtt/weather-cal
   # The number of times to attempt MQTT connection before timeout.
   retries: 3

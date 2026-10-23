@@ -14,6 +14,6 @@ void logf(uint16_t, const char*, ...) {}
 
 String nowTzFmt() { return "Mon 1 Jan 00:00"; }
 
-bool startImageCache() { return true; }
-bool saveImageCache(const uint8_t*, int32_t) { return true; }
-bool loadImageCache() { return true; }
+bool startPageCache() { return true; }
+bool savePageCache(const uint8_t*, int32_t) { return true; }
+bool drawCachedPage() { return true; }

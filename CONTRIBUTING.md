@@ -22,7 +22,7 @@ python3 server.py
 
 `requirements-dev.txt` includes `requirements.txt` plus the test tools. The
 generic server code comes from the [epd](https://github.com/chrisjtwomey/epd)
-package, which `requirements.txt` pins to a release tag on GitHub. To
+package, which `requirements.txt` pins to a release on PyPI. To
 develop against a local checkout of epd instead, install it editable on top,
 after the requirements: a later `pip install -r` puts the pinned release back.
 
@@ -111,6 +111,11 @@ pio run -e release_sdcard
 | `debug` | Verbose serial logging (`LOG_LEVEL=5`). Use during development. |
 | `release` | Minimal logging (`LOG_LEVEL=4`). Use for day-to-day deployment. |
 | `release_sdcard` | Release build with `USE_SDCARD` enabled. Used for SD card configuration mode. |
+| `debug-dev` | `debug` against an epd checkout beside this repo, to try a change to epd before it is released. |
+
+The board environments take epd from the PlatformIO registry, at the release
+`[epd]` in `platformio.ini` names. Keep it the same as the `epd-server` pin in
+`server/requirements.txt`: the firmware and the server share the headers.
 
 ### Automated Tests
 
@@ -121,6 +126,7 @@ here. No device is needed.
 
 ```sh
 pio test -e native_integration
+pio test -e native_panel        # what this project draws over a page
 ```
 
 It runs `run_app()` on the host against `MockBoard`, with every
@@ -130,6 +136,9 @@ stub headers and `MockBoard.h` come from epd, which ships them for this.
 `pio test` with no environment does nothing, because the board environments
 ignore tests rather than try to upload one. Name the environment.
 
+Both compile epd's sources from the registry package. `native_integration-dev`
+and `native_panel-dev` compile them from an epd checkout beside this repo.
+
 The steps `app.cpp` is built from are the kit's, and so are their tests:
 
 ```sh
@@ -138,8 +147,7 @@ pio test -e native              # back-off, battery, refresh header parsing
 pio test -e native_mock         # display + sleep against MockBoard
 ```
 
-Building anything here needs epd checked out alongside this repo, because
-`lib_deps` and the test environment both point at `../epd/firmware`.
+Only the `*-dev` environments need epd checked out beside this repo.
 
 ## Making Changes
 

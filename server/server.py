@@ -84,7 +84,7 @@ class ServerConfig:
     mqtt_enabled: Any
     mqtt_host: Any
     mqtt_port: Any
-    mqtt_topic: Any
+    mqtt_prefix: Any
     firmware: Any             # FirmwareSettings; server-driven client updates
     debug: Any
 
@@ -110,7 +110,7 @@ def validate_config(config: dict) -> ServerConfig:
             default_display=DEFAULT_DISPLAY,
             default_firmware_product="inkplate10-weather-cal",
             base_dir=cwd,
-            default_mqtt_topic="mqtt/eink-cal-client",
+            default_mqtt_prefix="mqtt/weather-cal",
         )
 
         # ---- weather ----
@@ -168,7 +168,7 @@ def validate_config(config: dict) -> ServerConfig:
         mqtt_enabled=core.mqtt.enabled,
         mqtt_host=core.mqtt.host,
         mqtt_port=core.mqtt.port,
-        mqtt_topic=core.mqtt.topic,
+        mqtt_prefix=core.mqtt.prefix,
         firmware=core.firmware,
         debug=core.server.debug,
     )
@@ -244,7 +244,7 @@ def main():
             tz=cfg.timezone,
             regen_lead_seconds=cfg.regen_lead_seconds,
             port=cfg.port,
-            mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_topic),
+            mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_prefix),
             mqtt_client_id="eink-cal-server",
             firmware=cfg.firmware,
         )

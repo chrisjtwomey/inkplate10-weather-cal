@@ -4,7 +4,7 @@
 // does not know how many times to try, what a flat battery means, or when to
 // give up on a new image. Those answers live here.
 //
-// IMPORTANT: every call to sleep() / sleep_for() is followed by an explicit
+// IMPORTANT: every call to sleepUntil() / sleepFor() is followed by an explicit
 // return. On-device those calls never return (esp_deep_sleep_start() is
 // terminal); the return is unreachable in production but allows test stubs to
 // return normally so post-sleep state can be inspected.
@@ -48,13 +48,13 @@
 // On the host (NATIVE) they are plain globals.
 RTC_DATA_ATTR int bootCount = 0;
 // Seconds-until-next-refresh as dictated by the server's
-// X-Next-Refresh-Seconds header. Zero-init on cold boot; preserved across
+// Next-Display-Refresh-Seconds header. Zero-init on cold boot; preserved across
 // deep-sleep cycles. When 0, falls back to the config's refresh seconds.
 RTC_DATA_ATTR uint32_t nextRefreshSeconds;
 // Exponential back-off step. Incremented on each failed boot (download or
 // draw). Reset to 0 on full success. Zero-init on cold reset.
 RTC_DATA_ATTR int serverBackoffStep;
-// Next URL to fetch as directed by the server's X-Next-URL header.
+// Next URL to fetch as directed by the server's Next-URL header.
 // Empty string on cold boot -> falls back to the config's server URL.
 RTC_DATA_ATTR char nextServerURL[256];
 
@@ -78,14 +78,14 @@ static void endFailedWake(const char* errMsg, int batteryPercent, bool trialBoot
     serverBackoffStep++;
     logf(LOG_NOTICE, "%s (back-off step %d): sleeping %u s", errMsg, serverBackoffStep,
          computeBackoffSeconds(serverBackoffStep));
-    sleep_for(computeBackoffSeconds(serverBackoffStep));
+    sleepFor(computeBackoffSeconds(serverBackoffStep));
 }
 
 void run_app() {
     ++bootCount;
 
     startBoard(PANEL_ROTATION);
-    startImageCache();
+    startPageCache();
     logf(LOG_NOTICE, "##### %s boot #%d #####", epdBoard().deviceName(), bootCount);
     logf(LOG_NOTICE, "############ Client version: %s ############", CLIENT_VERSION);
     logf(LOG_INFO, "User-Agent: %s", clientUserAgent(epdBoard().deviceName()));
@@ -105,7 +105,7 @@ void run_app() {
     if (batteryPercent <= BATTERY_CRITICAL_PERCENT) {
         log(LOG_NOTICE, "battery critical! - sleeping until charged");
         displayMessage("Battery critical, please charge!", batteryPercent);
-        sleep(epdBoard().rtcGetEpoch() + SECONDS_IN_YEAR);
+        sleepUntil(epdBoard().rtcGetEpoch() + SECONDS_IN_YEAR);
         return;  // terminal
     }
     if (batteryPercent <= BATTERY_LOW_PERCENT) log(LOG_WARNING, "battery low, charge soon!");
@@ -119,7 +119,7 @@ void run_app() {
             return;  // terminal
         }
         // Not the server's fault, so the back-off step is left alone.
-        sleep(epdBoard().rtcGetEpoch() + WIFI_RETRY_SECONDS);
+        sleepUntil(epdBoard().rtcGetEpoch() + WIFI_RETRY_SECONDS);
         return;  // terminal
     }
 
@@ -167,10 +167,10 @@ void run_app() {
     }
 
     // Cache the drawn image so displayMessage can overlay it as a backdrop.
-    if (saveImageCache(page.data, page.length))
-        log(LOG_DEBUG, "image cache saved to SPIFFS");
+    if (savePageCache(page.data, page.length))
+        log(LOG_DEBUG, "page cache saved");
     else
-        log(LOG_WARNING, "failed to save image cache to SPIFFS");
+        log(LOG_WARNING, "page cache not saved");
 
     // A page is on the panel, so this image works. Say so before anything
     // else: the bootloader takes back an unconfirmed image, and a write to
@@ -192,6 +192,6 @@ void run_app() {
     }
 
     serverBackoffStep = 0;
-    sleep_for(nextRefreshSeconds);
+    sleepFor(nextRefreshSeconds);
     return;  // terminal
 }

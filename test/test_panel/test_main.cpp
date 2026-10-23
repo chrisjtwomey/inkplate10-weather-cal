@@ -23,7 +23,7 @@ void setUp() {
 void tearDown() {}
 
 // The bitmap displayBatteryStatus() hands to the board, or null if it drew none.
-static uint8_t* iconFor(int percent, bool invert) {
+static const uint8_t* iconFor(int percent, bool invert) {
     mockBoard = MockBoard();
     epdBegin(mockBoard);
     mockBoard.drawBitmapBuf = nullptr;
@@ -74,8 +74,8 @@ void test_the_icon_changes_at_10_percent() {
 // ── Drawing over a dark banner uses the other set ────────────────────────
 
 void test_inverted_uses_a_different_bitmap() {
-    uint8_t* normal = iconFor(80, false);
-    uint8_t* inverted = iconFor(80, true);
+    const uint8_t* normal = iconFor(80, false);
+    const uint8_t* inverted = iconFor(80, true);
     TEST_ASSERT_NOT_NULL(normal);
     TEST_ASSERT_NOT_NULL(inverted);
     TEST_ASSERT_NOT_EQUAL(normal, inverted);

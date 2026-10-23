@@ -31,7 +31,7 @@ static MockBoard mockBoard;
 // ---------------------------------------------------------------------------
 
 // A minimal byte sequence used as a "downloaded image" in happy-path tests.
-// loadImage is stubbed, so the actual content doesn't matter.
+// drawImage is stubbed, so the actual content doesn't matter.
 static uint8_t kFakePng[] = { 0x89, 0x50, 0x4E, 0x47, 0x00 };
 static const int32_t kFakePngLen = (int32_t)sizeof(kFakePng);
 
@@ -71,12 +71,12 @@ void test_happy_path_sleeps_for_server_refresh_seconds() {
 
     TEST_ASSERT_TRUE(sleepStubs.sleepForCalled);
     TEST_ASSERT_EQUAL_UINT32(7200, sleepStubs.lastSleepForSecs);
-    TEST_ASSERT_FALSE(sleepStubs.sleepCalled); // absolute sleep must NOT fire
+    TEST_ASSERT_FALSE(sleepStubs.sleepUntilCalled); // absolute sleep must NOT fire
 }
 
 void test_happy_path_displays_battery_status() {
     happyPathStubs();
-    batteryStubs.capacity = 55;
+    batteryStubs.percent = 55;
 
     run_app();
 
@@ -108,7 +108,7 @@ void test_happy_path_saves_image_cache() {
 
     run_app();
 
-    TEST_ASSERT_TRUE(dispStubs.saveImageCacheCalled);
+    TEST_ASSERT_TRUE(dispStubs.savePageCacheCalled);
 }
 
 void test_happy_path_resets_backoff_step() {
@@ -174,8 +174,8 @@ void test_wifi_timeout_shows_error_and_sleeps_60s_from_epoch() {
     run_app();
 
     TEST_ASSERT_TRUE(dispStubs.displayMessageCalled);
-    TEST_ASSERT_TRUE(sleepStubs.sleepCalled);
-    TEST_ASSERT_EQUAL((time_t)1060, sleepStubs.lastSleepEpoch);
+    TEST_ASSERT_TRUE(sleepStubs.sleepUntilCalled);
+    TEST_ASSERT_EQUAL((time_t)1060, sleepStubs.lastSleepUntilEpoch);
     // Must not have attempted a download
     TEST_ASSERT_EQUAL(0, netStubs.downloadCallCount);
 }
@@ -191,18 +191,8 @@ void test_wifi_timeout_does_not_increment_backoff_step() {
 }
 
 // ---------------------------------------------------------------------------
-// Time sync / MQTT: non-fatal network setup failures
+// MQTT: non-fatal network setup failures
 // ---------------------------------------------------------------------------
-
-void test_time_sync_failure_still_proceeds_to_download() {
-    happyPathStubs();
-    netStubs.timeResult = ESP_FAIL;
-
-    run_app();
-
-    TEST_ASSERT_EQUAL(1, netStubs.downloadCallCount);
-    TEST_ASSERT_TRUE(sleepStubs.sleepForCalled);
-}
 
 void test_mqtt_timeout_still_proceeds_to_download() {
     happyPathStubs();
@@ -256,7 +246,7 @@ void test_no_refresh_header_backs_off_instead_of_sleeping_zero() {
     // nextRefreshSeconds == 0, so app takes the backoff branch
     TEST_ASSERT_EQUAL_UINT32(computeBackoffSeconds(1), sleepStubs.lastSleepForSecs);
     // cache is still saved (image was drawn successfully)
-    TEST_ASSERT_TRUE(dispStubs.saveImageCacheCalled);
+    TEST_ASSERT_TRUE(dispStubs.savePageCacheCalled);
 }
 
 // ---------------------------------------------------------------------------
@@ -264,19 +254,19 @@ void test_no_refresh_header_backs_off_instead_of_sleeping_zero() {
 // ---------------------------------------------------------------------------
 
 void test_battery_critical_sleeps_long_without_downloading() {
-    batteryStubs.capacity = 3; // 3% — below the ≤5% threshold
+    batteryStubs.percent = 3; // 3% — below the ≤5% threshold
     mockBoard.epochReturn  = 500;
 
     run_app();
 
     TEST_ASSERT_TRUE(dispStubs.displayMessageCalled);
-    TEST_ASSERT_TRUE(sleepStubs.sleepCalled);
-    TEST_ASSERT_EQUAL((time_t)(500 + SECONDS_IN_YEAR), sleepStubs.lastSleepEpoch);
+    TEST_ASSERT_TRUE(sleepStubs.sleepUntilCalled);
+    TEST_ASSERT_EQUAL((time_t)(500 + SECONDS_IN_YEAR), sleepStubs.lastSleepUntilEpoch);
     TEST_ASSERT_EQUAL(0, netStubs.downloadCallCount);
 }
 
 void test_battery_low_continues_to_download() {
-    batteryStubs.capacity = 10; // exactly at the "low" threshold — warn only
+    batteryStubs.percent = 10; // exactly at the "low" threshold — warn only
     happyPathStubs();
 
     run_app();
@@ -292,7 +282,7 @@ void test_battery_low_continues_to_download() {
 
 void test_load_image_failure_backs_off_without_caching() {
     happyPathStubs();
-    dispStubs.loadImageResult = ESP_FAIL;
+    dispStubs.drawImageResult = ESP_FAIL;
 
     run_app();
 
@@ -300,7 +290,7 @@ void test_load_image_failure_backs_off_without_caching() {
     TEST_ASSERT_TRUE(sleepStubs.sleepForCalled);
     TEST_ASSERT_EQUAL_UINT32(computeBackoffSeconds(1), sleepStubs.lastSleepForSecs);
     // Cache must NOT be saved when the draw failed
-    TEST_ASSERT_FALSE(dispStubs.saveImageCacheCalled);
+    TEST_ASSERT_FALSE(dispStubs.savePageCacheCalled);
 }
 
 // ---------------------------------------------------------------------------
@@ -310,7 +300,7 @@ void test_load_image_failure_backs_off_without_caching() {
 void test_cache_save_failure_still_sleeps_for_refresh_seconds() {
     happyPathStubs();
     netStubs.downloadNextRefresh      = 1800;
-    dispStubs.saveImageCacheResult = false;
+    dispStubs.savePageCacheResult = false;
 
     run_app();
 
@@ -413,7 +403,7 @@ void test_no_firmware_headers_means_no_update() {
 void test_an_update_waits_while_the_battery_is_low() {
     happyPathStubs();
     offerUpdate();
-    batteryStubs.capacity = 19;
+    batteryStubs.percent = 19;
 
     run_app();
 
@@ -424,7 +414,7 @@ void test_an_update_waits_while_the_battery_is_low() {
 void test_an_update_is_applied_at_twenty_percent() {
     happyPathStubs();
     offerUpdate();
-    batteryStubs.capacity = 20;
+    batteryStubs.percent = 20;
 
     run_app();
 
@@ -478,13 +468,13 @@ void test_a_trial_boot_that_cannot_reach_wifi_rolls_back() {
     run_app();
 
     TEST_ASSERT_TRUE(otaStubs.rollbackCalled);
-    TEST_ASSERT_FALSE(sleepStubs.sleepCalled);
+    TEST_ASSERT_FALSE(sleepStubs.sleepUntilCalled);
 }
 
 void test_a_trial_boot_that_cannot_draw_rolls_back() {
     happyPathStubs();
     otaStubs.trialPending = true;
-    dispStubs.loadImageResult = ESP_FAIL;
+    dispStubs.drawImageResult = ESP_FAIL;
 
     run_app();
 
@@ -527,8 +517,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_wifi_timeout_shows_error_and_sleeps_60s_from_epoch);
     RUN_TEST(test_wifi_timeout_does_not_increment_backoff_step);
 
-    // Time sync / MQTT: non-fatal failures
-    RUN_TEST(test_time_sync_failure_still_proceeds_to_download);
+    // MQTT: non-fatal failures
     RUN_TEST(test_mqtt_timeout_still_proceeds_to_download);
 
     // Download failure / backoff

@@ -16,16 +16,13 @@ ClientConfig builtInSettings() {
 
     cfg.wifiSSID = "test-ssid";
     cfg.wifiPass = "test-pass";
-    cfg.wifiRetries = 10;
-
-    cfg.ntpHost = "pool.ntp.org";
-    cfg.ntpTimezone = "Europe/Dublin";
+    cfg.wifiConnectTimeoutSeconds = 10;
 
     cfg.mqttEnabled = false;
     cfg.mqttBroker = "localhost";
     cfg.mqttPort = 1883;
     cfg.mqttClientID = "epaper-test-client";
-    cfg.mqttTopic = "mqtt/epaper-test";
+    cfg.mqttPrefix = "mqtt/epaper-test";
     cfg.mqttRetries = 3;
 
     return cfg;

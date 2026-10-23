@@ -150,12 +150,11 @@ Both a server and client are required. The main workload is in the server which 
 
 ### Client (Inkplate 10)
 1. Wakes from deep sleep and attempts to connect to WiFi.
-2. Attempts to get current network time and update real-time clock.
-3. (Optional) Attempts to connect to an [MQTT](server/README.md#mqtt) topic to publish logs. This allows you to see what the ESP32 is doing without needing to monitor the serial connection.
-4. Downloads the PNG image the server is hosting.
-5. (Optional, SD card only) Writes the downloaded PNG image to SD card.
-6. Reads the PNG image and writes it to the e-ink display.
-7. Returns to deep sleep for the number of seconds the server dictated via `X-Next-Refresh-Seconds`. If the server doesn't provide a value, backs off exponentially (2 min → 6 min → … → 24 h) until it does.
+2. (Optional) Attempts to connect to an [MQTT](server/README.md#mqtt) topic to publish logs. This allows you to see what the ESP32 is doing without needing to monitor the serial connection.
+3. Downloads the PNG image the server is hosting. The server's answer also sets the board's clock and time zone.
+4. (Optional, SD card only) Writes the downloaded PNG image to SD card.
+5. Reads the PNG image and writes it to the e-ink display.
+6. Returns to deep sleep for the number of seconds the server dictated via `EPD-Next-Display-Refresh-Seconds`. If the server doesn't provide a value, backs off exponentially (2 min → 6 min → … → 24 h) until it does.
 
 #### Features:
   - Ultra-low power consumption:
@@ -166,7 +165,7 @@ Both a server and client are required. The main workload is in the server which 
   - Real-time clock for precise sleep/wake times.
   - Daylight savings time (DST) handled entirely server-side — the server sends seconds-until-next-refresh so the client never needs to reason about timezones for scheduling.
   - Can publish to a MQTT topic for remote logging.
-  - Renders messages on the e-ink display for critical errors (battery low, WiFi timeout, etc.). The previous calendar image stays visible behind the banner (cached in SPIFFS on first successful refresh).
+  - Renders messages on the e-ink display for critical errors (battery low, WiFi timeout, etc.). The previous calendar image stays visible behind the banner (cached in the board's flash on first successful refresh).
   - Exponential back-off on server failures: 2 min → 6 min → 18 min → … → 24 h cap, resetting on the next successful server-dictated refresh.
   - Optional: SD card support for loading client config from `config.yaml` without reflashing (see [doc/config.yaml](doc/config.yaml)).
 
@@ -187,7 +186,7 @@ See [server/README.md](server/README.md) for full server documentation.
 
   **Note: SD card support is disabled by default. Use build flag `USE_SDCARD` to enable.**
 
-  Only needed if you want to load client config (`config.yaml`) from the card without reflashing. Image caching for error banners is handled automatically via internal SPIFFS flash.
+  Only needed if you want to load client config (`config.yaml`) from the card without reflashing. Image caching for error banners is handled automatically in the board's own flash.
 
 - **3000mAh LiPo battery pack ~€10**
 
@@ -199,7 +198,7 @@ See [server/README.md](server/README.md) for full server documentation.
 
 - **A server to run the image generator**
 
-  Anything that can run Docker or Python 3.10+. A Raspberry Pi Zero 2W is a good low-power option; any always-on computer works.
+  Anything that can run Docker or Python 3.11+. A Raspberry Pi Zero 2W is a good low-power option; any always-on computer works.
 
 - **Black photo frame 8"x10" ~€10**
 
@@ -219,18 +218,18 @@ If you are not using an SD Card to configure the client, see [Choose your config
 |---|---|---|---|
 | `server.url` | string | `http://YOUR_SERVER_HOST:8080/today.png` | Initial image URL to fetch (`/today.png`, `/current.png`, `/tomorrow.png`, `/hourly.png`, `/daily.png`). |
 | `server.retries` | integer | `3` | Number of retry attempts for image download and draw operations. |
-| `server.default_refresh_seconds` | integer | `3600` | Fallback sleep interval in seconds when the server has not provided `X-Next-Refresh-Seconds`. |
+| `server.default_refresh_seconds` | integer | `3600` | Fallback sleep interval in seconds when the server has not provided `EPD-Next-Display-Refresh-Seconds`. |
 | `wifi.ssid` | string | `XXXX` | WiFi SSID used by the client. |
 | `wifi.pass` | string | `XXXX` | WiFi password used by the client. |
-| `wifi.retries` | integer | `10` | Number of WiFi connection attempts before timeout. |
-| `ntp.host` | string | `pool.ntp.org` | NTP server host for RTC synchronization. |
-| `ntp.timezone` | string (IANA timezone) | `Europe/Dublin` | Local timezone used for client-side timestamps/logging. |
+| `wifi.connect_timeout_seconds` | integer | `10` | How long to wait for WiFi, in seconds, before giving up on this wake. |
 | `mqtt_logger.enabled` | boolean | `false` | Enables client [MQTT](server/README.md#mqtt) logging. |
 | `mqtt_logger.broker` | string | `localhost` | MQTT broker host for client log publishing. |
 | `mqtt_logger.port` | integer | `1883` | MQTT broker port. |
 | `mqtt_logger.clientId` | string | `inkplate10-weather-client` | MQTT client ID used by the device. |
-| `mqtt_logger.topic` | string | `mqtt/eink-cal-client` | MQTT topic used for client log publishing. |
+| `mqtt_logger.prefix` | string | `mqtt/weather-cal` | The board logs to `<prefix>/inkplate10-weather-cal`. |
 | `mqtt_logger.retries` | integer | `3` | Number of MQTT connection retries before timeout. |
+
+`mqtt_logger.broker`, `clientId` and `prefix` come together. If the card gives only some of them, the board ignores all three, keeps its own, and logs a warning.
 
 ### Example
 
@@ -241,16 +240,13 @@ server:
 wifi:
   ssid: YOUR_WIFI
   pass: YOUR_WIFI_PASSWORD
-  retries: 6
-ntp:
-  host: pool.ntp.org
-  timezone: Europe/Dublin
+  connect_timeout_seconds: 10
 mqtt_logger:
   enabled: false
   broker: localhost
   port: 1883
   clientId: inkplate10-weather-calendar
-  topic: mqtt/inkplate10-weather-calendar
+  prefix: mqtt/weather-cal
   retries: 3
 ```
 
