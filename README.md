@@ -116,13 +116,15 @@ Pre-built firmware binaries in the [releases](https://github.com/chrisjtwomey/in
 **Recommended path (pre-built firmware):**
 
 1. Place a `config.yaml` in the root of your SD card (see [doc/config.yaml](doc/config.yaml) for an example).
-2. Download `firmware.bin` from the [latest release](https://github.com/chrisjtwomey/inkplate10-weather-cal/releases/latest).
+2. Download `firmware.factory.bin` from the [latest release](https://github.com/chrisjtwomey/inkplate10-weather-cal/releases/latest). It holds the bootloader, the partition table and the firmware.
 3. Flash it using `esptool.py`:
 
 ```sh
 pip install esptool
-esptool.py --chip esp32 --port /dev/ttyUSB0 write_flash 0x10000 firmware.bin
+esptool.py --chip esp32 --port /dev/ttyUSB0 write_flash 0x0 firmware.factory.bin
 ```
+
+   This also clears the settings stored on the board. The card's `config.yaml` gives them back at the next boot.
 
 4. Insert the SD card and boot the device. The firmware reads `config.yaml` from SD card on startup.
 

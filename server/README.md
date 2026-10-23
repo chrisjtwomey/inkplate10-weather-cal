@@ -266,6 +266,10 @@ real `src/defaults.cpp`. That flash stores its WiFi credentials
 and server URL on the board, which is what lets every later image — built
 by CI, with placeholders — connect at all.
 
+A board that last had a USB flash before the move to epd 0.14.0 needs one
+again. Its partition table changed, and an update over the air cannot
+change a partition table.
+
 To force an update rather than wait for the next wake, press RST.
 
 ## MQTT

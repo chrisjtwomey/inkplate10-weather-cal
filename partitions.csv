@@ -1,0 +1,20 @@
+# Partition table for the Inkplate 10's 4 MB flash.
+#
+# Two application slots: an update over the air writes into the slot it is not
+# running from, and rolls back to the other if the new image fails. The
+# firmware has to fit one slot, not both.
+#
+# The filesystem holds one page. After deep sleep the framebuffer is gone, so
+# a message drawn over the last page needs that page back from flash. The
+# largest page this server renders is about 70 kB.
+#
+# nvs and otadata keep the default table's offsets and sizes, so a board moved
+# onto this layout keeps the settings it has stored.
+#
+# Name,     Type, SubType,  Offset,   Size,     Flags
+nvs,        data, nvs,      0x9000,   0x5000,
+otadata,    data, ota,      0xE000,   0x2000,
+app0,       app,  ota_0,    0x10000,  0x1C0000,
+app1,       app,  ota_1,    0x1D0000, 0x1C0000,
+spiffs,     data, spiffs,   0x390000, 0x60000,
+coredump,   data, coredump, 0x3F0000, 0x10000,

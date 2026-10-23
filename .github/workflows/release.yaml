@@ -33,10 +33,14 @@ jobs:
       - name: Build release firmware
         run: pio run -e release_sdcard
 
-      - name: Upload firmware.bin to release assets
+      - name: Upload the firmware images to release assets
         uses: softprops/action-gh-release@v3
         with:
-          files: .pio/build/release_sdcard/firmware.bin
+          # firmware.bin is what the server offers over the air;
+          # firmware.factory.bin is the whole flash, for a first USB flash.
+          files: |
+            .pio/build/release_sdcard/firmware.bin
+            .pio/build/release_sdcard/firmware.factory.bin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
