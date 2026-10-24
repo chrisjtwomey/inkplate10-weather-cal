@@ -24,7 +24,7 @@ from views.current import CurrentPage
 from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
 from google.api import GoogleAPIService
-from epd_server import DisplayServer, align_process_timezone
+from epd_server import DisplayServer, LogsQuery, LogStore, align_process_timezone
 from epd_server.config import ConfigError, MqttSettings, load_core_config, load_yaml
 from epd_server.source import CompositeSource, StaticSource
 
@@ -87,6 +87,8 @@ class ServerConfig:
     mqtt_port: Any
     mqtt_prefix: Any
     firmware: Any             # FirmwareSettings; server-driven client updates
+    logs_path: Any            # str; the boards' log lines, relative to this folder
+    logs_days: Any            # float; how long a line is kept
     debug: Any
 
 
@@ -143,6 +145,13 @@ def validate_config(config: dict) -> ServerConfig:
 
         # ---- location ----
         location = get_prop(config, "location", required=True).strip()
+
+        # ---- logs: the boards' log lines, kept on disk ----
+        logs_path = str(get_prop_by_keys(config, "logs", "path", default="data/board-logs.db",
+                                         required=False))
+        logs_days = get_prop_by_keys(config, "logs", "keep_days", default=90, required=False)
+        if isinstance(logs_days, bool) or not isinstance(logs_days, (int, float)) or logs_days < 0:
+            raise ConfigError(f"logs.keep_days must be a number of days, 0 for no limit (got {logs_days!r})")
     except (ConfigError, KeyError) as exc:
         # KeyError comes from a required key that is absent; its arg is the
         # user-facing message.
@@ -171,6 +180,8 @@ def validate_config(config: dict) -> ServerConfig:
         mqtt_port=core.mqtt.port,
         mqtt_prefix=core.mqtt.prefix,
         firmware=core.firmware,
+        logs_path=logs_path,
+        logs_days=float(logs_days),
         debug=core.server.debug,
     )
 
@@ -237,6 +248,10 @@ def main():
     # Page.requires.
     source = CompositeSource(StaticSource(map_url=map_url), weather_svc)
 
+    logs_file = os.path.join(cwd, cfg.logs_path)
+    os.makedirs(os.path.dirname(logs_file), exist_ok=True)
+    board_logs = LogStore(logs_file, keep_days=cfg.logs_days)
+
     try:
         server = DisplayServer(
             pages=pages,
@@ -248,6 +263,8 @@ def main():
             mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_prefix),
             mqtt_client_id=f"eink-cal-server-{socket.gethostname()}",
             firmware=cfg.firmware,
+            client_logs=board_logs,
+            queries={"logs": LogsQuery(board_logs, cfg.timezone).answer},
         )
     except ValueError as exc:
         # The schedule names a page that does not exist. Report it like every

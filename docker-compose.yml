@@ -14,6 +14,8 @@ services:
       # because the server re-fetches the release as it starts, or when
       # client.firmware.dir is one of the image's builds/ folders.
       - weather-cal-firmware:/app/firmware
+      # The boards' log lines (logs.path), kept across restarts and updates.
+      - weather-cal-data:/app/data
     # Only override these if needed; most config is in config.yaml
     environment:
       LOCATION: "Cork"         # Optional: override location
@@ -22,3 +24,4 @@ services:
       # CLIENT_FIRMWARE_SOURCE_TOKEN: "${CLIENT_FIRMWARE_SOURCE_TOKEN}"
 volumes:
   weather-cal-firmware:
+  weather-cal-data:

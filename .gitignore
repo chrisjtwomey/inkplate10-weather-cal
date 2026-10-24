@@ -123,3 +123,5 @@ server/firmware/
 
 # Firmware the release workflow puts into the server image.
 server/builds/
+# The boards' log lines, when the server runs from source.
+server/data/

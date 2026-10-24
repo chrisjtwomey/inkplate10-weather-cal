@@ -70,6 +70,8 @@ Then edit `config.yaml` with your API keys, location, and schedule.
 | `mqtt.host` | string | `localhost` | MQTT broker host. |
 | `mqtt.port` | integer | `1883` | MQTT broker port. |
 | `mqtt.prefix` | string | `mqtt/weather-cal` | The server subscribes to `<prefix>/+`: each board logs to `<prefix>/<board>`. |
+| `logs.path` | string | `data/board-logs.db` | Where the boards' log lines are kept, relative to `config.yaml`. In Docker, mount a volume on `/app/data` to keep them across updates. |
+| `logs.keep_days` | number | `90` | How long a line is kept, in days. `0` keeps them all. |
 
 ### Configuration via environment variables
 
@@ -126,6 +128,9 @@ services:
       - "8080:8080"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
+      - weather-cal-data:/app/data    # the boards' log lines
+volumes:
+  weather-cal-data:
 ```
 
 ## How scheduling works
@@ -302,7 +307,7 @@ To force an update rather than wait for the next wake, press RST.
 
 MQTT stands for Message Queuing Telemetry Transport. It is a lightweight publish/subscribe protocol that uses a broker to relay messages between devices and services.
 
-In this project, the Inkplate client publishes its logs to an MQTT topic and the server subscribes to that topic so the logs are collected alongside the server's own output. Without MQTT enabled, debugging client issues usually means connecting the device to a development machine and watching the serial console directly.
+In this project, the Inkplate client publishes its logs to an MQTT topic and the server subscribes to that topic so the logs are collected alongside the server's own output, and kept for `GET /logs` ([Reading the boards' logs](#reading-the-boards-logs)). Without MQTT enabled, debugging client issues usually means connecting the device to a development machine and watching the serial console directly.
 
 An example of server logs with captured client logs from the MQTT topic:
 ```
@@ -320,6 +325,21 @@ An example of server logs with captured client logs from the MQTT topic:
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - received header EPD-Next-URL: http://calendar.local:8081/hourly.png
 2026-05-27 08:30:11 - client - INFO - 2026-05-27T08:30:11-00:00 - INFO - next refresh in 3588 seconds
 ```
+
+### Reading the boards' logs
+
+The server keeps each line a board sends, with the time it arrived, and
+answers `GET /logs` with them as JSON, newest last:
+
+```sh
+curl -s 'http://localhost:8080/logs?q=battery%20voltage&limit=50'
+```
+
+- `board`, `level` (that level and above) and `q` (text in the line) narrow
+  the lines; `limit` caps them at 500.
+- `after` or `before` a line's `id` pages forward or back.
+
+The server has no login, so anyone who can reach it can read the logs.
 
 ### How this project uses MQTT
 

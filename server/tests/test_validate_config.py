@@ -32,6 +32,8 @@ def test_happy_path_flattens_core_and_project_keys():
     assert cfg.num_hourly_forecasts == 9
     assert cfg.location == "Dublin"                            # stripped
     assert cfg.mqtt_prefix == "mqtt/weather-cal"               # project default
+    assert cfg.logs_path == "data/board-logs.db"
+    assert cfg.logs_days == 90
     assert cfg.debug is False
 
 
@@ -74,3 +76,18 @@ def test_negative_hourly_forecasts_rejected(caplog):
     with pytest.raises(SystemExit):
         validate_config(c)
     assert "num_hourly_forecasts must be non-negative" in caplog.text
+
+
+def test_board_logs_can_be_kept_elsewhere_and_for_longer():
+    c = base()
+    c["logs"] = {"path": "/var/lib/weather-cal/logs.db", "keep_days": 365}
+    cfg = validate_config(c)
+    assert (cfg.logs_path, cfg.logs_days) == ("/var/lib/weather-cal/logs.db", 365)
+
+
+def test_a_bad_logs_keep_days_is_refused(caplog):
+    c = base()
+    c["logs"] = {"keep_days": "a week"}
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert "logs.keep_days" in caplog.text

@@ -82,3 +82,8 @@ mqtt:
   host: localhost
   port: 1883
   prefix: mqtt/weather-cal
+# The boards' log lines from MQTT, kept on disk and read back over GET /logs.
+logs:
+  path: data/board-logs.db
+  # How long a line is kept, in days; 0 keeps them all.
+  keep_days: 90

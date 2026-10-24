@@ -71,6 +71,26 @@ def test_main_once_renders_every_page_and_exits(project_dir, caplog):
     assert "once: images generated, not starting the server" in caplog.text
 
 
+def test_the_boards_log_lines_are_kept_and_answer_logs(project_dir, monkeypatch):
+    made = {}
+
+    class FakeServer:
+        def __init__(self, **kwargs):
+            made.update(kwargs)
+
+        def run(self, once=False):
+            pass
+
+    monkeypatch.setattr(server, "DisplayServer", FakeServer)
+    server.main()
+
+    assert (project_dir / "data" / "board-logs.db").exists()
+    made["client_logs"].add("inkplate10-weather-cal", "INFO - battery voltage: 4.12v")
+    answer = made["queries"]["logs"]({"q": "battery"})
+    assert [line["text"] for line in answer["lines"]] == ["INFO - battery voltage: 4.12v"]
+    assert answer["boards"] == ["inkplate10-weather-cal"]
+
+
 def test_main_exits_on_bad_config(project_dir, caplog):
     cfg = yaml.safe_load((project_dir / "config.yaml").read_text())
     cfg["display"] = {"pools": {"nope": ["nope.png"]}, "schedule": {"type": "times", "08:00:00": "nope"}}

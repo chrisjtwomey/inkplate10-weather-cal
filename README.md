@@ -81,11 +81,15 @@ services:
       - "8080:8080"
     # Recommended: mount your config.yaml for server configuration
     volumes:
-      - ./server/config.yaml:/app/server/config.yaml:ro
+      - ./server/config.yaml:/app/config.yaml:ro
+      # The boards' log lines, kept across updates.
+      - weather-cal-data:/app/data
     # Only override these if needed
     environment:
       LOCATION: "Dublin, IE"   # Optional: override location
       SERVER_PORT: "8080"      # Optional: override port
+volumes:
+  weather-cal-data:
 ```
 
 Then start the server:

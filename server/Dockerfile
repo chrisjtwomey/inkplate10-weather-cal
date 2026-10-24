@@ -27,7 +27,7 @@ COPY . /app
 # Seed the runtime config from the example so the image is runnable with
 # only `docker run -e WEATHER_APIKEY=... -e GOOGLE_APIKEY=... ...`. Mount a
 # real /app/config.yaml at runtime to override every key at once instead.
-RUN mkdir -p /app/firmware \
+RUN mkdir -p /app/firmware /app/data \
     && cp config.example.yaml config.yaml \
     && python -c "import json, os; json.dump({'version': os.environ.get('SERVER_VERSION', 'dev'), 'commitSha': os.environ.get('SERVER_COMMIT_SHA', '')}, open('/app/version.json', 'w'))" \
     && chmod +x /app/entrypoint.sh \
