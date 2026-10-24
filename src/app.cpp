@@ -28,10 +28,6 @@
 #include "user_agent.h"
 #include "version.h"
 
-#if defined(USE_SDCARD)
-#include "file_utils.h"
-#endif
-
 // Portrait: the pages this client draws are taller than they are wide.
 #define PANEL_ROTATION 1
 // Below this the board sleeps until someone charges it.
@@ -100,7 +96,7 @@ void run_app() {
     const int batteryPercent = readBatteryPercent();
 
     ClientConfig cfg = loadConfig(builtInSettings());
-    const bool cardPresent = applySdConfig(&cfg);
+    applySdConfig(&cfg);
 
     if (batteryPercent <= BATTERY_CRITICAL_PERCENT) {
         log(LOG_NOTICE, "battery critical! - sleeping until charged");
@@ -142,26 +138,11 @@ void run_app() {
     logf(LOG_INFO, "next refresh in %u seconds",
          nextRefreshSeconds ? nextRefreshSeconds : cfg.defaultRefreshSeconds);
 
-    const char* imagePath = nullptr;
-#if defined(USE_SDCARD)
-    // The card holds the image the panel draws from, and keeps it for the
-    // next wake. Without one the buffer serves for this wake alone.
-    if (cardPresent) {
-        if (writeFile(page.data, page.length, IMAGE_RW_PATH) != ESP_OK) {
-            endFailedWake("file write error", batteryPercent, trialBoot);
-            return;  // terminal
-        }
-        imagePath = IMAGE_RW_PATH;
-    }
-#else
-    (void)cardPresent;
-#endif
-
     const auto indicators = [batteryPercent] {
         displayBatteryStatus(batteryPercent, false);
         drawClientVersion();
     };
-    if (!drawPage(page, imagePath, cfg.serverRetries, indicators, &errMsg)) {
+    if (!drawPage(page, nullptr, cfg.serverRetries, indicators, &errMsg)) {
         endFailedWake(errMsg, batteryPercent, trialBoot);
         return;  // terminal
     }

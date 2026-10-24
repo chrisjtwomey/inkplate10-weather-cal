@@ -156,9 +156,8 @@ Both a server and client are required. The main workload is in the server which 
 1. Wakes from deep sleep and attempts to connect to WiFi.
 2. (Optional) Attempts to connect to an [MQTT](server/README.md#mqtt) topic to publish logs. This allows you to see what the ESP32 is doing without needing to monitor the serial connection.
 3. Downloads the PNG image the server is hosting. The server's answer also sets the board's clock and time zone.
-4. (Optional, SD card only) Writes the downloaded PNG image to SD card.
-5. Reads the PNG image and writes it to the e-ink display.
-6. Returns to deep sleep for the number of seconds the server dictated via `EPD-Next-Display-Refresh-Seconds`. If the server doesn't provide a value, backs off exponentially (2 min → 6 min → … → 24 h) until it does.
+4. Reads the PNG image and writes it to the e-ink display.
+5. Returns to deep sleep for the number of seconds the server dictated via `EPD-Next-Display-Refresh-Seconds`. If the server doesn't provide a value, backs off exponentially (6 min → 18 min → … → 24 h) until it does.
 
 #### Features:
   - Ultra-low power consumption:
@@ -170,7 +169,7 @@ Both a server and client are required. The main workload is in the server which 
   - Daylight savings time (DST) handled entirely server-side — the server sends seconds-until-next-refresh so the client never needs to reason about timezones for scheduling.
   - Can publish to a MQTT topic for remote logging.
   - Renders messages on the e-ink display for critical errors (battery low, WiFi timeout, failed update, etc.). The previous calendar image stays visible behind the banner (cached in the board's flash on first successful refresh).
-  - Exponential back-off on server failures: 2 min → 6 min → 18 min → … → 24 h cap, resetting on the next successful server-dictated refresh.
+  - Exponential back-off on server failures: 6 min → 18 min → 54 min → … → 24 h cap, resetting on the next successful server-dictated refresh.
   - Optional: SD card support for loading client config from `config.yaml` without reflashing (see [doc/config.yaml](doc/config.yaml)).
 
 #### Power Consumption
