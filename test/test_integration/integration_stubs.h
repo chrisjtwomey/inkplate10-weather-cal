@@ -71,6 +71,7 @@ struct DisplayStubs {
     bool        savePageCacheCalled     = false;
     const char* updateScreenVersion     = nullptr;  // beginUpdateProgress()
     bool        updateScreenEnded       = false;    // endUpdateProgress()
+    int         radioOffsAtDecode       = -1;       // WiFi.disconnectCount then
 
     void reset() {
         drawImageResult = ESP_OK;
@@ -84,6 +85,7 @@ struct DisplayStubs {
         savePageCacheCalled = false;
         updateScreenVersion = nullptr;
         updateScreenEnded = false;
+        radioOffsAtDecode = -1;
     }
 };
 extern DisplayStubs dispStubs;

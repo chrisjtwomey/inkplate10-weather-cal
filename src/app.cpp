@@ -41,18 +41,45 @@
 #define WIFI_RETRY_SECONDS 60
 
 #if defined(TIMING_LOG)
-// When each step of a wake ended, in ms since boot, logged as one line while
-// the broker is still connected: the lines before it connects reach only the
-// serial port.
+// When each step of a wake ended, in ms since boot. The radio is off before
+// the wake ends, so the line goes out at the next wake, once the broker is
+// connected.
 static char timings[256];
+RTC_DATA_ATTR char lastWakeTimings[256];
 static void markStep(const char* step) {
     const size_t used = strlen(timings);
     snprintf(timings + used, sizeof(timings) - used, "%s%s %lu", used ? ", " : "", step,
              (unsigned long)millis());
 }
+static void keepTimings() { snprintf(lastWakeTimings, sizeof(lastWakeTimings), "%s", timings); }
+static void logLastWakeTimings() {
+    if (!lastWakeTimings[0]) return;
+    logf(LOG_INFO, "timing of the last wake (ms since boot): %s", lastWakeTimings);
+    lastWakeTimings[0] = '\0';
+}
 #else
 static void markStep(const char*) {}
+static void keepTimings() {}
+static void logLastWakeTimings() {}
 #endif
+
+// How long the radio stays on after the last line it must carry: a line just
+// logged is still queued for the broker, and turning the radio off drops it.
+#define LOG_DRAIN_MS 100
+
+// Whether this wake has turned the radio off yet.
+static bool radioOn;
+
+// Off for the rest of the wake.
+static void radioOff() {
+    if (!radioOn) return;
+#if !defined(NATIVE)
+    delay(LOG_DRAIN_MS);
+#endif
+    WiFi.disconnect();
+    WiFi.mode(WIFI_OFF);
+    radioOn = false;
+}
 
 // The sleep after a page, from the server's answer. A test build sets
 // MAX_SLEEP_SECONDS to wake more often than the server's schedule.
@@ -103,6 +130,7 @@ static void endFailedWake(const char* errMsg, int batteryPercent, bool trialBoot
 
 void run_app() {
     ++bootCount;
+    radioOn = true;
 
     startBoard(PANEL_ROTATION);
     startPageCache();
@@ -147,6 +175,7 @@ void run_app() {
     }
 
     markStep("network");
+    logLastWakeTimings();
 
     const char* errMsg = nullptr;
     PageFetch page = {};
@@ -169,9 +198,15 @@ void run_app() {
     logf(LOG_INFO, "next refresh in %u seconds",
          nextRefreshSeconds ? nextRefreshSeconds : cfg.defaultRefreshSeconds);
 
-    const auto indicators = [batteryPercent] {
+    // The panel's refresh is most of a wake. Unless an update needs the
+    // network after it, the radio goes off before it: after the decode, so
+    // a page that will not decode still reaches the log.
+    const bool updateOffered = page.response.firmwareVersion[0] != '\0';
+    const auto indicators = [batteryPercent, updateOffered] {
         displayBatteryStatus(batteryPercent, false);
         drawClientVersion();
+        markStep("decode");
+        if (!updateOffered) radioOff();
     };
     if (!drawPage(page, nullptr, cfg.serverRetries, indicators, &errMsg)) {
         endFailedWake(errMsg, batteryPercent, trialBoot);
@@ -199,13 +234,9 @@ void run_app() {
                       BATTERY_FOR_UPDATE_PERCENT, showUpdateProgress);
     endUpdateProgress(batteryPercent);
     markStep("update");
-#if defined(TIMING_LOG)
-    logf(LOG_INFO, "timing (ms since boot): %s", timings);
-#endif
 
-    log(LOG_NOTICE, "disconnecting WiFi radio...");
-    WiFi.disconnect();
-    WiFi.mode(WIFI_OFF);
+    if (radioOn) log(LOG_NOTICE, "disconnecting WiFi radio...");
+    radioOff();
 
     if (nextRefreshSeconds == 0) {
         // An image, but no word on when to come back. Treat it as a fault.
@@ -214,6 +245,8 @@ void run_app() {
     }
 
     serverBackoffStep = 0;
+    markStep("sleep");
+    keepTimings();
     sleepFor(sleepAfterPage(nextRefreshSeconds));
     return;  // terminal
 }

@@ -153,6 +153,7 @@ esp_err_t drawImage(const char*) {
 
 esp_err_t drawImage(const uint8_t*, int32_t) {
     dispStubs.drawImageCallCount++;
+    dispStubs.radioOffsAtDecode = WiFi.disconnectCount;
     return dispStubs.drawImageResult;
 }
 

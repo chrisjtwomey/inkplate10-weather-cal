@@ -162,7 +162,7 @@ Both a server and client are required. The main workload is in the server which 
 1. Wakes from deep sleep and attempts to connect to WiFi.
 2. (Optional) Attempts to connect to an [MQTT](server/README.md#mqtt) topic to publish logs. This allows you to see what the ESP32 is doing without needing to monitor the serial connection.
 3. Downloads the PNG image the server is hosting. The server's answer also sets the board's clock and time zone.
-4. Reads the PNG image and writes it to the e-ink display.
+4. Reads the PNG image and writes it to the e-ink display. Unless the server offers a firmware update, Wi-Fi goes off once the image is decoded, before the display refreshes, which is the longest step.
 5. Returns to deep sleep for the number of seconds the server dictated via `EPD-Next-Display-Refresh-Seconds`. If the server doesn't provide a value, backs off exponentially (6 min → 18 min → … → 24 h) until it does.
 
 #### Features:

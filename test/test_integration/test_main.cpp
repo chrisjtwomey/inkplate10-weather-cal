@@ -370,6 +370,16 @@ void test_an_offered_update_shows_its_progress_and_cleans_up() {
     TEST_ASSERT_TRUE(dispStubs.updateScreenEnded);
 }
 
+void test_without_an_update_the_radio_is_off_once_the_page_is_decoded() {
+    happyPathStubs();
+
+    run_app();
+
+    TEST_ASSERT_EQUAL_INT(0, dispStubs.radioOffsAtDecode);   // on while it decodes
+    TEST_ASSERT_EQUAL_INT(1, WiFi.disconnectCount);          // and off once
+    TEST_ASSERT_TRUE(sleepStubs.sleepForCalled);
+}
+
 void test_the_radio_is_still_on_when_the_update_is_fetched() {
     // The image is fetched over the network, so the wake cannot turn the
     // radio off until the update step has had its turn.
@@ -556,6 +566,7 @@ int main(int argc, char** argv) {
     // Firmware updates
     RUN_TEST(test_an_offered_update_is_applied_after_the_page_is_drawn);
     RUN_TEST(test_an_offered_update_shows_its_progress_and_cleans_up);
+    RUN_TEST(test_without_an_update_the_radio_is_off_once_the_page_is_decoded);
     RUN_TEST(test_the_radio_is_still_on_when_the_update_is_fetched);
     RUN_TEST(test_the_running_version_is_not_applied_again);
     RUN_TEST(test_no_firmware_headers_means_no_update);

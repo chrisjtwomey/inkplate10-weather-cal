@@ -253,8 +253,8 @@ The server image carries the firmware of its own version, in three folders:
 - `builds/nocard`, for a board without an SD card.
 - `builds/sdcard`, for a board with a card.
 - `builds/timing`, for test work: the `nocard` build, but it wakes at least
-  every 10 minutes and logs when each step of a wake ended. Its version ends
-  in `+timing`.
+  every 10 minutes and logs, at the next wake, when each step of the last one
+  ended. Its version ends in `+timing`.
 
 Set `client.firmware.dir` to the one your board runs, with no `source` block,
 and the board follows the server: a redeploy moves both. The variable
@@ -346,6 +346,8 @@ The server has no login, so anyone who can reach it can read the logs.
 - The client publishes logs using the `mqtt_logger.*` settings in the client `config.yaml`.
 - The server subscribes using the `mqtt.*` settings in the server `config.yaml`.
 - Both sides must point at the same broker and use the same prefix.
+- The board turns Wi-Fi off before its panel refreshes, so the lines it logs
+  after that reach only its serial port, not the server.
 - The default prefix in this repository is `mqtt/weather-cal`. The board logs to `mqtt/weather-cal/inkplate10-weather-cal`.
 
 ### Deploying a broker

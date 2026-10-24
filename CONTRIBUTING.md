@@ -111,7 +111,7 @@ pio run -e release_sdcard
 | `debug` | Verbose serial logging (`LOG_LEVEL=5`). Use during development. |
 | `release` | Minimal logging (`LOG_LEVEL=4`). Use for day-to-day deployment. |
 | `release_sdcard` | Release build with `USE_SDCARD` enabled. Used for SD card configuration mode. |
-| `timing` | `release` for test work: wakes at least every 10 minutes (`MAX_SLEEP_SECONDS`), and logs when each step of a wake ended (`TIMING_LOG`). Its version ends in `+timing`. |
+| `timing` | `release` for test work: wakes at least every 10 minutes (`MAX_SLEEP_SECONDS`), and logs when each step of a wake ended, at the next wake (`TIMING_LOG`). Its version ends in `+timing`. |
 | `debug-dev` | `debug` against an epd checkout beside this repo, to try a change to epd before it is released. |
 
 The board environments take epd from the PlatformIO registry, at the release
