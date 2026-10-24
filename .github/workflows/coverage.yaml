@@ -1,0 +1,46 @@
+name: Coverage
+
+# The README's coverage badges: the figures of scripts/coverage_report.py,
+# written as shields.io files to a public gist. A workflow of its own, so that
+# a failed write, such as with an expired GIST_TOKEN, leaves PlatformIO CI
+# passing.
+on:
+  push:
+    branches: [main]
+
+jobs:
+  coverage:
+    name: Coverage badges
+    runs-on: ubuntu-latest
+    env:
+      BADGE_GIST: 3c210a371fde90aa65369080ad509e39
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Tags, so scripts/version.py can derive CLIENT_VERSION.
+          fetch-depth: 0
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO Core, gcovr and the server's dependencies
+        run: pip install --upgrade platformio gcovr && pip install -r server/requirements-dev.txt
+
+      - name: Measure coverage
+        run: python scripts/coverage_report.py --python "$(which python)" --badges badges
+
+      - name: Write the badges to the gist
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        run: |
+          jq -n --rawfile server badges/server-coverage.json --rawfile firmware badges/firmware-coverage.json \
+            '{files: {"weather-cal-server-coverage.json": {content: $server}, "weather-cal-firmware-coverage.json": {content: $firmware}}}' |
+            curl -sSf -o /dev/null -X PATCH -H "Authorization: Bearer $GIST_TOKEN" \
+              -H "Accept: application/vnd.github+json" "https://api.github.com/gists/$BADGE_GIST" -d @-

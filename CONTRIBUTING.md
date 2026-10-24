@@ -149,6 +149,25 @@ pio test -e native_mock         # display + sleep against MockBoard
 
 Only the `*-dev` environments need epd checked out beside this repo.
 
+## Coverage
+
+```sh
+pip install gcovr                       # once, into the Python that runs the script
+python3 scripts/coverage_report.py      # --server or --firmware for one
+```
+
+Both figures count lines. The server's leaves out the tests. The firmware's
+counts only the part of `src/` that the host tests compile, `app.cpp` and
+`panel.cpp`. `main.cpp` runs only on a board, and epd's sources are measured
+in epd.
+
+On each push to main, the Coverage workflow (`.github/workflows/coverage.yaml`)
+runs the script with `--badges` and writes the two figures, rounded down, to a
+public gist that the README's badges read. It writes with the `GIST_TOKEN`
+secret, a fine-grained token with only the Gists permission. When the token
+expires, the workflow fails and the badges keep their last figures; it is
+apart from PlatformIO CI, so CI still passes.
+
 ## Making Changes
 
 - Please fork the repository and create a new branch for your changes.

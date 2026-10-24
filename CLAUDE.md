@@ -15,6 +15,7 @@ Read a doc only when the task needs it.
 |---|---|
 | Sets up the server, runs it, or runs its tests | [CONTRIBUTING.md](CONTRIBUTING.md), "Server Development Setup" |
 | Builds, flashes or tests the firmware | [CONTRIBUTING.md](CONTRIBUTING.md), "Client Firmware Development (PlatformIO)" |
+| Measures test coverage, or changes the badges | [CONTRIBUTING.md](CONTRIBUTING.md), "Coverage" |
 | Changes what a user builds, sets up or sees | [README.md](README.md) |
 | Changes the server's config keys, pages or deployment | [server/README.md](server/README.md) |
 | Adds or changes a weather provider | [server/weather/README.md](server/weather/README.md) |

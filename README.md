@@ -3,6 +3,8 @@
 
 [![PlatformIO CI](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/build.yaml/badge.svg)](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/build.yaml)
 [![Release](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/release.yaml/badge.svg)](https://github.com/chrisjtwomey/inkplate10-weather-cal/actions/workflows/release.yaml)
+[![Server coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/chrisjtwomey/3c210a371fde90aa65369080ad509e39/raw/weather-cal-server-coverage.json)](CONTRIBUTING.md#coverage)
+[![Firmware coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/chrisjtwomey/3c210a371fde90aa65369080ad509e39/raw/weather-cal-firmware-coverage.json)](CONTRIBUTING.md#coverage)
 
 
 Display weather forecasts and a stylised map of your city on an Inkplate 10 that can last for months on a single battery. Four page layouts are available: a simplified today/tomorrow view, an hourly forecast table, and a 5-day daily summary.
