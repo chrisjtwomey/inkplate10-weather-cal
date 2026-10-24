@@ -122,24 +122,25 @@ jobs:
       - name: Create defaults.cpp from example
         run: cp src/defaults.example.cpp src/defaults.cpp
 
-      # Both builds go into the image, each in a folder of its own, so a
-      # server's config picks the one its boards run: builds/nocard or
-      # builds/sdcard. Beside each image, <version>.merged.bin is the whole
-      # flash, for a USB flash.
+      # Each build goes into the image in a folder of its own, so a server's
+      # client.firmware.dir picks the one its boards run: builds/nocard,
+      # builds/sdcard, or builds/timing for test work. Beside each image,
+      # <version>.merged.bin is the whole flash, for a USB flash.
       - name: Build the firmware into the image's folders
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          for pair in nocard:release sdcard:release_sdcard; do
-            folder=${pair%%:*} env=${pair#*:}
+          for build in nocard:release: sdcard:release_sdcard: timing:timing:+timing; do
+            IFS=: read -r folder env suffix <<< "$build"
+            version=$VERSION$suffix
             pio run -e "$env" | tee "$env.log"
-            if ! grep -qx "CLIENT_VERSION: $VERSION" "$env.log"; then
-              echo "::error::$env built $(grep -m1 '^CLIENT_VERSION:' "$env.log"), not $VERSION"
+            if ! grep -qx "CLIENT_VERSION: $version" "$env.log"; then
+              echo "::error::$env built $(grep -m1 '^CLIENT_VERSION:' "$env.log"), not $version"
               exit 1
             fi
             mkdir -p "server/builds/$folder"
-            cp ".pio/build/$env/firmware.bin" "server/builds/$folder/$VERSION.bin"
-            cp ".pio/build/$env/firmware.factory.bin" "server/builds/$folder/$VERSION.merged.bin"
+            cp ".pio/build/$env/firmware.bin" "server/builds/$folder/$version.bin"
+            cp ".pio/build/$env/firmware.factory.bin" "server/builds/$folder/$version.merged.bin"
           done
           ls -lR server/builds
 

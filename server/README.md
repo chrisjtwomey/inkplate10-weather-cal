@@ -59,7 +59,7 @@ Then edit `config.yaml` with your API keys, location, and schedule.
 | `image.innerAlignX` | string enum | `center` | Horizontal alignment for inner bounds inside the output canvas (`left`, `center`, `right`). |
 | `image.innerAlignY` | string enum | `center` | Vertical alignment for inner bounds inside the output canvas (`top`, `center`, `bottom`). |
 | `client.firmware.enabled` | boolean | `false` | Offer firmware updates to the boards this server serves. |
-| `client.firmware.dir` | string | `firmware` | Directory of `<version>.bin` images, relative to `config.yaml`. The newest file is the one offered. `builds/nocard` or `builds/sdcard` offers the firmware the image carries. |
+| `client.firmware.dir` | string | `firmware` | Directory of `<version>.bin` images, relative to `config.yaml`. The newest file is the one offered. `builds/nocard`, `builds/sdcard` or `builds/timing` offers the firmware the image carries. |
 | `client.firmware.product` | string | `inkplate10-weather-cal` | The client name a board reports. An image is offered only to boards of that product. |
 | `client.firmware.offer_dev_builds` | boolean | `false` | Also offer to boards not built from a tag. For a bench board only. |
 | `client.firmware.source.github` | string `owner/repo` | unset | Optional. Watch this repository's releases and fill `dir` from them. |
@@ -243,10 +243,20 @@ Tips:
 With `client.firmware.enabled`, the board updates itself from the server.
 No cable, and no need to reach the board.
 
-The server image carries the firmware of its own version, in two folders:
-`builds/nocard` for a board without an SD card, and `builds/sdcard` for one
-with a card. Set `client.firmware.dir` to the one your board runs, with no
-`source` block, and the board follows the server: a redeploy moves both.
+The server image carries the firmware of its own version, in three folders:
+
+- `builds/nocard`, for a board without an SD card.
+- `builds/sdcard`, for a board with a card.
+- `builds/timing`, for test work: the `nocard` build, but it wakes at least
+  every 10 minutes and logs when each step of a wake ended. Its version ends
+  in `+timing`.
+
+Set `client.firmware.dir` to the one your board runs, with no `source` block,
+and the board follows the server: a redeploy moves both. The variable
+`CLIENT_FIRMWARE_DIR` overrides the setting, so a board can move to
+`builds/timing` and back with a redeploy and no change to `config.yaml`. The
+move back needs `offer_dev_builds`: a `+timing` version is not a release, and
+without it the server offers such a board only a newer build.
 
 The image tags say which version that is:
 

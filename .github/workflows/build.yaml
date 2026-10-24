@@ -27,8 +27,8 @@ jobs:
       - name: Create defaults.cpp from example
         run: cp src/defaults.example.cpp src/defaults.cpp
 
-      - name: Build firmware (debug + release)
-        run: pio run
+      - name: Build firmware (debug, release and timing)
+        run: pio run -e debug -e release -e timing
 
       # This project's own logic, on the host: the order of a wake, and what
       # it draws over a page. Neither runs in epd's CI, because neither is

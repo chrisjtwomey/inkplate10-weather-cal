@@ -6,6 +6,10 @@ so a device's boot log always identifies the commit it was built from:
     v1.5.1                    built from the tag
     v1.5.1-3-gab12cd4         three commits past it
     v1.5.1-3-gab12cd4-dirty   with uncommitted changes
+    v1.5.1-3-gab12cd4+timing  an environment's custom_version_suffix
+
+The suffix keeps a test build of a commit apart from the normal build of the
+same commit, so a server can offer a board either one.
 
 Falls back to "dev" when git cannot answer — no binary, no repository, or a
 shallow clone with no tags. CI needs fetch-depth: 0 to see tags.
@@ -27,6 +31,6 @@ def git_version() -> str:
         return "dev"
 
 
-version = git_version()
+version = git_version() + env.GetProjectOption("custom_version_suffix", "")  # noqa: F821
 print(f"CLIENT_VERSION: {version}")
 env.Append(CPPDEFINES=[("CLIENT_VERSION", env.StringifyMacro(version))])  # noqa: F821

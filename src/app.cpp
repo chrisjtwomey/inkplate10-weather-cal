@@ -40,6 +40,30 @@
 // most likely thing to come back on its own.
 #define WIFI_RETRY_SECONDS 60
 
+#if defined(TIMING_LOG)
+// When each step of a wake ended, in ms since boot, logged as one line while
+// the broker is still connected: the lines before it connects reach only the
+// serial port.
+static char timings[256];
+static void markStep(const char* step) {
+    const size_t used = strlen(timings);
+    snprintf(timings + used, sizeof(timings) - used, "%s%s %lu", used ? ", " : "", step,
+             (unsigned long)millis());
+}
+#else
+static void markStep(const char*) {}
+#endif
+
+// The sleep after a page, from the server's answer. A test build sets
+// MAX_SLEEP_SECONDS to wake more often than the server's schedule.
+static uint32_t sleepAfterPage(uint32_t fromServer) {
+#if defined(MAX_SLEEP_SECONDS)
+    return fromServer < MAX_SLEEP_SECONDS ? fromServer : MAX_SLEEP_SECONDS;
+#else
+    return fromServer;
+#endif
+}
+
 // RTC_DATA_ATTR marks variables that survive deep-sleep cycles on ESP32.
 // On the host (NATIVE) they are plain globals.
 RTC_DATA_ATTR int bootCount = 0;
@@ -82,6 +106,7 @@ void run_app() {
 
     startBoard(PANEL_ROTATION);
     startPageCache();
+    markStep("board");
     logf(LOG_NOTICE, "##### %s boot #%d #####", epdBoard().deviceName(), bootCount);
     logf(LOG_NOTICE, "############ Client version: %s ############", CLIENT_VERSION);
     logf(LOG_INFO, "User-Agent: %s", clientUserAgent(epdBoard().deviceName()));
@@ -94,9 +119,11 @@ void run_app() {
     logWakeReason();
 
     const int batteryPercent = readBatteryPercent();
+    markStep("battery");
 
     ClientConfig cfg = loadConfig(builtInSettings());
     applySdConfig(&cfg);
+    markStep("settings");
 
     if (batteryPercent <= BATTERY_CRITICAL_PERCENT) {
         log(LOG_NOTICE, "battery critical! - sleeping until charged");
@@ -119,6 +146,8 @@ void run_app() {
         return;  // terminal
     }
 
+    markStep("network");
+
     const char* errMsg = nullptr;
     PageFetch page = {};
     page.length = epdBoard().getWidth() * epdBoard().getHeight() * 8 + 100;
@@ -129,6 +158,8 @@ void run_app() {
         endFailedWake(errMsg, batteryPercent, trialBoot);
         return;  // terminal
     }
+
+    markStep("fetch");
 
     // What the server said this time replaces what it said last time;
     // silence keeps the previous answer, which survives deep sleep.
@@ -147,11 +178,15 @@ void run_app() {
         return;  // terminal
     }
 
+    markStep("draw");
+
     // Cache the drawn image so displayMessage can overlay it as a backdrop.
     if (savePageCache(page.data, page.length))
         log(LOG_DEBUG, "page cache saved");
     else
         log(LOG_WARNING, "page cache not saved");
+
+    markStep("cache");
 
     // A page is on the panel, so this image works. Say so before anything
     // else: the bootloader takes back an unconfirmed image, and a write to
@@ -163,6 +198,10 @@ void run_app() {
     takeOfferedUpdate(page.response, clientUserAgent(epdBoard().deviceName()), batteryPercent,
                       BATTERY_FOR_UPDATE_PERCENT, showUpdateProgress);
     endUpdateProgress(batteryPercent);
+    markStep("update");
+#if defined(TIMING_LOG)
+    logf(LOG_INFO, "timing (ms since boot): %s", timings);
+#endif
 
     log(LOG_NOTICE, "disconnecting WiFi radio...");
     WiFi.disconnect();
@@ -175,6 +214,6 @@ void run_app() {
     }
 
     serverBackoffStep = 0;
-    sleepFor(nextRefreshSeconds);
+    sleepFor(sleepAfterPage(nextRefreshSeconds));
     return;  // terminal
 }
