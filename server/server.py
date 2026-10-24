@@ -9,6 +9,7 @@ pages, and one run() call.
 """
 
 import os
+import socket
 import sys
 import json
 import argparse
@@ -245,7 +246,7 @@ def main():
             regen_lead_seconds=cfg.regen_lead_seconds,
             port=cfg.port,
             mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_prefix),
-            mqtt_client_id="eink-cal-server",
+            mqtt_client_id=f"eink-cal-server-{socket.gethostname()}",
             firmware=cfg.firmware,
         )
     except ValueError as exc:
