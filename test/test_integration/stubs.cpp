@@ -128,8 +128,10 @@ void otaRollback(const char* why) {
 
 const char* otaRejectedVersion() { return otaStubs.rejectedVersion; }
 
-esp_err_t applyFirmwareUpdate(const char* url, const char* version, const char*, OtaProgress) {
+esp_err_t applyFirmwareUpdate(const char* url, const char* version, const char*,
+                              OtaProgress onProgress) {
     otaStubs.applyCallCount++;
+    otaStubs.progressHookGiven = onProgress != nullptr;
     otaStubs.lastApplyURL = url;
     otaStubs.lastApplyVersion = version;
     otaStubs.wifiOffAtApply = WiFi.disconnectCount > 0;
@@ -161,6 +163,10 @@ void displayBatteryStatus(int percent, bool invert) {
 }
 
 void drawClientVersion() { dispStubs.clientVersionDrawn = true; }
+
+void beginUpdateProgress(const char* version) { dispStubs.updateScreenVersion = version; }
+void showUpdateProgress(int, int) {}
+void endUpdateProgress(int) { dispStubs.updateScreenEnded = true; }
 
 void displayMessage(const char* msg, int) {
     dispStubs.displayMessageCalled = true;

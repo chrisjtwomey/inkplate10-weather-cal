@@ -69,6 +69,8 @@ struct DisplayStubs {
     bool        lastBatteryInvert       = false;
     int         drawImageCallCount      = 0;
     bool        savePageCacheCalled     = false;
+    const char* updateScreenVersion     = nullptr;  // beginUpdateProgress()
+    bool        updateScreenEnded       = false;    // endUpdateProgress()
 
     void reset() {
         drawImageResult = ESP_OK;
@@ -80,6 +82,8 @@ struct DisplayStubs {
         lastBatteryInvert = false;
         drawImageCallCount = 0;
         savePageCacheCalled = false;
+        updateScreenVersion = nullptr;
+        updateScreenEnded = false;
     }
 };
 extern DisplayStubs dispStubs;
@@ -119,6 +123,7 @@ struct OtaStubs {
     const char* lastApplyURL       = nullptr;
     const char* lastApplyVersion   = nullptr;
     bool        wifiOffAtApply     = false;   // had the radio been turned off?
+    bool        progressHookGiven  = false;   // was the update screen's hook passed?
 
     void reset() {
         trialPending = false;
@@ -130,6 +135,7 @@ struct OtaStubs {
         lastApplyURL = nullptr;
         lastApplyVersion = nullptr;
         wifiOffAtApply = false;
+        progressHookGiven = false;
     }
 };
 extern OtaStubs otaStubs;

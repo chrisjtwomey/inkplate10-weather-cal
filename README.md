@@ -167,7 +167,7 @@ Both a server and client are required. The main workload is in the server which 
   - Real-time clock for precise sleep/wake times.
   - Daylight savings time (DST) handled entirely server-side — the server sends seconds-until-next-refresh so the client never needs to reason about timezones for scheduling.
   - Can publish to a MQTT topic for remote logging.
-  - Renders messages on the e-ink display for critical errors (battery low, WiFi timeout, etc.). The previous calendar image stays visible behind the banner (cached in the board's flash on first successful refresh).
+  - Renders messages on the e-ink display for critical errors (battery low, WiFi timeout, failed update, etc.). The previous calendar image stays visible behind the banner (cached in the board's flash on first successful refresh).
   - Exponential back-off on server failures: 2 min → 6 min → 18 min → … → 24 h cap, resetting on the next successful server-dictated refresh.
   - Optional: SD card support for loading client config from `config.yaml` without reflashing (see [doc/config.yaml](doc/config.yaml)).
 

@@ -6,6 +6,7 @@
 #include "font/Merienda_Regular16pt7b.h"
 #include "icon/icons_32x32.h"
 #include "log_utils.h"
+#include "progress_bar.h"
 #include "time_utils.h"
 #include "version.h"
 
@@ -107,4 +108,80 @@ void displayBatteryStatus(int batteryRemainingPercent, bool invert) {
                           batteryIconSize, batteryIconSize, BLACK, WHITE)) {
         log(LOG_WARNING, "Failed to draw the battery icon");
     }
+}
+
+// The update screen, on the portrait panel: 825 wide, which is the panel's
+// physical height. The bar sits a little above the middle, with the version
+// over it.
+static const int16_t kScreenW = 825;
+static const int16_t kBarW = 512;
+static const int16_t kBarH = 24;
+static const int16_t kBarX = (kScreenW - kBarW) / 2;
+static const int16_t kBarY = 560;
+static const int16_t kBarLine = 3;  // the outline
+static const int16_t kBarGap = 4;   // between the outline and the fill
+static const int16_t kFillX = kBarX + kBarLine + kBarGap;
+static const int16_t kFillY = kBarY + kBarLine + kBarGap;
+static const int16_t kFillW = kBarW - 2 * (kBarLine + kBarGap);
+static const int16_t kFillH = kBarH - 2 * (kBarLine + kBarGap);
+static const int16_t kTitleY = 530;
+
+static ProgressBar updateBar;
+static char offeredVersion[32] = "";
+
+// Centred across the panel, in black.
+static void writeCentred(const char* line, const GFXfont* font, int16_t baseline) {
+    epdBoard().setFont(font);
+    epdBoard().setTextSize(1);
+    epdBoard().setTextWrap(false);
+    epdBoard().setTextColor(BLACK);
+    int16_t x, y;
+    uint16_t w, h;
+    epdBoard().getTextBounds(line, 0, baseline, &x, &y, &w, &h);
+    epdBoard().setCursor((kScreenW - (int16_t)w) / 2 - x, baseline);
+    epdBoard().print(line);
+}
+
+static void fillUpdateBar(int steps) {
+    const int16_t w = kFillW * steps / ProgressBar::kSteps;
+    if (w > 0) epdBoard().fillRect(kFillX, kFillY, w, kFillH, BLACK);
+}
+
+void beginUpdateProgress(const char* version) {
+    updateBar = ProgressBar{};
+    snprintf(offeredVersion, sizeof(offeredVersion), "%s", version);
+}
+
+void showUpdateProgress(int done, int total) {
+    switch (updateBar.update(done, total)) {
+        case ProgressBar::FULL: {
+            epdBoard().setBlackAndWhite(true);
+            epdBoard().clearDisplay();
+            char title[64];
+            snprintf(title, sizeof(title), "Installing firmware %s", offeredVersion);
+            writeCentred(title, &Merienda_Regular16pt7b, kTitleY);
+            epdBoard().fillRect(kBarX, kBarY, kBarW, kBarH, BLACK);
+            epdBoard().fillRect(kBarX + kBarLine, kBarY + kBarLine, kBarW - 2 * kBarLine,
+                                kBarH - 2 * kBarLine, WHITE);
+            fillUpdateBar(updateBar.filled);
+            epdBoard().display();
+            break;
+        }
+        case ProgressBar::PARTIAL:
+            fillUpdateBar(updateBar.filled);
+            epdBoard().partialDisplay();
+            break;
+        case ProgressBar::NONE:
+            break;
+    }
+}
+
+void endUpdateProgress(int batteryPercent) {
+    if (updateBar.filled < 0) return;
+    // The update did not happen, and the next wake may be hours away: put the
+    // page back, under a banner that says so, rather than leave the bar.
+    epdBoard().setBlackAndWhite(false);
+    char msg[64];
+    snprintf(msg, sizeof(msg), "Update to %s failed", offeredVersion);
+    displayMessage(msg, batteryPercent);
 }

@@ -257,6 +257,10 @@ carries the offer, and the board flashes itself after it has drawn. It
 keeps the new image only once it has drawn a page with it, and boots the
 previous one otherwise. Below 20% battery the update waits.
 
+While it flashes, the panel shows "Installing firmware <version>" and a bar.
+If the update fails, the panel shows the last page again under the banner
+"Update to <version> failed".
+
 A board that rolled back remembers the version it rejected and will not
 take it again, so a bad release does not loop. Publish the fix under a new
 version.
@@ -266,7 +270,7 @@ real `src/defaults.cpp`. That flash stores its WiFi credentials
 and server URL on the board, which is what lets every later image — built
 by CI, with placeholders — connect at all.
 
-A board that last had a USB flash before the move to epd 0.14.0 needs one
+A board that last had a USB flash before v2.0.0 needs one
 again. Its partition table changed, and an update over the air cannot
 change a partition table.
 

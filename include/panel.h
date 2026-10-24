@@ -29,4 +29,21 @@ void displayBatteryStatus(int batteryRemainingPercent, bool invert);
 /** Draw the version this image was built from, in the top-left corner. */
 void drawClientVersion();
 
+/** Before takeOfferedUpdate(): the version the update screen names. */
+void beginUpdateProgress(const char* version);
+
+/**
+  takeOfferedUpdate()'s progress hook: a screen naming the version, with a
+  bar filled to done of total bytes. The first call draws the whole panel in
+  black and white; the bar then fills by partial updates.
+*/
+void showUpdateProgress(int done, int total);
+
+/**
+  After takeOfferedUpdate(), which returns only when nothing was flashed: if
+  the update screen was drawn, put the last page back under a banner saying
+  the update failed.
+*/
+void endUpdateProgress(int batteryPercent);
+
 #endif  // __PANEL_H__

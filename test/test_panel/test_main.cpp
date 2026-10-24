@@ -81,6 +81,32 @@ void test_inverted_uses_a_different_bitmap() {
     TEST_ASSERT_NOT_EQUAL(normal, inverted);
 }
 
+// ── The update screen ───────────────────────────────────────────────────
+
+static const int kImage = 1300000;
+
+void test_a_whole_update_is_one_full_draw_and_ten_partial_updates() {
+    beginUpdateProgress("v2.1.0");
+    for (int done = 0; done <= kImage; done += 2048) showUpdateProgress(done, kImage);
+    showUpdateProgress(kImage, kImage);
+    TEST_ASSERT_EQUAL(1, mockBoard.clearDisplayCount);
+    TEST_ASSERT_EQUAL(11, mockBoard.displayCount);
+}
+
+void test_no_screen_means_nothing_to_put_back() {
+    beginUpdateProgress("v2.1.0");
+    endUpdateProgress(80);
+    TEST_ASSERT_EQUAL(0, mockBoard.displayCount);
+}
+
+void test_a_failed_update_puts_the_page_back_under_a_banner() {
+    beginUpdateProgress("v2.1.0");
+    showUpdateProgress(2048, kImage);
+    endUpdateProgress(80);
+    TEST_ASSERT_EQUAL(2, mockBoard.displayCount);
+    TEST_ASSERT_TRUE(mockBoard.printedText.indexOf("Update to v2.1.0 failed") >= 0);
+}
+
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
@@ -96,6 +122,10 @@ int main(int argc, char** argv) {
     RUN_TEST(test_the_icon_changes_at_10_percent);
 
     RUN_TEST(test_inverted_uses_a_different_bitmap);
+
+    RUN_TEST(test_a_whole_update_is_one_full_draw_and_ten_partial_updates);
+    RUN_TEST(test_no_screen_means_nothing_to_put_back);
+    RUN_TEST(test_a_failed_update_puts_the_page_back_under_a_banner);
 
     return UNITY_END();
 }

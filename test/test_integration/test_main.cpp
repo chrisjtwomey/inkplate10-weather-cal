@@ -358,6 +358,18 @@ void test_an_offered_update_is_applied_after_the_page_is_drawn() {
     TEST_ASSERT_TRUE(sleepStubs.sleepForCalled);
 }
 
+void test_an_offered_update_shows_its_progress_and_cleans_up() {
+    // The stub's update fails, so the screen must be put away after it.
+    happyPathStubs();
+    offerUpdate("v1.6.0");
+
+    run_app();
+
+    TEST_ASSERT_EQUAL_STRING("v1.6.0", dispStubs.updateScreenVersion);
+    TEST_ASSERT_TRUE(otaStubs.progressHookGiven);
+    TEST_ASSERT_TRUE(dispStubs.updateScreenEnded);
+}
+
 void test_the_radio_is_still_on_when_the_update_is_fetched() {
     // The image is fetched over the network, so the wake cannot turn the
     // radio off until the update step has had its turn.
@@ -543,6 +555,7 @@ int main(int argc, char** argv) {
 
     // Firmware updates
     RUN_TEST(test_an_offered_update_is_applied_after_the_page_is_drawn);
+    RUN_TEST(test_an_offered_update_shows_its_progress_and_cleans_up);
     RUN_TEST(test_the_radio_is_still_on_when_the_update_is_fetched);
     RUN_TEST(test_the_running_version_is_not_applied_again);
     RUN_TEST(test_no_firmware_headers_means_no_update);

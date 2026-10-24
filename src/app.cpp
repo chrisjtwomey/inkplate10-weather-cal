@@ -178,8 +178,10 @@ void run_app() {
     if (trialBoot) otaConfirm();
 
     // Still on the network, because this is what needs it most.
+    beginUpdateProgress(page.response.firmwareVersion);
     takeOfferedUpdate(page.response, clientUserAgent(epdBoard().deviceName()), batteryPercent,
-                      BATTERY_FOR_UPDATE_PERCENT);
+                      BATTERY_FOR_UPDATE_PERCENT, showUpdateProgress);
+    endUpdateProgress(batteryPercent);
 
     log(LOG_NOTICE, "disconnecting WiFi radio...");
     WiFi.disconnect();
