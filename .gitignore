@@ -120,3 +120,6 @@ server/firmware/
 # under another name would not be, and it holds real credentials.
 *.orig
 *.bak
+
+# Firmware the release workflow puts into the server image.
+server/builds/

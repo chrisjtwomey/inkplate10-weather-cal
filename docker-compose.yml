@@ -10,8 +10,10 @@ services:
       - ./server/config.yaml:/app/config.yaml:ro
       # Firmware images the board updates itself from. A named volume, not a
       # host path: the container runs as uid 1000 and could not write to a
-      # directory the host owns. Omit it entirely when client.firmware.source
-      # is set, because the server re-fetches the release as it starts.
+      # directory the host owns. Omit it when client.firmware.source is set,
+      # because the server re-fetches the release as it starts, or when
+      # client.firmware.dir is builds/nocard or builds/sdcard, which the image
+      # carries.
       - weather-cal-firmware:/app/firmware
     # Only override these if needed; most config is in config.yaml
     environment:

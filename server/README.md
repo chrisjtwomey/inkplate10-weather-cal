@@ -59,7 +59,7 @@ Then edit `config.yaml` with your API keys, location, and schedule.
 | `image.innerAlignX` | string enum | `center` | Horizontal alignment for inner bounds inside the output canvas (`left`, `center`, `right`). |
 | `image.innerAlignY` | string enum | `center` | Vertical alignment for inner bounds inside the output canvas (`top`, `center`, `bottom`). |
 | `client.firmware.enabled` | boolean | `false` | Offer firmware updates to the boards this server serves. |
-| `client.firmware.dir` | string | `firmware` | Directory of `<version>.bin` images, relative to `config.yaml`. The newest file is the one offered. |
+| `client.firmware.dir` | string | `firmware` | Directory of `<version>.bin` images, relative to `config.yaml`. The newest file is the one offered. `builds/nocard` or `builds/sdcard` offers the firmware the image carries. |
 | `client.firmware.product` | string | `inkplate10-weather-cal` | The client name a board reports. An image is offered only to boards of that product. |
 | `client.firmware.offer_dev_builds` | boolean | `false` | Also offer to boards not built from a tag. For a bench board only. |
 | `client.firmware.source.github` | string `owner/repo` | unset | Optional. Watch this repository's releases and fill `dir` from them. |
@@ -243,16 +243,28 @@ Tips:
 With `client.firmware.enabled`, the board updates itself from the server.
 No cable, and no need to reach the board.
 
-Publish a release of this repository and its workflow attaches
-`firmware.bin` to it. A server with a `client.firmware.source` block takes that
-asset and holds it; a server without one takes whatever you copy into
-`firmware/`, named for its version:
+The server image carries the firmware of its own version, in two folders:
+`builds/nocard` for a board without an SD card, and `builds/sdcard` for one
+with a card. Set `client.firmware.dir` to the one your board runs, with no
+`source` block, and the board follows the server: a redeploy moves both.
+
+The image tags say which version that is:
+
+- `latest` follows main: every push that passes CI.
+- `2.1.0-3-g62c793c` is one of those pushes, as `git describe` names it. Pin
+  it to hold the server and the board on that build.
+- `2.1.0` and `2.1` are releases.
+
+Two other ways remain. Publish a release of this repository and its workflow
+attaches `firmware.bin`, the SD card build, to it; a server with a
+`client.firmware.source` block takes that asset and holds it. Or copy an
+image into `firmware/`, named for its version:
 
 ```sh
 cp firmware.bin server/firmware/v1.6.0.bin
 ```
 
-Either way, the next page fetch from a board running another version
+Each way, the next page fetch from a board running another version
 carries the offer, and the board flashes itself after it has drawn. It
 keeps the new image only once it has drawn a page with it, and boots the
 previous one otherwise. Below 20% battery the update waits.

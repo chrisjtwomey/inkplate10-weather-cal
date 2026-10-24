@@ -1,12 +1,21 @@
 name: Release
 
+# Every push to main that passes CI publishes the server image as `latest` and
+# as its own version, which a server's stack can follow or pin. A published
+# release publishes it as its version and as `latest`, and attaches the
+# firmware to the release. A tag push publishes nothing.
 on:
+  workflow_run:
+    workflows: [PlatformIO CI]
+    types: [completed]
+    branches: [main]
   release:
     types: [published]
 
 jobs:
   publish-firmware:
     name: Attach firmware binary to release
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
 
     steps:
@@ -46,13 +55,93 @@ jobs:
 
   publish-docker:
     name: Push server image to GHCR
+    # A push only: CI also runs for a pull request, whose branch can be called
+    # main too, and this job can write packages.
+    if: >-
+      github.event_name == 'release' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       packages: write
 
     steps:
+      # A workflow_run starts on main's newest commit, so take the one CI
+      # passed. Empty for a release, which takes its tag.
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0   # git describe needs the tags
+
+      # A release publishes `latest` too, so it needs the CI pass that a push
+      # waits for: a PlatformIO CI run on its commit that succeeded.
+      - name: Check that CI passed
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          passed=$(gh api "repos/$REPO/actions/workflows/build.yaml/runs?head_sha=$sha&status=success" -q .total_count)
+          if [ "$passed" = 0 ]; then
+            echo "::error::PlatformIO CI has not passed on $sha"
+            exit 1
+          fi
+
+      # What git describe says, as the firmware's CLIENT_VERSION does. On a
+      # release's commit that is the tag alone; another tag on the same commit
+      # could win, so a release checks it gets its own.
+      - name: Work out the version
+        id: version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(git describe --tags --match 'v*' --always)
+          if [ -n "$TAG" ] && [ "$version" != "$TAG" ]; then
+            echo "::error::git describe gives $version, not the release's $TAG"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=${version#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO Core
+        run: pip install --upgrade platformio
+
+      - name: Create defaults.cpp from example
+        run: cp src/defaults.example.cpp src/defaults.cpp
+
+      # Both builds go into the image, each in a folder of its own, so a
+      # server's config picks the one its boards run: builds/nocard or
+      # builds/sdcard. Beside each image, <version>.merged.bin is the whole
+      # flash, for a USB flash.
+      - name: Build the firmware into the image's folders
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          for pair in nocard:release sdcard:release_sdcard; do
+            folder=${pair%%:*} env=${pair#*:}
+            pio run -e "$env" | tee "$env.log"
+            if ! grep -qx "CLIENT_VERSION: $VERSION" "$env.log"; then
+              echo "::error::$env built $(grep -m1 '^CLIENT_VERSION:' "$env.log"), not $VERSION"
+              exit 1
+            fi
+            mkdir -p "server/builds/$folder"
+            cp ".pio/build/$env/firmware.bin" "server/builds/$folder/$VERSION.bin"
+            cp ".pio/build/$env/firmware.factory.bin" "server/builds/$folder/$VERSION.merged.bin"
+          done
+          ls -lR server/builds
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
@@ -69,7 +158,11 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ steps.version.outputs.tag }}
             type=raw,value=latest
+          # The commit built, not main's newest.
+          labels: |
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -77,6 +170,6 @@ jobs:
           context: ./server
           push: true
           build-args: |
-            SERVER_VERSION=${{ github.event.release.tag_name }}
+            SERVER_VERSION=${{ steps.version.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

@@ -67,6 +67,8 @@ You can run the server using Docker (recommended) or directly with Python. The s
 
 **Run with Docker Compose (Recommended)**
 
+The image tag `latest` follows every change to the main branch. For a server that changes only at a release, use a release's tag instead, such as `2.1`.
+
 A sample `docker-compose.yml` is included in the repository. Most configuration is done in `server/config.yaml`, which is volume-mounted into the container. Only `LOCATION` and `SERVER_PORT` are set as environment variables (and are optional overrides):
 
 ```yaml
