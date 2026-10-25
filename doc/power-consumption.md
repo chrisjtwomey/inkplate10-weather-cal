@@ -1,12 +1,30 @@
 # Power Consumption
 
-The goal of this page is to document the power consumption performance of this project, findings and improvements along with some plots of voltage curves of performance test runs. This will be formatted like a timeline as I learn about long-term battery performance and ESP32 deep sleep states.
+How much power the display uses, and how long a battery lasts. The dated
+updates further down are the history of the measurements, from 2023.
 
-With MQTT remote logging enabled, the client sends a log message to the server with its battery voltage. The server logs include the client MQTT messages which we can use to plot a graph of battery voltage over time.
+## Now (October 2026)
 
-The client has a cut-off voltage of 3.1v after which normal code execution is no longer allowed. At this point, a notice to recharge is displayed before entering a long deep sleep to protect the battery.
+The display sleeps most of the day. At each wake, it gets the next page from
+the server with Wi-Fi on, then turns Wi-Fi off and puts the page on the
+screen.
 
-The predictions of battery life when there is a single daily reboot with optimal WiFi connection (line-of-sight, minimal failed connection attempts):
+| Part of the day | How long | Current |
+|---|---|---|
+| Getting the page, Wi-Fi on | ~2.3 s a wake | ~120 mA, estimated |
+| Putting it on the screen, Wi-Fi off | ~2.9 s a wake | ~70 mA, estimated |
+| Asleep | the rest of the day | 24 µA, measured (June 2023, no SD card) |
+
+- A wake takes about 5.2 s, measured on an Inkplate 10.
+- At 11 wakes a day, the display uses about 2 mAh a day: about 1.5 mAh awake and 0.6 mAh asleep.
+- A 2000 mAh battery, about 1800 mAh of it usable, would last about 2.5 years on that alone. A LiPo also loses about 2% of its charge a month by itself, which brings that down to about 1.5 years. Expect one to two years.
+
+Below 5% battery, about 3.29 V, the display shows "Battery critical, please charge!" and sleeps until it is charged. With MQTT logging on, each wake logs the battery's voltage, so the server's log shows its curve.
+
+Check the battery's health every few months, whatever the percentage says.
+
+## Predictions from 2023: one wake a day
+
   - **3.7v 2000mAh LiPo/Li-ion @ 0.2C:**
     - Pessimistic: **6 months**
     - Realistic: **1 year**
@@ -18,9 +36,7 @@ The predictions of battery life when there is a single daily reboot with optimal
     - Optimistic: **6+ years**
     - Theoretical: **13+ years**
 
-Keep in mind, these predictions do not take into account the average life span of batteries which may cap these predictions at [2-3 years on average](https://www.newark.com/pdfs/techarticles/tektronix/LIBMG.pdf) nor do they take into account the natural depletion of charge and capacity over time. Expectations of performance should therefore fall somewhere between the pessimistic and optimistic ranges for battery life.
-
-**Note: be sure to check the health of your battery every few months regardless of reported battery percentage.**
+These leave out the life span of a battery, which may cap them at [2-3 years on average](https://www.newark.com/pdfs/techarticles/tektronix/LIBMG.pdf), and the charge a battery loses by itself over time.
 
 ## Update June 28 2023
 
@@ -32,7 +48,7 @@ As you can see, deep sleep current draw is _far_ too high. This explains why the
 
 While I initially suspected it to either be my code, or an [ESP32 issue](https://github.com/espressif/arduino-esp32/issues/1113) itself, the problem boiled down to my version of Inkplate10 hardware being old and missing some hardware that sleeps the SD card module and reduces power consumption.
 
-See [the issue in Inkplate's repo](https://github.com/SolderedElectronics/Inkplate-Arduino-library/issues/209) to get the latest updates. Otherwise, for best battery life I recommend you **do not an SD card if you have an E-Radionica Inkplate10**.
+See [the issue in Inkplate's repo](https://github.com/SolderedElectronics/Inkplate-Arduino-library/issues/209) to get the latest updates. Otherwise, for best battery life I recommend you **do not use an SD card if you have an E-Radionica Inkplate10**.
 
 I've made an update which makes SD cards **optional**. Once you disable and remove the SD card, deep sleep power consumption returns to **24µA** which theoretically gives this project years of battery life even on small capacity batteries.
 
