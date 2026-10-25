@@ -45,6 +45,13 @@ def test_mock_service_needs_no_apikey_but_others_do(caplog):
     assert "weather.apikey not in config but is required" in caplog.text
 
 
+@pytest.mark.parametrize("service", ["meteireann", "openmeteo", "mock"])
+def test_a_provider_with_an_open_api_needs_no_apikey(service):
+    c = base()
+    c["weather"] = {"service": service}
+    assert validate_config(c).weather_apikey is None
+
+
 def test_unknown_weather_service_exits_with_choices(caplog):
     c = base()
     c["weather"]["service"] = "nope"

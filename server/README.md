@@ -27,7 +27,7 @@ cp config.example.yaml config.yaml
 | `display.pools` | `today: [today.png]` | What can show. Each pool is a list of pages, shown in turn. |
 | `display.schedule` | `09:00:00: today` | `type: times`, then `HH:MM:SS: pool` for each wake. |
 | `weather.service` | – (required) | `accuweather`, `meteireann`, `openmeteo`, `openweathermap`, or `mock` for made-up weather. |
-| `weather.apikey` | – (required, except for `mock`) | The provider's API key. |
+| `weather.apikey` | – (required, except for `meteireann`, `openmeteo` and `mock`) | The provider's API key. |
 | `weather.num_hourly_forecasts` | `6` | How many hours the hourly page shows. |
 | `weather.metric` | `true` | Metric units, or imperial. |
 | `google.apikey` | – (required) | The Google API key, for the map. |

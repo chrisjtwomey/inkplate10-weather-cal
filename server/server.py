@@ -43,7 +43,7 @@ import weather.openweathermap.openweathermap  # noqa: F401
 import weather.mock.mock  # noqa: F401
 import weather.meteireann.meteireann  # noqa: F401
 import weather.openmeteo.openmeteo  # noqa: F401
-from weather.registry import create as _create_weather_service, registered_services
+from weather.registry import create as _create_weather_service, needs_apikey, registered_services
 
 
 def _server_version() -> str:
@@ -127,7 +127,7 @@ def validate_config(config: dict) -> ServerConfig:
 
         weather_apikey = get_prop_by_keys(
             config, "weather", "apikey",
-            required=(weather_service != "mock"),
+            required=needs_apikey(weather_service),
             default=None,
         )
         weather_metric = get_prop_by_keys(config, "weather", "metric", default=True)

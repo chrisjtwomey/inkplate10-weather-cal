@@ -48,7 +48,7 @@ The server renders five pages: today, current, hourly, daily and tomorrow.
 
 The server renders the pages and tells the display when to wake next.
 
-1. Get an API key for a weather provider ([doc/weather-apis.md](doc/weather-apis.md)), and a Google Maps API key and map ID ([doc/google-static-maps.md](doc/google-static-maps.md)).
+1. Choose a weather provider, and get its API key if it needs one ([doc/weather-apis.md](doc/weather-apis.md)). Get a Google Maps API key and map ID ([doc/google-static-maps.md](doc/google-static-maps.md)).
 2. Make your config, and fill in the keys, the map ID and your location:
 
    ```sh

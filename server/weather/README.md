@@ -93,6 +93,8 @@ The registry is a module-level dict that maps service names (as used in `config.
 
     Only declare the constructor parameters your service actually uses — the registry filters kwargs automatically before passing them to your constructor.
 
+    If the provider's API needs no key, set `needs_apikey = False` on the class: the server then starts without `weather.apikey`.
+
 4. **Import the module in `server.py`** so the `@register` decorator runs at startup:
 
     ```python

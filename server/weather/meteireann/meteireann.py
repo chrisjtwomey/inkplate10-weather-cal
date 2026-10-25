@@ -68,6 +68,8 @@ def _feels_like(temp_c: float, humidity: float, wind_ms: float) -> float:
 
 @register("meteireann")
 class MetEireannService(WeatherService):
+    needs_apikey = False
+
     def __init__(self, *, apikey=None, location=None, num_hours=6, metric=True):
         super().__init__(
             apikey=None,

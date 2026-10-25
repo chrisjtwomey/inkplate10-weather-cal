@@ -14,7 +14,12 @@ class WeatherService(DataSource):
         current_conditions, daily_summary, hourly_forecasts, daily_forecasts
 
     Nothing is fetched until a page that needs it is regenerated.
+
+    ``needs_apikey`` says whether the server must be given ``weather.apikey``
+    for this provider; a provider whose API is open sets it to False.
     """
+
+    needs_apikey = True
 
     def __init__(
         self, apikey, baseurl, service_name, num_hours=6, metric=True

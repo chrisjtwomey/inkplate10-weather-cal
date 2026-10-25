@@ -69,6 +69,11 @@ def create(
     )
 
 
+def needs_apikey(name: str) -> bool:
+    """Whether the registered service *name* needs ``weather.apikey``."""
+    return _REGISTRY[name].needs_apikey
+
+
 def registered_services() -> tuple[str, ...]:
     """Return a tuple of all registered service names."""
     return _registry.names()

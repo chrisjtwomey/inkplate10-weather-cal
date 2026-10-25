@@ -16,6 +16,8 @@ log = logging.getLogger(__name__)
 
 @register("openmeteo")
 class OpenMeteoService(WeatherService):
+    needs_apikey = False
+
     def __init__(self, *, apikey=None, location=None, num_hours=6, metric=True):
         super().__init__(
             apikey=None,

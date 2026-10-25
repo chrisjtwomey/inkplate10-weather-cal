@@ -52,6 +52,8 @@ _POLLEN_CATEGORIES = [
 
 @register("mock")
 class MockWeatherService(WeatherService):
+    needs_apikey = False
+
     def __init__(self, *, apikey=None, location=None, num_hours=6, metric=True):
         super().__init__(
             apikey=None,
