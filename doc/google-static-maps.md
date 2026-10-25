@@ -1,26 +1,31 @@
-# Google Static Maps API Setup
+# Google Static Maps
 
-This document covers Google Static Maps setup used by the server.
+The pages show a map of your area from Google's
+[Maps Static API](https://developers.google.com/maps/documentation/maps-static/overview).
+The server needs an API key and a map ID.
 
-## Google Static Maps API
+## The API key
 
-To generate a static map of your area, sign up to [Google's developer console](https://developers.google.com/):
+1. In [Google's developer console](https://console.cloud.google.com/), create a project.
+2. In Google Maps Platform, enable the **Maps Static API**.
+3. In **Credentials**, create an **API key**. You can restrict it to the Maps Static API.
 
-1. Create a new project.
-2. Go to Google Maps Platform -> `Maps Static API` -> `Enable`.
-3. Go to `Credentials` -> `Create Credentials` -> `API Key`.
-4. After generating your API key, update `google.apikey` in `config.yaml`.
-5. Optional: restrict the API key to the `Maps Static API` service.
+## The map style (optional)
 
-### Optional: replicate the map style used in this project
+For the style of the pictures in the main README:
 
-1. In Google Maps Platform -> `Map styles` -> `Create style`.
-2. Select `Import JSON` and paste the contents of [../server/google/staticmaps/map-style.json](../server/google/staticmaps/map-style.json).
-3. Click `Save` and assign a name to the map style.
+1. In Google Maps Platform, open **Map styles** and **Create style**.
+2. Choose **Import JSON**, and paste [server/google/staticmaps/map-style.json](../server/google/staticmaps/map-style.json).
+3. Save it, with a name.
 
-### Create and configure a Map ID
+## The map ID
 
-1. In Google Maps Platform -> `Map management` -> `Create Map ID`.
-2. Give the Map ID a name and set `map type` to `static`, then click `Save`.
-3. Set the associated map style to the one created above.
-4. Copy the Map ID and update `google.staticmaps_id` in `config.yaml`.
+1. In Google Maps Platform, open **Map management** and **Create Map ID**.
+2. Give it a name, set **Map type** to **Static**, and save it.
+3. Set its map style to the one you made.
+
+```yaml
+google:
+  apikey: YOUR_API_KEY
+  staticmaps_mapid: YOUR_MAP_ID
+```
