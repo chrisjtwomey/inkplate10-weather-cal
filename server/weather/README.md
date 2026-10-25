@@ -1,54 +1,57 @@
-# Weather Service Plugin System
+# Weather providers
 
-The weather layer is built around a **pluggable interface**: any weather source can be added without touching the rest of the server. This document explains the architecture and how to implement a custom service.
-
-## Architecture
+Each weather provider is a class in its own folder here. A new provider plugs
+in without a change to the rest of the server.
 
 ```
 weather/
-├── service.py      # WeatherService abstract base class (the interface)
-├── registry.py     # Service registry and factory
-├── accuweather/    # AccuWeather implementation
-├── openweathermap/ # OpenWeatherMap implementation
-├── meteireann/     # Met Éireann implementation (Ireland only)
-├── openmeteo/      # Open-Meteo implementation
-└── mock/           # Mock implementation (randomised data, no API key required)
+├── service.py       WeatherService, the class every provider subclasses
+├── registry.py      the providers by name, and create()
+├── accuweather/
+├── meteireann/      Ireland only
+├── openmeteo/
+├── openweathermap/
+└── mock/            made-up weather, for development and tests
 ```
 
-### `WeatherService` (the interface)
+## The providers
 
-`service.py` defines `WeatherService`, an abstract base class that every implementation must subclass. It declares four abstract methods — any class that doesn't implement all of them will raise a `TypeError` at instantiation time rather than failing silently at runtime.
+| `weather.service` | API | Key | Cache |
+|---|---|---|---|
+| `accuweather` | [AccuWeather](https://developer.accuweather.com/) | needed | 55 minutes |
+| `meteireann` | [Met Éireann](https://data.gov.ie/dataset/met-eireann-forecast-api): the Harmonie model, ~2.5 km. Finds the location through Nominatim. | – | 55 minutes |
+| `openmeteo` | [Open-Meteo](https://open-meteo.com/): worldwide, free for non-commercial use. Finds the location through its own geocoding. | – | 55 minutes |
+| `openweathermap` | [OpenWeatherMap](https://openweathermap.org/api) | needed | none |
+| `mock` | none: made-up but believable weather, with no network | – | none |
 
-| Method | Returns | Description |
-|---|---|---|
-| `get_current_conditions()` | `dict` | Current temperature, wind, humidity, UV index, and weather text. |
-| `get_daily_summary()` | `dict` | Today's high/low, rain probability, pollen, wind, and humidity. |
-| `get_hourly_forecast()` | `list[dict]` | Hourly entries for the next `num_hours` hours. |
-| `get_5day_forecast()` | `list[dict]` | One entry per day for the next five days. |
+Every provider needs `location`. To get the keys, see
+[doc/weather-apis.md](../../doc/weather-apis.md).
 
-The base class also provides:
-- `get_icon(icon_key)` — Maps a provider-specific icon code to a local PNG path via the service's `icon-map.json`.
-- `invalidate_forecast_cache()` — No-op by default; override if your service caches responses.
+## How a provider fits in
 
-### `registry.py` (the factory)
+`WeatherService` declares four abstract methods. A class that leaves one out
+raises `TypeError` when the server creates it, not later at a render.
 
-The registry is a module-level dict that maps service names (as used in `config.yaml`) to their classes. Services register themselves using the `@register` decorator when their module is imported.
+| Method | Returns |
+|---|---|
+| `get_current_conditions()` | The temperature, wind, humidity, UV index and weather text now. |
+| `get_daily_summary()` | Today's high and low, chance of rain, pollen, wind and humidity. |
+| `get_hourly_forecast()` | One entry an hour, for `num_hours` hours. |
+| `get_5day_forecast()` | One entry a day, for 5 days. |
 
-`create(name, *, apikey, location, num_hours, metric, **kwargs)` looks up the service class by name and instantiates it, forwarding only the kwargs that the constructor actually declares — so a service doesn't have to accept parameters it doesn't use.
+- `datasets()` gives these four to the pages by name: `current_conditions`, `daily_summary`, `hourly_forecasts` and `daily_forecasts`. A page fetches only what its `Page.requires` names.
+- `get_icon(icon_key)` turns the provider's icon code into a local icon, through the provider's `icon-map.json`.
+- `invalidate_forecast_cache()` does nothing by default. A provider that caches overrides it. The server calls it before each scheduled render, so each wake gets fresh weather.
+- `needs_apikey` is `True` by default. A provider whose API needs no key sets it to `False`, and the server then starts without `weather.apikey`.
 
-## Built-in services
+`registry.py` is backed by epd's `Registry`. `@register("name")` adds a
+provider when its module is imported. `create(name, ...)` makes one, and passes
+only the arguments its constructor declares.
 
-| `accuweather` | Backed by the [AccuWeather API](https://developer.accuweather.com/). Responses are cached server-side to minimize API calls between image regenerations. Requires: `weather.apikey`, `location`. |
-| `openweathermap` | Backed by the [OpenWeatherMap API](https://openweathermap.org/api). No server-side caching; fetches fresh data on every generation. Requires: `weather.apikey`, `location`. |
-| `meteireann` | Backed by [Met Éireann's forecast API](https://data.gov.ie/dataset/met-eireann-forecast-api) (Harmonie NWP model, ~2.5 km resolution). **Ireland only.** No API key required. Geocodes via Nominatim. Responses cached ~55 min. Requires: `location`. |
-| `openmeteo` | Backed by the [Open-Meteo API](https://open-meteo.com/) (global coverage, WMO weather codes). **No API key required** for non-commercial use. Geocoding via Open-Meteo's own API. Responses cached ~55 min. Requires: `location`. |
-| `mock` | Generates randomised but realistic weather data locally — no API key or network access needed. Useful for development, layout testing, and CI. Enable it by setting `weather.service: mock` in `config.yaml`. |
+## Adding a provider
 
-## Adding a custom weather service
-
-1. **Create a directory** under `server/weather/` for your service, e.g. `server/weather/myservice/`.
-
-2. **Add an `icon-map.json`** if your provider uses numeric or string icon codes. The file maps provider codes to local icon filenames:
+1. Make a folder, such as `server/weather/myservice/`.
+2. If the provider's icons are codes, add an `icon-map.json` that maps each code to a local icon:
 
     ```json
     {
@@ -57,9 +60,9 @@ The registry is a module-level dict that maps service names (as used in `config.
     }
     ```
 
-    If your service produces icon paths directly, you can skip this file and override `get_icon()`.
+    A provider that gives icon paths itself can override `get_icon()` instead.
 
-3. **Implement `WeatherService`**:
+3. Subclass `WeatherService`:
 
     ```python
     # server/weather/myservice/myservice.py
@@ -76,32 +79,22 @@ The registry is a module-level dict that maps service names (as used in `config.
                 num_hours=num_hours,
                 metric=metric,
             )
-            # any extra setup, e.g. resolving a location key
 
-        def get_current_conditions(self) -> dict:
-            ...
-
-        def get_daily_summary(self) -> dict:
-            ...
-
-        def get_hourly_forecast(self) -> list:
-            ...
-
-        def get_5day_forecast(self) -> list:
-            ...
+        def get_current_conditions(self) -> dict: ...
+        def get_daily_summary(self) -> dict: ...
+        def get_hourly_forecast(self) -> list: ...
+        def get_5day_forecast(self) -> list: ...
     ```
 
-    Only declare the constructor parameters your service actually uses — the registry filters kwargs automatically before passing them to your constructor.
+    Declare only the constructor arguments the provider uses.
 
-    If the provider's API needs no key, set `needs_apikey = False` on the class: the server then starts without `weather.apikey`.
-
-4. **Import the module in `server.py`** so the `@register` decorator runs at startup:
+4. Import its module in `server.py`, so `@register` runs:
 
     ```python
     import weather.myservice.myservice  # noqa: F401
     ```
 
-5. **Select it in `config.yaml`**:
+5. Choose it in `config.yaml`:
 
     ```yaml
     weather:
@@ -109,24 +102,17 @@ The registry is a module-level dict that maps service names (as used in `config.
       apikey: YOUR_API_KEY
     ```
 
-### Return value shapes
+## What each method returns
 
-The server views expect specific keys from each method. Use the built-in services as a reference; missing keys are generally handled gracefully (rendered as `N/A` or hidden), but the following are required by all page layouts:
+The pages need these keys. [mock/mock.py](mock/mock.py) returns every one of them,
+and [accuweather/accuweather.py](accuweather/accuweather.py) is a full provider.
 
 **`get_current_conditions()`**
 ```python
 {
-    "icon": "icon/day/clear.png",          # relative path from server/views/html/
-    "temperature": {
-        "unit": "°C",                      # or "°F"
-        "value": 18,
-        "feels_like": 16,
-    },
-    "wind": {
-        "unit": "kmh",                     # or "mph"
-        "value": 12.4,
-        "direction_degrees": 270,
-    },
+    "icon": "icon/day/clear.png",          # relative to server/views/html/
+    "temperature": {"unit": "°C", "value": 18, "feels_like": 16},   # or "°F"
+    "wind": {"unit": "kmh", "value": 12.4, "direction_degrees": 270},  # or "mph"
     "humidity": 64,                        # percent
     "uv_index": 3,                         # or None
     "weather_text": "Partly sunny",
@@ -137,12 +123,7 @@ The server views expect specific keys from each method. Use the built-in service
 ```python
 {
     "icon": "icon/day/partly-clear.png",
-    "temperature": {
-        "unit": "°C",
-        "min": 10,
-        "max": 20,
-        "feels_like": 18,
-    },
+    "temperature": {"unit": "°C", "min": 10, "max": 20, "feels_like": 18},
     "wind": {"unit": "kmh", "value": 12.4},
     "humidity": 64,
     "rain_probability": 35,                # percent
@@ -152,7 +133,7 @@ The server views expect specific keys from each method. Use the built-in service
 }
 ```
 
-**`get_hourly_forecast()`** — list of `num_hours` entries:
+**`get_hourly_forecast()`**: `num_hours` entries of
 ```python
 {
     "dt": datetime(2026, 6, 14, 9, 0),
@@ -164,7 +145,7 @@ The server views expect specific keys from each method. Use the built-in service
 }
 ```
 
-**`get_5day_forecast()`** — list of 5 entries:
+**`get_5day_forecast()`**: 5 entries of
 ```python
 {
     "dt": datetime(2026, 6, 14, 0, 0),
@@ -182,5 +163,3 @@ The server views expect specific keys from each method. Use the built-in service
     "night_phrase": "Mostly cloudy",
 }
 ```
-
-For a complete working example, see [accuweather/accuweather.py](accuweather/accuweather.py) or [mock/mock.py](mock/mock.py).
