@@ -1,31 +1,32 @@
-# This is an example config.yaml to place at the root directory
-# of your SD card. The values in these parameters are just examples
-# so be sure to update them to suit your own setup.
+# The settings file for the SD card build (release_sdcard). Put it in the root
+# of the card, as config.yaml. Replace the example values with your own.
 #
-# These parameters override what is set in src/defaults.cpp if SD card is enabled.
+# server.url, wifi.ssid and wifi.pass are required: without all three, the
+# display ignores the file. A key the file leaves out keeps the firmware's value.
 server:
-  # The URL on the server which the client will attempt to download the first image from.
-  # Available pages: /today.png (simplified today), /tomorrow.png (simplified tomorrow),
-  # /hourly.png (hourly forecast table), /daily.png (5-day forecast table).
-  url: http://localhost:8080/today.png
-  # The number of times to attempt downloading or drawing the server image.
+  # The page the display shows at its first start. After that, the server says
+  # which page comes next. Pages: today.png, tomorrow.png, current.png,
+  # hourly.png, daily.png.
+  url: http://192.168.1.10:8080/today.png
+  # How many more times to try to download and draw a page.
   retries: 3
+  # How long to sleep, in seconds, when the server has not said: at the first
+  # start, or when every try failed.
+  default_refresh_seconds: 3600
 wifi:
   ssid: XXXX
   pass: XXXX
-  # How long to wait for WiFi, in seconds, before giving up on this wake.
+  # How long to wait for Wi-Fi, in seconds, before giving up on this wake.
   connect_timeout_seconds: 10
 mqtt_logger:
-  # Set to true to send publish logs to an MQTT broker.
+  # true sends the display's log to an MQTT broker.
   enabled: false
-  # The MQTT broker to publish logs to.
-  broker: localhost
-  # The port of the MQTT broker.
-  port: 1883
-  # The unique identifier for this project in your MQTT broker.
-  clientId: inkplate10-weather-calendar
-  # The board logs to <prefix>/inkplate10-weather-cal. broker, clientId and
-  # prefix come together: give all three, or the board keeps its own.
+  # broker, clientId and prefix come together: give all three, or the display
+  # keeps its own. The display logs to <prefix>/inkplate10-weather-cal.
+  broker: 192.168.1.10
+  clientId: inkplate10-weather-cal
   prefix: mqtt/weather-cal
-  # The number of times to attempt MQTT connection before timeout.
+  port: 1883
+  # How many more times to try the broker. Each try can hold the wake about
+  # 3 s, so keep it low on a battery.
   retries: 3
