@@ -15,8 +15,8 @@ import json
 import argparse
 import dataclasses
 import logging.config
-from typing import NoReturn
 
+import yaml
 from views.hourly import HourlyPage
 from views.today import TodayPage
 from views.current import CurrentPage
@@ -25,17 +25,14 @@ from views.tomorrow import TomorrowPage
 from google.api import GoogleAPIService, StaticMapSource
 from epd_server import DisplayServer, InstallBoard, LogsQuery, LogStore, align_process_timezone
 from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_keys, load_core_config,
-                               load_yaml)
+                               load_yaml, parse_network)
 from epd_server.login import Login, guard
+from epd_server.settings_page import settings_blueprint
 from epd_server.source import CompositeSource
-from settings_page import PASSWORD_ENV, SITE, settings_blueprint
+from settings_page import DEFAULT_DISPLAY, FORM, NETWORK_KEYS, PASSWORD_ENV, SITE, check_config
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 log = logging.getLogger("server")
-
-# One wake a day when config.yaml has no display block.
-DEFAULT_DISPLAY = {"pools": {"today": ["today.png"]},
-                   "schedule": {"type": "times", "09:00:00": "today"}}
 
 FIRMWARE_PRODUCT = "inkplate10-weather-cal"
 # The Inkplate 10's USB-to-serial chip is a CH340C.
@@ -82,74 +79,64 @@ class ServerConfig:
     logs_days: float          # how long a line is kept
 
 
-def validate_config(config: dict) -> ServerConfig:
+def load_settings(config: dict) -> ServerConfig:
     """Parse the raw config dict, apply defaults, and validate all values.
 
     The generic blocks (server, image, mqtt, display, debug) are
     validated by epd_server.config.load_core_config. This function adds the
-    keys only this project has (weather, google, location), then flattens
-    everything into ServerConfig for main().
+    keys only this project has (weather, google, location).
 
-    Logs a clear error and exits immediately on any invalid value rather than
-    letting a bad entry surface as an obscure exception later at runtime.
+    Raises:
+        ConfigError, KeyError: a value is wrong, or a required key is absent.
     """
-    def _err(msg: str) -> NoReturn:
-        log.error(msg)
-        sys.exit(1)
+    core = load_core_config(
+        config,
+        default_display=DEFAULT_DISPLAY,
+        default_firmware_product=FIRMWARE_PRODUCT,
+        base_dir=cwd,
+        default_mqtt_prefix="mqtt/weather-cal",
+    )
 
-    try:
-        core = load_core_config(
-            config,
-            default_display=DEFAULT_DISPLAY,
-            default_firmware_product=FIRMWARE_PRODUCT,
-            base_dir=cwd,
-            default_mqtt_prefix="mqtt/weather-cal",
+    # ---- weather ----
+    weather_service = get_prop_by_keys(config, "weather", "service", required=True)
+    _supported = registered_services()
+    if weather_service not in _supported:
+        raise ConfigError(
+            f"weather.service '{weather_service}' is not supported "
+            f"(choose from: {', '.join(_supported)})"
         )
 
-        # ---- weather ----
-        weather_service = get_prop_by_keys(config, "weather", "service", required=True)
-        _supported = registered_services()
-        if weather_service not in _supported:
-            raise ConfigError(
-                f"weather.service '{weather_service}' is not supported "
-                f"(choose from: {', '.join(_supported)})"
-            )
-
-        weather_apikey = get_prop_by_keys(
-            config, "weather", "apikey",
-            required=needs_apikey(weather_service),
-            default=None,
+    weather_apikey = get_prop_by_keys(
+        config, "weather", "apikey",
+        required=needs_apikey(weather_service),
+        default=None,
+    )
+    weather_metric = get_prop_by_keys(config, "weather", "metric", default=True)
+    num_hourly_forecasts = get_prop_by_keys(
+        config, "weather", "num_hourly_forecasts", default=6
+    )
+    if isinstance(num_hourly_forecasts, bool) or not isinstance(num_hourly_forecasts, int) \
+            or num_hourly_forecasts < 0:
+        raise ConfigError(
+            f"weather.num_hourly_forecasts must be non-negative (got {num_hourly_forecasts!r})"
         )
-        weather_metric = get_prop_by_keys(config, "weather", "metric", default=True)
-        num_hourly_forecasts = get_prop_by_keys(
-            config, "weather", "num_hourly_forecasts", default=6
-        )
-        if isinstance(num_hourly_forecasts, bool) or not isinstance(num_hourly_forecasts, int) \
-                or num_hourly_forecasts < 0:
-            raise ConfigError(
-                f"weather.num_hourly_forecasts must be non-negative (got {num_hourly_forecasts!r})"
-            )
 
-        # ---- google ----
-        google_apikey = get_prop_by_keys(config, "google", "apikey", required=True)
-        staticmaps_mapid = get_prop_by_keys(config, "google", "staticmaps_mapid", required=True)
+    # ---- google ----
+    google_apikey = get_prop_by_keys(config, "google", "apikey", required=True)
+    staticmaps_mapid = get_prop_by_keys(config, "google", "staticmaps_mapid", required=True)
 
-        # ---- location ----
-        location = get_prop(config, "location", required=True)
-        if not isinstance(location, str):
-            raise ConfigError(f"location must be a place name, in quotes if it is a number (got {location!r})")
-        location = location.strip()
+    # ---- location ----
+    location = get_prop(config, "location", required=True)
+    if not isinstance(location, str):
+        raise ConfigError(f"location must be a place name, in quotes if it is a number (got {location!r})")
+    location = location.strip()
 
-        # ---- logs: the boards' log lines, kept on disk ----
-        logs_path = str(get_prop_by_keys(config, "logs", "path", default="data/board-logs.db",
-                                         required=False))
-        logs_days = get_prop_by_keys(config, "logs", "keep_days", default=90, required=False)
-        if isinstance(logs_days, bool) or not isinstance(logs_days, (int, float)) or logs_days < 0:
-            raise ConfigError(f"logs.keep_days must be a number of days, 0 for no limit (got {logs_days!r})")
-    except (ConfigError, KeyError) as exc:
-        # KeyError comes from a required key that is absent; its arg is the
-        # user-facing message.
-        _err(exc.args[0] if exc.args else str(exc))
+    # ---- logs: the boards' log lines, kept on disk ----
+    logs_path = str(get_prop_by_keys(config, "logs", "path", default="data/board-logs.db",
+                                     required=False))
+    logs_days = get_prop_by_keys(config, "logs", "keep_days", default=90, required=False)
+    if isinstance(logs_days, bool) or not isinstance(logs_days, (int, float)) or logs_days < 0:
+        raise ConfigError(f"logs.keep_days must be a number of days, 0 for no limit (got {logs_days!r})")
 
     return ServerConfig(
         core=core,
@@ -163,6 +150,18 @@ def validate_config(config: dict) -> ServerConfig:
         logs_path=logs_path,
         logs_days=float(logs_days),
     )
+
+
+def validate_config(config: dict) -> ServerConfig:
+    """The settings in ``config``. Logs a clear error and exits on any invalid
+    value rather than letting a bad entry surface as an obscure exception later."""
+    try:
+        return load_settings(config)
+    except (ConfigError, KeyError) as exc:
+        # KeyError comes from a required key that is absent; its arg is the
+        # user-facing message.
+        log.error(exc.args[0] if exc.args else str(exc))
+        sys.exit(1)
 
 
 def main():
@@ -253,7 +252,14 @@ def main():
         log.warning("no password: anyone who can reach the server can change its settings. "
                     "Set %s to turn on sign-in", PASSWORD_ENV)
     guard(server.app, login, SITE, cfg.core.server.reverse_proxy)
-    server.app.register_blueprint(settings_blueprint(config_path, server, login, cfg.core.mqtt.enabled))
+
+    def take_network(text: str) -> None:
+        server.network = parse_network(yaml.safe_load(text))
+
+    server.app.register_blueprint(settings_blueprint(
+        FORM, config_path, lambda text: check_config(text, load_settings), login=login,
+        live_keys=NETWORK_KEYS, take_live=take_network, links=(("install", "Install firmware"),),
+        password_env=PASSWORD_ENV))
     server.run(once=args.once)
 
 

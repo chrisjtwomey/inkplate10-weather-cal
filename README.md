@@ -75,9 +75,9 @@ The server renders the pages and tells the display when to wake next.
 
 **From a browser**, with Chrome, Edge, Opera or Firefox:
 
-1. In the server's `config.yaml`, set `client.firmware.enabled` to `true` and `client.firmware.dir` to `builds/nocard`. Restart the server.
-2. Open `http://<server>:8080/settings`, fill in the server address, as the display reaches it, and your Wi-Fi. Select **Save changes**.
-3. Connect the display over USB. Select **install firmware**, then **Install**. The browser warns about the certificate, because the server makes its own.
+1. Open `http://<server>:8080/settings`. On the **Firmware** tab, turn on **Offer updates**, and set **Folder** to `builds/nocard`. Select **Save and restart**.
+2. On the **Install** tab, fill in the server address, as the display reaches it, and your Wi-Fi. Select **Save and restart**.
+3. Connect the display over USB. Select **Install firmware**, then **Install**. The browser warns about the certificate, because the server makes its own.
 4. The page writes the firmware and the settings, then checks that the display joins Wi-Fi and reaches the server.
 
 On a computer with no such browser, `install-firmware.sh` does the same from a terminal: see [The install page](server/README.md#the-install-page).

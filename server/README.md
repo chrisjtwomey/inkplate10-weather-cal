@@ -205,11 +205,14 @@ From a wake on 25 October 2026:
 
 ### The Settings page and sign-in
 
-`/settings` sets what a board gets when you install firmware: the server
-address, the Wi-Fi name and password, and the MQTT broker when MQTT is on. A
-save writes to `config.yaml`, keeps its comments, and keeps the old file as
-`config.yaml.bak`. So `config.yaml` must be writable. Every other setting stays
-in the file.
+`/settings` holds every setting in `config.yaml`, in tabs. **Save and restart**
+lists the changes first, checks that the server would start on them, keeps the
+file's comments, keeps the old file as `config.yaml.bak`, and restarts the server.
+**Restore** puts the `.bak` back. So `config.yaml` must be writable.
+
+- API keys and passwords never reach the page. Leave one blank to keep it.
+- A key an environment variable sets is locked on the page.
+- A change only to the **Install** tab needs no restart.
 
 Set `WEATHER_CAL_PASSWORD` to turn on the sign-in. A server without it logs a
 warning, and anyone on the network can read the Wi-Fi password and change these
@@ -231,7 +234,8 @@ over USB, from Chrome, Edge, Opera or Firefox. It needs:
 
 - `client.firmware.enabled` set to `true`, and a `<version>.merged.bin` in
   `client.firmware.dir`.
-- The server address, the Wi-Fi name and the Wi-Fi password on the Settings page.
+- The server address, the Wi-Fi name and the Wi-Fi password on the Settings page's
+  **Install** tab, and the MQTT broker when MQTT is on.
   The address is the one the display reaches: in Docker, the host's, not the
   container's.
 - HTTPS, because a browser lets a page use a USB port only over HTTPS.

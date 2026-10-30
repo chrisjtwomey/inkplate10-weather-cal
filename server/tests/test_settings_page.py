@@ -1,50 +1,40 @@
-"""The Settings page: what it shows, what a save writes, and the sign-in in front of it."""
+"""This server's settings on epd's page: every key in config.yaml, the sign-in, and a real check."""
 import os
-from types import SimpleNamespace
 
 import pytest
+import yaml
 from bs4 import BeautifulSoup
-from epd_server.config import parse_network
+from epd_server.config_file import flat, read
 from epd_server.login import Login, guard
+from epd_server.settings_page import settings_blueprint
 from flask import Flask
 
 import settings_page as sp
+from server import load_settings
 
-CONFIG = """\
-# The server's own settings.
-server:
-  port: 8080  # the panel fetches from here
-display:
-  pools:
-    today: [today.png]
-  schedule:
-    type: times
-    "08:00:00": today
-client:
-  # What a USB flash writes.
-  server_url: http://old.local:8080
-  wifi:
-    ssid: old-wifi
-    password: old-password
-  firmware:
-    enabled: false
-"""
+EXAMPLE = open(os.path.join(os.path.dirname(__file__), "..", "config.example.yaml")).read()
 PASSWORD = "correct horse"
 
 
 @pytest.fixture
 def path(tmp_path):
     p = tmp_path / "config.yaml"
-    p.write_text(CONFIG)
+    p.write_text(EXAMPLE)
     return p
 
 
-def site(path, login, mqtt_on=False):
-    import yaml
+def site(path, login=None):
+    """The page on ``path``, with a real check, and restarts counted."""
     app = Flask(__name__)
-    server = SimpleNamespace(network=parse_network(yaml.safe_load(path.read_text())))
-    app.register_blueprint(sp.settings_blueprint(str(path), server, login, mqtt_on))
-    app.server = server
+    app.restarts = 0
+
+    def restart():
+        app.restarts += 1
+
+    app.register_blueprint(settings_blueprint(sp.FORM, str(path), lambda t: sp.check_config(t, load_settings),
+                                              restart=restart, login=login))
+    if login is not None:
+        guard(app, login, sp.SITE)
 
     @app.route("/today.png")
     def page():
@@ -53,156 +43,103 @@ def site(path, login, mqtt_on=False):
     return app
 
 
-@pytest.fixture
-def no_login(tmp_path):
-    return Login("", str(tmp_path / "login.json"))
-
-
-@pytest.fixture
-def client(path, no_login):
-    return site(path, no_login).test_client()
-
-
-def form(**over):
-    return {"server_url": "http://old.local:8080", "ssid": "old-wifi", "password": "", **over}
-
-
 def soup(rsp):
     return BeautifulSoup(rsp.data, "html.parser")
 
 
-# ── What the page shows ──────────────────────────────────────────────
-
-def test_the_page_shows_the_values_but_never_the_password(client):
-    rsp = client.get("/settings")
-    page = soup(rsp)
-    assert page.find(id="server_url")["value"] == "http://old.local:8080"
-    assert page.find(id="ssid")["value"] == "old-wifi"
-    assert page.find(id="password")["value"] == ""
-    assert page.find(id="password")["placeholder"] == "Leave blank to keep it"
-    assert b"old-password" not in rsp.data
-    assert rsp.headers["Cache-Control"] == "no-store"
+def post(client, action="save", **fields):
+    data = {k.replace("__", "."): v for k, v in fields.items()}
+    return client.post("/settings", data={"mode": "form", "action": action, **data})
 
 
-def test_the_mqtt_field_shows_only_with_mqtt_on(path, no_login):
-    assert soup(site(path, no_login).test_client().get("/settings")).find(id="mqtt_host") is None
-    assert soup(site(path, no_login, mqtt_on=True).test_client().get("/settings")).find(id="mqtt_host")
+# ── Every option ─────────────────────────────────────────────────────
+
+def test_every_key_in_the_example_has_a_field():
+    paths = {f.path for f in sp.FORM.fields}
+    missing = [".".join(p) for p in flat(yaml.safe_load(EXAMPLE))
+               if not any(p[:len(f)] == f for f in paths)]
+    assert missing == []
 
 
-def test_with_no_password_the_page_says_anyone_can_change_it(client):
-    page = soup(client.get("/settings"))
-    assert page.find(id="no-password").text == sp.NO_PASSWORD
-    assert page.find(id="access-token") is None
+def test_every_provider_is_a_choice():
+    from weather.registry import registered_services
+    assert {c for c, _ in sp.FORM.by_key["weather.service"].choices} == set(registered_services())
 
 
-def test_a_read_only_file_is_named_before_a_save(path, no_login):
-    path.chmod(0o444)
-    try:
-        page = soup(site(path, no_login).test_client().get("/settings"))
-        if os.access(path, os.W_OK):
-            pytest.skip("running as root")
-        assert page.find(id="read-only").text == sp.READ_ONLY
-    finally:
-        path.chmod(0o644)
+def test_the_defaults_are_the_ones_the_server_uses():
+    config = {"weather": {"service": "mock"}, "google": {"apikey": "G", "staticmaps_mapid": "M"}, "location": "Cork"}
+    cfg = load_settings(config)
+    d = sp.FORM.defaults(config)
+    assert d["server.port"] == str(cfg.core.server.port)
+    assert d["server.https_port"] == str(cfg.core.server.https_port)
+    assert d["server.regen_lead_seconds"] == str(cfg.core.server.regen_lead_seconds)
+    assert d["image.width"] == str(cfg.core.image.width) and d["image.height"] == str(cfg.core.image.height)
+    assert d["image.innerWidth"] == str(cfg.core.image.inner_width)
+    assert d["image.innerAlignX"] == cfg.core.image.inner_align_x
+    assert d["client.firmware.enabled"] == ("true" if cfg.core.firmware.enabled else "false")
+    assert d["mqtt.host"] == cfg.core.mqtt.host and d["mqtt.port"] == str(cfg.core.mqtt.port)
+    assert d["mqtt.prefix"] == cfg.core.mqtt.prefix
+    assert d["logs.path"] == cfg.logs_path and float(d["logs.keep_days"]) == cfg.logs_days
+    assert d["weather.num_hourly_forecasts"] == str(cfg.num_hourly_forecasts)
+    assert d["weather.metric"] == "true"
 
 
-# ── A save ───────────────────────────────────────────────────────────
-
-def test_a_save_changes_only_its_lines_and_keeps_the_comments(path, client):
-    rsp = client.post("/settings", data=form(ssid="new-wifi"))
-    assert (rsp.status_code, rsp.headers["Location"]) == (303, "settings?saved=1")
-    assert path.read_text() == CONFIG.replace("ssid: old-wifi", "ssid: new-wifi")
-    assert (path.parent / "config.yaml.bak").read_text() == CONFIG
-    assert soup(client.get(rsp.headers["Location"])).find(id="notice").text == "Settings saved."
+def test_the_page_never_shows_a_key_or_a_password(path):
+    path.write_text(EXAMPLE.replace("apikey: XXXX", "apikey: VERY-SECRET") + "\n")
+    rsp = site(path).test_client().get("/settings")
+    assert b"VERY-SECRET" not in rsp.data
 
 
-def test_a_save_keeps_the_files_opening_marker(path, client):
-    path.write_text("---\n" + CONFIG)
-    client.post("/settings", data=form(ssid="new-wifi"))
-    assert path.read_text() == "---\n" + CONFIG.replace("ssid: old-wifi", "ssid: new-wifi")
+def test_each_page_shows_the_schedule_as_rows(path):
+    page = soup(site(path).test_client().get("/settings"))
+    table = page.find("table", attrs={"data-key": "display.schedule"})
+    first = table.select_one("tbody tr").select("input")
+    assert [i["value"] for i in first] == ["08:00:00", "today"]
 
 
-def test_a_save_takes_effect_without_a_restart(path, no_login):
-    app = site(path, no_login)
-    app.test_client().post("/settings", data=form(ssid="new-wifi", password="a-new-password"))
-    assert app.server.network.wifi_ssid == "new-wifi"
-    assert app.server.network.wifi_password == "a-new-password"
+# ── A save, with the real check ──────────────────────────────────────
+
+def test_a_save_keeps_the_examples_comments_and_changes_only_its_line(path):
+    client = site(path).test_client()
+    assert post(client, location="Galway").status_code == 200
+    assert path.read_text() == EXAMPLE.replace("location: Dublin", "location: Galway")
 
 
-def test_a_blank_password_keeps_the_one_in_the_file(path, client):
-    client.post("/settings", data=form(password=""))
-    assert "password: old-password" in path.read_text()
+def test_the_server_check_refuses_what_would_stop_a_start(path):
+    client = site(path).test_client()
+    rsp = post(client, server__port="8443")
+    assert rsp.status_code == 400 and path.read_text() == EXAMPLE
+    assert soup(rsp).find(id="f-server-https_port-problem").text == "Port and HTTPS port cannot be the same."
 
 
-@pytest.mark.parametrize("password", ["has # a: hash", "12345678", "'quoted'", 'dou"ble"', "yes-true"])
-def test_a_password_comes_back_as_it_was_typed(path, no_login, password):
-    app = site(path, no_login)
-    app.test_client().post("/settings", data=form(password=password))
-    assert app.server.network.wifi_password == password
-    import yaml
-    assert yaml.safe_load(path.read_text())["client"]["wifi"]["password"] == password
+def test_a_set_the_wake_times_do_not_name_is_refused(path):
+    client = site(path).test_client()
+    rsp = client.post("/settings", data={"mode": "form", "action": "save", "display.schedule": "1",
+                                         "display.schedule.at": ["08:00"], "display.schedule.pool": ["nope"]})
+    assert rsp.status_code == 400 and path.read_text() == EXAMPLE
 
 
-def test_a_file_with_no_client_block_gets_one(path, no_login):
-    path.write_text("# Only a comment.\nserver:\n  port: 8080\n")
-    site(path, no_login).test_client().post(
-        "/settings", data={"server_url": "http://new.local:8080", "ssid": "w", "password": "12345678"})
-    text = path.read_text()
-    assert text.startswith("# Only a comment.\n") and "ssid: w" in text
+def test_a_bad_wifi_password_says_what_to_enter(path):
+    rsp = post(site(path).test_client(), client__wifi__password="short")
+    assert soup(rsp).find(id="f-client-wifi-password-problem").text == "Enter 8 to 63 characters."
 
 
-# ── A refused save ───────────────────────────────────────────────────
-
-@pytest.mark.parametrize("field, value, words", [
-    ("server_url", "http://new.local:8080/path", sp.SERVER_URL.refused),
-    ("server_url", "not an address", sp.SERVER_URL.refused),
-    ("ssid", "x" * 33, sp.WIFI_NAME.refused),
-    ("password", "short", sp.WIFI_PASSWORD.refused),
-])
-def test_a_bad_value_is_refused_and_the_file_stays(path, client, field, value, words):
-    rsp = client.post("/settings", data=form(**{field: value}))
-    assert rsp.status_code == 400
-    assert soup(rsp).find(id=f"{field}-problem").text == words
-    assert path.read_text() == CONFIG
-    assert not (path.parent / "config.yaml.bak").exists()
+@pytest.mark.parametrize("password", ["has # a: hash", "12345678", "'quoted'", 'dou"ble"'])
+def test_a_wifi_password_reads_back_as_typed(path, password):
+    post(site(path).test_client(), client__wifi__password=password)
+    assert read(path.read_text())["client"]["wifi"]["password"] == password
 
 
-def test_a_refused_save_keeps_what_was_typed_but_not_the_password(client):
-    rsp = client.post("/settings", data=form(ssid="typed", server_url="bad", password="typed-password"))
-    page = soup(rsp)
-    assert page.find(id="ssid")["value"] == "typed"
-    assert page.find(id="password")["value"] == ""
-    assert b"typed-password" not in rsp.data
+def test_the_saved_file_starts_the_server(path):
+    post(site(path).test_client(), location="Galway", server__port="9090", mqtt__enabled="true")
+    cfg = load_settings(yaml.safe_load(path.read_text()))
+    assert cfg.location == "Galway" and cfg.core.server.port == 9090 and cfg.core.mqtt.enabled
 
 
-def test_a_broker_address_with_a_port_is_refused(path, no_login):
-    client = site(path, no_login, mqtt_on=True).test_client()
-    rsp = client.post("/settings", data=form(mqtt_host="broker:1883"))
-    assert soup(rsp).find(id="mqtt_host-problem").text == sp.MQTT_HOST.refused
-
-
-def test_a_file_it_cannot_write_says_so_and_nothing_changes(path, client, monkeypatch):
-    def refused(*_):
-        raise PermissionError("read-only")
-    monkeypatch.setattr(sp, "save", refused)
-    rsp = client.post("/settings", data=form(ssid="new-wifi"))
-    assert rsp.status_code == 500
-    assert soup(rsp).find(id="problem").text == sp.READ_ONLY
-    assert path.read_text() == CONFIG
-
-
-@pytest.mark.parametrize("broken", [
-    "client: [unclosed\n",
-    "client:\n  wifi:\n    ssid: a\n    ssid: b\n",
-    "just text\n",
-])
-def test_a_file_with_a_mistake_in_it_says_so_and_stays(path, client, broken):
-    path.write_text(broken)
-    rsp = client.post("/settings", data=form(ssid="new-wifi"))
-    assert rsp.status_code == 500
-    assert soup(rsp).find(id="problem").text == sp.NOT_YAML
-    assert path.read_text() == broken
-    assert not (path.parent / "config.yaml.bak").exists()
+def test_restart_runs_after_a_save(path):
+    app = site(path)
+    post(app.test_client(), location="Galway")
+    assert app.restarts == 1
 
 
 # ── Behind the sign-in ───────────────────────────────────────────────
@@ -212,49 +149,19 @@ def login(tmp_path):
     return Login(PASSWORD, str(tmp_path / "login.json"))
 
 
-@pytest.fixture
-def guarded(path, login):
-    app = site(path, login)
-    guard(app, login, sp.SITE)
-    return app.test_client()
-
-
-def sign_in(client):
-    return client.post("/login", data={"password": PASSWORD, "next": "/settings"})
-
-
-def test_the_page_asks_a_browser_to_sign_in(guarded):
-    rsp = guarded.get("/settings", headers={"Accept": "text/html"})
+def test_the_page_asks_a_browser_to_sign_in(path, login):
+    rsp = site(path, login).test_client().get("/settings", headers={"Accept": "text/html"})
     assert (rsp.status_code, rsp.headers["Location"]) == (303, "/login?next=/settings")
 
 
-def test_a_save_needs_a_sign_in(path, guarded):
-    assert guarded.post("/settings", data=form(ssid="new")).status_code == 401
-    assert path.read_text() == CONFIG
+def test_a_save_needs_a_sign_in_and_another_site_is_refused(path, login):
+    client = site(path, login).test_client()
+    assert post(client, location="Galway").status_code == 401
+    client.post("/login", data={"password": PASSWORD})
+    rsp = client.post("/settings", data={"mode": "form", "action": "save", "location": "Galway"},
+                      headers={"Origin": "http://evil.example"})
+    assert rsp.status_code == 403 and path.read_text() == EXAMPLE
 
 
-def test_a_save_from_another_site_is_refused(path, guarded):
-    sign_in(guarded)
-    rsp = guarded.post("/settings", data=form(ssid="new"), headers={"Origin": "http://evil.example"})
-    assert rsp.status_code == 403 and path.read_text() == CONFIG
-
-
-def test_a_board_still_reaches_its_page(guarded):
-    assert guarded.get("/today.png").data == b"png"
-
-
-def test_a_signed_in_person_sees_the_token_and_can_replace_it(guarded, login):
-    sign_in(guarded)
-    page = soup(guarded.get("/settings"))
-    assert page.find(id="access-token")["value"] == login.token
-    assert page.find(id="no-password") is None
-    old = login.token
-    rsp = guarded.post("/settings/token")
-    assert (rsp.status_code, rsp.headers["Location"]) == (303, "../settings")
-    assert login.token != old
-
-
-def test_sign_out_ends_it(guarded):
-    sign_in(guarded)
-    assert guarded.post("/logout").status_code == 303
-    assert guarded.get("/settings").status_code == 401
+def test_a_board_still_reaches_its_page(path, login):
+    assert site(path, login).test_client().get("/today.png").data == b"png"
