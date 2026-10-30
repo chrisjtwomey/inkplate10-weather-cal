@@ -23,11 +23,11 @@ from views.today import TodayPage
 from views.current import CurrentPage
 from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
-from google.api import GoogleAPIService
+from google.api import GoogleAPIService, StaticMapSource
 from epd_server import DisplayServer, InstallBoard, LogsQuery, LogStore, align_process_timezone
 from epd_server.config import ConfigError, MqttSettings, load_core_config, load_yaml
 from epd_server.login import Login, guard
-from epd_server.source import CompositeSource, StaticSource
+from epd_server.source import CompositeSource
 from settings_page import PASSWORD_ENV, SITE, settings_blueprint
 
 cwd = os.path.dirname(os.path.realpath(__file__))
@@ -50,6 +50,7 @@ import weather.mock.mock  # noqa: F401
 import weather.meteireann.meteireann  # noqa: F401
 import weather.openmeteo.openmeteo  # noqa: F401
 from weather.registry import create as _create_weather_service, needs_apikey, registered_services
+from weather.service import DeferredWeather
 
 
 def _server_version() -> str:
@@ -228,18 +229,17 @@ def main():
     log.info(f"display: {cfg.schedule.describe()}")
     log.info(f"regen_lead_seconds: {cfg.regen_lead_seconds}")
 
-    gapi = GoogleAPIService(cfg.google_apikey)
-    map_url = gapi.get_static_map_local_src(cfg.staticmaps_mapid, cfg.location)
+    gapi = GoogleAPIService(cfg.google_apikey, os.path.join(cwd, "data", "map-cache"))
 
     if cfg.weather_service == "mock":
         log.info("Using mock weather service — randomised data")
-    weather_svc = _create_weather_service(
+    weather_svc = DeferredWeather(lambda: _create_weather_service(
         cfg.weather_service,
         apikey=cfg.weather_apikey,
         location=cfg.location,
         num_hours=cfg.num_hourly_forecasts,
         metric=cfg.weather_metric,
-    )
+    ))
 
     geometry = (
         cfg.image_width,
@@ -256,10 +256,9 @@ def main():
         DailyPage(*geometry),
         TomorrowPage(*geometry),
     ]
-    # map_url is a constant, so it comes from a StaticSource; the weather
-    # service supplies the rest. Each page declares what it needs in
-    # Page.requires.
-    source = CompositeSource(StaticSource(map_url=map_url), weather_svc)
+    # Both fetch at the first render, after the server is up. Each page
+    # declares what it needs in Page.requires.
+    source = CompositeSource(StaticMapSource(gapi, cfg.staticmaps_mapid, cfg.location), weather_svc)
 
     logs_file = os.path.join(cwd, cfg.logs_path)
     os.makedirs(os.path.dirname(logs_file), exist_ok=True)

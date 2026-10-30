@@ -13,12 +13,14 @@ from flask import Flask
 import yaml
 from PIL import Image
 
+from google.api import MapFetchError as server_map_error
 import server
+from weather.service import WeatherFetchError
 import views.page
 
 
 class StubGoogle:
-    def __init__(self, key):
+    def __init__(self, key, cache_dir):
         self.key = key
 
     def get_static_map_local_src(self, map_id, location):
@@ -135,6 +137,27 @@ def test_the_install_page_sits_behind_the_sign_in_and_its_files_do_not(project_d
     page = client.get("/install").get_data(as_text=True)
     assert '"chip": "ESP32"' in page and '"settingsUrl": "settings"' in page
     assert "display|inkplate10-weather-cal|esp32|Display|0x1a86" in client.get("/install-firmware.sh").get_data(as_text=True)
+
+
+def test_the_server_starts_when_google_and_the_weather_provider_are_down(project_dir, monkeypatch):
+    made = {}
+
+    class GoogleDown(StubGoogle):
+        def get_static_map_local_src(self, map_id, location):
+            raise server_map_error("HTTPError")
+
+    def provider_down(*_args, **_kwargs):
+        raise WeatherFetchError("mock: ConnectionError")
+
+    monkeypatch.setattr(server, "GoogleAPIService", GoogleDown)
+    monkeypatch.setattr(server, "_create_weather_service", provider_down)
+    monkeypatch.setattr(server, "DisplayServer", fake_server(made))
+    server.main()
+
+    fetchers = made["source"].datasets()
+    assert fetchers["map_url"]() == ""
+    with pytest.raises(WeatherFetchError):
+        fetchers["daily_summary"]()
 
 
 def test_the_boards_log_lines_are_kept_and_answer_logs(project_dir, monkeypatch):

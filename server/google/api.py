@@ -3,7 +3,10 @@ import hashlib
 import logging
 import os
 import time
+from pathlib import Path
+
 import requests
+from epd_server.source import DataSource
 from PIL import Image
 from googlemaps import Client
 from googlemaps.geocoding import geocode
@@ -13,19 +16,20 @@ from googlemaps.timezone import timezone
 log = logging.getLogger(__name__)
 
 
+class MapFetchError(Exception):
+    """The map could not be downloaded. Its message holds no URL, since the
+    URL holds the API key and this reaches the log."""
+
+
 class GoogleAPIService:
-    def __init__(self, key):
+    """The static map, kept in ``cache_dir``. Keep that folder across
+    redeploys: each fetch is a call Google counts."""
+
+    def __init__(self, key, cache_dir):
         self.apikey = key
         self.client = Client(key)
-        google_dir = os.path.dirname(os.path.realpath(__file__))
-        self._cache_path = os.path.join(
-            google_dir,
-            ".cache.json",
-        )
-        self._local_map_rel_dir = "map-cache"
-        self._local_map_abs_dir = os.path.normpath(
-            os.path.join(google_dir, "..", "views", "html", self._local_map_rel_dir)
-        )
+        self._cache_dir = cache_dir
+        self._cache_path = os.path.join(cache_dir, "map.json")
 
     def _load_cache(self):
         try:
@@ -36,6 +40,7 @@ class GoogleAPIService:
 
     def _save_cache(self, cache):
         try:
+            os.makedirs(self._cache_dir, exist_ok=True)
             with open(self._cache_path, "w") as f:
                 json.dump(cache, f)
         except OSError as exc:
@@ -51,7 +56,7 @@ class GoogleAPIService:
         filename = image_entry.get("filename") if image_entry else None
         if filename:
             try:
-                os.remove(os.path.join(self._local_map_abs_dir, filename))
+                os.remove(os.path.join(self._cache_dir, filename))
             except FileNotFoundError:
                 pass
         cache.pop("location_center", None)
@@ -82,11 +87,15 @@ class GoogleAPIService:
             center = center_entry["data"]
         else:
             center = self._get_location_center(location)
-            cache["location_center"] = {
-                "ts": time.time(),
-                "location": location_key,
-                "data": center,
-            }
+            if center is None:
+                # Not kept, so a later fetch asks for the coordinates again.
+                center = location_key
+            else:
+                cache["location_center"] = {
+                    "ts": time.time(),
+                    "location": location_key,
+                    "data": center,
+                }
 
         svc = self.StaticMapService(self.apikey, map_id)
         static_entry = cache.get("static_map_url")
@@ -110,6 +119,11 @@ class GoogleAPIService:
         return url
 
     def get_static_map_local_src(self, map_id, location):
+        """The map as a ``file://`` address, downloaded only if it is not kept.
+
+        Raises:
+            MapFetchError: the download failed.
+        """
         location_key = self._location_cache_key(location)
 
         url = self.get_static_map_url(map_id, location)
@@ -123,17 +137,20 @@ class GoogleAPIService:
             and image_entry.get("url") == url
         ):
             filename = image_entry.get("filename")
-            abs_path = os.path.join(self._local_map_abs_dir, filename)
+            abs_path = os.path.join(self._cache_dir, filename) if filename else ""
             if filename and os.path.exists(abs_path):
-                return f"{self._local_map_rel_dir}/{filename}"
+                return Path(abs_path).resolve().as_uri()
 
-        os.makedirs(self._local_map_abs_dir, exist_ok=True)
+        os.makedirs(self._cache_dir, exist_ok=True)
         digest = hashlib.sha1(url.encode("utf-8")).hexdigest()[:16]
         filename = f"staticmap_{digest}.png"
-        abs_path = os.path.join(self._local_map_abs_dir, filename)
+        abs_path = os.path.join(self._cache_dir, filename)
 
-        r = requests.get(url, timeout=20)
-        r.raise_for_status()
+        try:
+            r = requests.get(url, timeout=20)
+            r.raise_for_status()
+        except requests.RequestException as exc:
+            raise MapFetchError(type(exc).__name__) from None
         with open(abs_path, "wb") as f:
             f.write(r.content)
 
@@ -145,9 +162,11 @@ class GoogleAPIService:
             "filename": filename,
         }
         self._save_cache(cache)
-        return f"{self._local_map_rel_dir}/{filename}"
+        return Path(abs_path).resolve().as_uri()
 
     def _get_location_center(self, location):
+        """The map's centre as coordinates, the place name itself when Google
+        knows no such place, or None when the lookup failed."""
         # Use coordinates for a stable map center even when place-name geocoding shifts.
         if isinstance(location, (list, tuple)) and len(location) == 2:
             return "{:.6f},{:.6f}".format(float(location[0]), float(location[1]))
@@ -158,8 +177,9 @@ class GoogleAPIService:
                 if len(geocode_result) > 0:
                     point = geocode_result[0]["geometry"]["location"]
                     return "{:.6f},{:.6f}".format(point["lat"], point["lng"])
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 - the name still gives a map
+                log.warning("Could not look up %s: %s", location, type(exc).__name__)
+                return None
 
         return location
 
@@ -201,3 +221,23 @@ class GoogleAPIService:
             img = Image.open(r.raw)
 
             return img
+
+
+class StaticMapSource(DataSource):
+    """``map_url`` for the pages, fetched when a page first needs it. A failed
+    fetch gives a page with no map, and the next render tries again."""
+
+    def __init__(self, service, map_id, location):
+        self.service = service
+        self.map_id = map_id
+        self.location = location
+
+    def _map_url(self):
+        try:
+            return self.service.get_static_map_local_src(self.map_id, self.location)
+        except (MapFetchError, OSError) as exc:
+            log.warning("No map for this render: %s", exc)
+            return ""
+
+    def datasets(self):
+        return {"map_url": self._map_url}

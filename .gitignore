@@ -4,7 +4,7 @@ server/weather/openweathermap/.cache.json
 server/weather/meteireann/.cache.json
 server/weather/openmeteo/.cache.json
 
-# Google static map cache metadata (contains API-key-bearing URLs)
+# Where a checkout kept the map before server/data (API-key-bearing URLs)
 server/google/.cache.json
 
 # Byte-compiled / optimized / DLL files

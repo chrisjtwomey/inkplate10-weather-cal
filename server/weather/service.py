@@ -6,6 +6,7 @@ import requests
 from epd_server.source import DataSource
 
 REQUEST_TIMEOUT_S = 20
+DATASET_NAMES = ("current_conditions", "daily_summary", "hourly_forecasts", "daily_forecasts")
 
 
 class WeatherFetchError(Exception):
@@ -16,6 +17,28 @@ class WeatherFetchError(Exception):
     def __init__(self, message, status=None):
         super().__init__(message)
         self.status = status
+
+
+class DeferredWeather(DataSource):
+    """A provider made at the first fetch, by ``make``. A provider looks up its
+    location when it is made, so a fault there fails that render, and the next
+    one tries again, instead of stopping the server's start."""
+
+    def __init__(self, make):
+        self.make = make
+        self.service = None
+
+    def _fetch(self, name):
+        if self.service is None:
+            self.service = self.make()
+        return self.service.datasets()[name]()
+
+    def datasets(self):
+        return {name: (lambda n=name: self._fetch(n)) for name in DATASET_NAMES}
+
+    def invalidate(self):
+        if self.service is not None:
+            self.service.invalidate()
 
 
 class WeatherService(DataSource):

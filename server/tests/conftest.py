@@ -18,14 +18,6 @@ _OPENMETEO_CACHE = (
     pathlib.Path(__file__).parent.parent
     / "weather" / "openmeteo" / ".cache.json"
 )
-_GOOGLE_CACHE = (
-    pathlib.Path(__file__).parent.parent
-    / "google" / ".cache.json"
-)
-_GOOGLE_MAP_IMG_CACHE_DIR = (
-    pathlib.Path(__file__).parent.parent
-    / "views" / "html" / "map-cache"
-)
 
 
 @pytest.fixture(autouse=True)
@@ -53,16 +45,7 @@ def clear_openmeteo_cache():
     _OPENMETEO_CACHE.unlink(missing_ok=True)
 
 
-@pytest.fixture(autouse=True)
-def clear_google_cache():
-    """Delete the Google static map disk cache before/after each test."""
-    _GOOGLE_CACHE.unlink(missing_ok=True)
-    for fp in _GOOGLE_MAP_IMG_CACHE_DIR.glob("staticmap_*.png"):
-        fp.unlink(missing_ok=True)
-    yield
-    _GOOGLE_CACHE.unlink(missing_ok=True)
-    for fp in _GOOGLE_MAP_IMG_CACHE_DIR.glob("staticmap_*.png"):
-        fp.unlink(missing_ok=True)
+
 
 
 @pytest.fixture(autouse=True)

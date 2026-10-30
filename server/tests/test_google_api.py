@@ -1,11 +1,13 @@
 """URL construction and location resolution in google/api.py."""
 import os
+import traceback
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+import requests
 
-from google.api import GoogleAPIService
+from google.api import GoogleAPIService, MapFetchError, StaticMapSource
 
 
 # Real googlemaps.Client validates the key format at construction; this passes.
@@ -14,8 +16,8 @@ FAKE_MAP_ID = "test-map-id-123"
 
 
 @pytest.fixture
-def gapi():
-    return GoogleAPIService(FAKE_API_KEY)
+def gapi(tmp_path):
+    return GoogleAPIService(FAKE_API_KEY, str(tmp_path / "map-cache"))
 
 
 # ---------- StaticMapService.get_url ----------
@@ -85,11 +87,10 @@ def test_static_map_local_src_reuses_cached_image_for_same_location(gapi):
         src2 = gapi.get_static_map_local_src(FAKE_MAP_ID, (53.141819, -6.118493))
 
     assert src1 == src2
-    assert src1.startswith("map-cache/staticmap_")
+    assert src1.startswith("file://") and "/map-cache/staticmap_" in src1
     assert mock_get.call_count == 1
 
-    root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    assert os.path.exists(os.path.join(root, "views", "html", src1))
+    assert os.path.exists(urlparse(src1).path)
 
 
 def test_static_map_local_src_invalidates_cached_image_when_location_changes(gapi):
@@ -102,14 +103,14 @@ def test_static_map_local_src_invalidates_cached_image_when_location_changes(gap
 
     with patch("google.api.requests.get", return_value=_Resp(b"\x89PNG\r\n\x1a\n")) as mock_get:
         src1 = gapi.get_static_map_local_src(FAKE_MAP_ID, (53.141819, -6.118493))
-        root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-        old_abs = os.path.join(root, "views", "html", src1)
+        old_path = urlparse(src1).path
+        assert os.path.exists(old_path)
 
         src2 = gapi.get_static_map_local_src(FAKE_MAP_ID, (51.898500, -8.475600))
 
     assert src1 != src2
     assert mock_get.call_count == 2
-    assert not os.path.exists(old_abs)
+    assert not os.path.exists(old_path)
 
 
 # ---------- _get_location_center ----------
@@ -131,13 +132,53 @@ def test_location_center_geocodes_place_name(gapi):
     mock_geocode.assert_called_once()
 
 
-def test_location_center_falls_back_to_raw_string_on_geocode_failure(gapi):
+def test_a_failed_lookup_gives_a_map_of_the_name_and_is_not_kept(gapi):
     with patch("google.api.geocode", side_effect=Exception("network down")):
-        center = gapi._get_location_center("Cork")
-    assert center == "Cork"
+        url = gapi.get_static_map_url(FAKE_MAP_ID, "Cork")
+    assert parse_qs(urlparse(url).query)["center"] == ["Cork"]
+
+    fake_result = [{"geometry": {"location": {"lat": 51.8985, "lng": -8.4756}}}]
+    with patch("google.api.geocode", return_value=fake_result):
+        url = gapi.get_static_map_url(FAKE_MAP_ID, "Cork")
+    assert parse_qs(urlparse(url).query)["center"] == ["51.898500,-8.475600"]
 
 
 def test_location_center_falls_back_to_raw_string_on_empty_geocode(gapi):
     with patch("google.api.geocode", return_value=[]):
         center = gapi._get_location_center("AtlantisXYZ")
     assert center == "AtlantisXYZ"
+
+
+# ---------- What Google is asked for, and when ----------
+
+class _Png:
+    content = b"\x89PNG\r\n\x1a\n"
+
+    def raise_for_status(self):
+        return None
+
+
+def test_a_new_server_on_the_same_folder_fetches_nothing(tmp_path):
+    folder = str(tmp_path / "map-cache")
+    with patch("google.api.requests.get", return_value=_Png()) as fetch:
+        first = GoogleAPIService(FAKE_API_KEY, folder).get_static_map_local_src(FAKE_MAP_ID, (53.1, -6.1))
+        again = GoogleAPIService(FAKE_API_KEY, folder).get_static_map_local_src(FAKE_MAP_ID, (53.1, -6.1))
+    assert first == again
+    assert fetch.call_count == 1
+
+
+def test_a_failed_map_fetch_keeps_the_key_out_of_the_error(gapi):
+    error = requests.HTTPError(f"403 for url: https://maps.example/?key={FAKE_API_KEY}")
+    with patch("google.api.requests.get", side_effect=error):
+        with pytest.raises(MapFetchError) as caught:
+            gapi.get_static_map_local_src(FAKE_MAP_ID, (53.1, -6.1))
+    assert FAKE_API_KEY not in "".join(traceback.format_exception(caught.value))
+
+
+def test_the_source_gives_no_map_on_a_failure_and_tries_again_at_the_next_render(gapi, caplog):
+    fetch_map = StaticMapSource(gapi, FAKE_MAP_ID, (53.1, -6.1)).datasets()["map_url"]
+    with patch("google.api.requests.get", side_effect=requests.ConnectionError(f"key={FAKE_API_KEY}")):
+        assert fetch_map() == ""
+    assert "No map for this render" in caplog.text and FAKE_API_KEY not in caplog.text
+    with patch("google.api.requests.get", return_value=_Png()):
+        assert fetch_map().startswith("file://")

@@ -20,7 +20,8 @@ from weather.mock.mock import MockWeatherService
 from weather.meteireann.meteireann import MetEireannService
 from weather.openmeteo.openmeteo import OpenMeteoService
 from weather.registry import registered_services, _REGISTRY
-from weather.service import REQUEST_TIMEOUT_S, WeatherFetchError, WeatherService
+from weather.service import (DATASET_NAMES, REQUEST_TIMEOUT_S, DeferredWeather, WeatherFetchError,
+                             WeatherService)
 
 
 def _load(fixtures_dir, name):
@@ -467,3 +468,40 @@ def test_accuweather_says_a_403_on_the_5_day_forecast_may_need_a_plan_upgrade(ac
                               re.compile(r".*/forecasts/v1/daily/5day/.*"), status=403)
     with pytest.raises(PermissionError, match="plan upgrade"):
         svc.get_5day_forecast()
+
+
+# ── A provider made at the first fetch ───────────────────────────────
+
+def test_a_deferred_provider_is_made_once_at_the_first_fetch():
+    made = []
+
+    def make():
+        made.append(1)
+        return MockWeatherService(location="Cork")
+
+    source = DeferredWeather(make)
+    fetchers = source.datasets()
+    source.invalidate()
+    assert not made
+    fetchers["daily_summary"]()
+    fetchers["current_conditions"]()
+    assert len(made) == 1
+
+
+def test_a_deferred_provider_tries_again_after_a_failure():
+    tries = []
+
+    def make():
+        tries.append(1)
+        if len(tries) == 1:
+            raise WeatherFetchError("mock: ConnectionError")
+        return MockWeatherService(location="Cork")
+
+    fetch = DeferredWeather(make).datasets()["daily_summary"]
+    with pytest.raises(WeatherFetchError):
+        fetch()
+    assert fetch()
+
+
+def test_a_deferred_provider_offers_what_a_provider_offers():
+    assert set(DATASET_NAMES) == set(MockWeatherService(location="Cork").datasets())

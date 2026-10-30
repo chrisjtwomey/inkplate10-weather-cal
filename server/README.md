@@ -255,6 +255,26 @@ sh install-firmware.sh display
 With a password set, the script asks for it. With `TOKEN` set to the access
 token, it does not.
 
+### What the server keeps in `data`
+
+Mount a volume on `/app/data`, as [`docker-compose.yml`](../docker-compose.yml)
+does. It keeps these across updates:
+
+- The display's log lines.
+- The map image, in `data/map-cache`. Google counts each fetch, so with the
+  volume the server fetches once per location and map ID. Without it, every
+  update fetches again.
+- The sign-in's keep file and the HTTPS certificate.
+
+### When Google or the weather provider is down
+
+The server starts anyway, and fetches at the first render. If the map cannot be
+fetched, the page renders with no map, and the next render tries again. If the
+weather cannot be fetched, the log says so, and the next scheduled render tries
+again. Until then the server offers the pages it already made. A server that
+has just updated has none, so the display shows its last page under an error
+banner, and backs off.
+
 ### Reading the logs
 
 `GET /logs` answers with the kept lines as JSON, newest last:
