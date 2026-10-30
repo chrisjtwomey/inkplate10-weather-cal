@@ -1,78 +1,78 @@
-# Power Consumption
+# Power consumption
 
-How much power the display uses, and how long a battery lasts. The dated
-updates further down are the history of the measurements, from 2023.
+How long a battery lasts, what the percentage on the screen means, and where
+the charge goes. The figures are for an Inkplate 10 with a 2000 mAh LiPo and no
+SD card.
 
-## Now (October 2026)
+## How long a battery lasts
 
-The display sleeps most of the day. At each wake, it gets the next page from
-the server with Wi-Fi on, then turns Wi-Fi off and puts the page on the
-screen.
+A 2000 mAh battery runs the display for about 1.6 years before it asks for a
+charge. On its own use alone it would last about 2.8 years, but a LiPo also
+loses about 2% of its charge a month by itself.
 
-| Part of the day | How long | Current |
+| | Per day |
+|---|---|
+| Awake, 11 wakes | about 1.3 mAh |
+| Asleep, the rest of the day | about 0.5 mAh |
+| Lost by the battery itself | about 1.3 mAh |
+| **Total** | **about 3.1 mAh** |
+
+The currents were measured with a power profiler: about 80 mA while awake
+and 21 µA asleep. One wake uses about 0.12 mAh.
+
+## What the battery percentage means
+
+The percentage comes from the battery's voltage, through a curve recorded on
+this display: a full 2000 mAh battery drained at a steady 40 mA until it was
+empty. It gave 2016 mAh in 50 hours.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/battery-discharge-dark.svg">
+  <img alt="Battery voltage against charge used: from 4.23 V full, falling steadily to about 3.5 V at 1850 mAh, then steeply to 3.0 V at 2016 mAh. 20% is 3.64 V, 10% is 3.55 V, 5% is 3.51 V and 0% is 3.40 V." src="assets/battery-discharge-light.svg">
+</picture>
+
+0% is 3.40 V, not the battery's own limit of 3.0 V. Below about 3.4 V the
+screen's power chip may not start, so the display could wake but not update
+the screen. That leaves about 70 mAh in the battery, the shaded band.
+
+| Percent | Voltage | What the display does |
 |---|---|---|
-| Getting the page, Wi-Fi on | ~2.3 s a wake | ~120 mA, estimated |
-| Putting it on the screen, Wi-Fi off | ~2.9 s a wake | ~70 mA, estimated |
-| Asleep | the rest of the day | 24 µA, measured (June 2023, no SD card) |
+| 20% | 3.64 V | Waits for a charge before it installs a firmware update |
+| 10% | 3.55 V | Logs "battery low, charge soon!" |
+| 5% | 3.51 V | Shows "Battery critical, please charge!" and stops waking |
 
-- A wake takes about 5.2 s, measured on an Inkplate 10.
-- At 11 wakes a day, the display uses about 2 mAh a day: about 1.5 mAh awake and 0.6 mAh asleep.
-- A 2000 mAh battery, about 1800 mAh of it usable, would last about 2.5 years on that alone. A LiPo also loses about 2% of its charge a month by itself, which brings that down to about 1.5 years. Expect one to two years.
+At 5%, charge the battery, then press the display's reset button: charging does
+not wake it. Charge it within a few weeks of the warning: a LiPo left empty
+for long can be damaged.
 
-Below 5% battery, about 3.29 V, the display shows "Battery critical, please charge!" and sleeps until it is charged. With MQTT logging on, each wake logs the battery's voltage, so the server's log shows its curve.
+Each battery's curve is a little different, so the percentage is a guide, not
+an exact figure.
 
-Check the battery's health every few months, whatever the percentage says.
+## Where the charge goes in a wake
 
-## Predictions from 2023: one wake a day
+The display wakes at the times the server sets, gets the page, puts it on the
+screen and goes back to sleep. A wake takes about 5.4 seconds, measured on an
+Inkplate 10. Wi-Fi is on only while the display gets the page.
 
-  - **3.7v 2000mAh LiPo/Li-ion @ 0.2C:**
-    - Pessimistic: **6 months**
-    - Realistic: **1 year**
-    - Optimistic: **2+ years**
-    - Theoretical: **4+ years**
-  - **3.7v 6700mAh Li-ion @ 0.2C:**
-    - Pessimistic: **20 months**
-    - Realistic: **3+ years**
-    - Optimistic: **6+ years**
-    - Theoretical: **13+ years**
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/wake-steps-dark.svg">
+  <img alt="The steps of one wake: start up 0.75 s; join Wi-Fi 1.15 s, download the page 0.35 s and prepare the picture 0.70 s with Wi-Fi on; then update the screen 1.65 s and save a copy for the next wake 0.80 s with Wi-Fi off." src="assets/wake-steps-light.svg">
+</picture>
 
-These leave out the life span of a battery, which may cap them at [2-3 years on average](https://www.newark.com/pdfs/techarticles/tektronix/LIBMG.pdf), and the charge a battery loses by itself over time.
+When a firmware update is waiting, Wi-Fi stays on until it is installed, and
+the wake takes longer.
 
-## Update June 28 2023
+## SD card on the E-Radionica Inkplate 10
 
-I picked up a [PPK2](https://www.nordicsemi.com/Products/Development-hardware/Power-Profiler-Kit-2) as I wanted to measure deep sleep current draw with the June 20 version of the code:
+The older Inkplate 10, from E-Radionica, cannot turn off the SD card's power in
+deep sleep. Measured on one in 2023:
 
-![sleep](https://user-images.githubusercontent.com/5797356/248981718-ed4f92e4-3e3d-40b8-b4d7-cf3b38c8a948.png)
+| SD card | Current asleep |
+|---|---|
+| In, and used by the firmware | about 2 mA |
+| In, not used | about 85 µA |
+| Out | 24 µA |
 
-As you can see, deep sleep current draw is _far_ too high. This explains why the initial test run only lasted 50-ish days. Something was consuming milliamps of power even when we are deep sleeping.
-
-While I initially suspected it to either be my code, or an [ESP32 issue](https://github.com/espressif/arduino-esp32/issues/1113) itself, the problem boiled down to my version of Inkplate10 hardware being old and missing some hardware that sleeps the SD card module and reduces power consumption.
-
-See [the issue in Inkplate's repo](https://github.com/SolderedElectronics/Inkplate-Arduino-library/issues/209) to get the latest updates. Otherwise, for best battery life I recommend you **do not use an SD card if you have an E-Radionica Inkplate10**.
-
-I've made an update which makes SD cards **optional**. Once you disable and remove the SD card, deep sleep power consumption returns to **24µA** which theoretically gives this project years of battery life even on small capacity batteries.
-
-## Update June 20 2023
-
-After the first performance test run, and re-analysing client code, there are a number of places where power is unneccesarily consumed:
- - It's possible that the microcontroller is not entering _true deep sleep_ with the advertised 22 µA power consumption. Power consumption currently seems to be closer to 1 mA which is unacceptable. According to [this issue](https://github.com/espressif/arduino-esp32/issues/1113) it's possible the Inkplate recommend method of sleeping/waking up using the RTC might be responsible for the high power consumption.
- - WiFi connects early and stays connected long after it's required - the WiFi radio is by far the largest consumer of power and minimising time using it is crucial.
- - Code unnecessarily refreshes the display with previous day's downloaded image. This was intended for partial update support so if fatal errors occurred  it could be displayed on top of the previous day's calendar image. Code now only refreshes with previous image when there is indeed a fatal error.
- - Code prioritised helpful logging over minimising awake time. This was helpful when tesing and developing but now it's better to turn off remote logging or sleep as soon as it's possible.
- - Storing unnecessary data in RTC memory - while helpful for debugging/testing, it's no longer necessary.
-
-A number of changes have been made around optimising performance and minimising awake time:
- - ~50% less awake time than before, average about 10-15 seconds over the previous ~20-25 seconds
- - 100% less power consumption than before, due to only refreshing the display once and minimising WiFi radio time.
-
-A second series has been added to the graph above which will track the long-term power consumption on the same battery for comparison. Like the last time, I will update the graph every few weeks.
-
-## Update June 18 2023
-
-<img width="800" src="https://github.com/chrisjtwomey/inkplate10-weather-cal/assets/5797356/dae1b40f-39d7-4685-a556-7cbf117b608e" />
-  
-**Some takeaways:**
-  - Current performance is worse than expectations at **47 days**
-  - Deep Sleep power consumption is _very_ high - the rate of voltage change each day suggests significant power usage while device is in deep sleep state.
-  - Voltage plot does not fit a [typical LiPo/Li-ion voltage curve](https://www.researchgate.net/figure/Typical-discharge-curve-of-a-battery-showing-the-nominal-battery-voltage-which-is_fig1_256454266) - an initial voltage drop is expected, followed by a stabilising around the nominal voltage of 3.7v and then a cliff-like drop off towards the end of capacity.
-    - While there are expected dips at the start and end of discharge, the overall rate of voltage drop remains more or less linear.  
+At 2 mA the battery lasts weeks, not years. On this board, use the build
+without SD card support and leave the card out. See
+[Inkplate-Arduino-library issue 209](https://github.com/SolderedElectronics/Inkplate-Arduino-library/issues/209).

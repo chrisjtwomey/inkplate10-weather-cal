@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 292" width="720" height="292" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+<rect width="720" height="292" fill="#ffffff"/>
+<rect x="220" y="12" width="12" height="12" rx="2" fill="#2a78d6"/>
+<text x="238" y="22" fill="#0b0b0b">Wi-Fi on</text>
+<rect x="320" y="12" width="12" height="12" rx="2" fill="#eb6834"/>
+<text x="338" y="22" fill="#0b0b0b">Wi-Fi off</text>
+<line x1="220.0" x2="220.0" y1="38" y2="254" stroke="#e1e0d9"/>
+<text x="220.0" y="272" text-anchor="middle" fill="#898781">0 s</text>
+<line x1="299.3" x2="299.3" y1="38" y2="254" stroke="#e1e0d9"/>
+<text x="299.3" y="272" text-anchor="middle" fill="#898781">1 s</text>
+<line x1="378.5" x2="378.5" y1="38" y2="254" stroke="#e1e0d9"/>
+<text x="378.5" y="272" text-anchor="middle" fill="#898781">2 s</text>
+<line x1="457.8" x2="457.8" y1="38" y2="254" stroke="#e1e0d9"/>
+<text x="457.8" y="272" text-anchor="middle" fill="#898781">3 s</text>
+<line x1="537.1" x2="537.1" y1="38" y2="254" stroke="#e1e0d9"/>
+<text x="537.1" y="272" text-anchor="middle" fill="#898781">4 s</text>
+<line x1="616.4" x2="616.4" y1="38" y2="254" stroke="#e1e0d9"/>
+<text x="616.4" y="272" text-anchor="middle" fill="#898781">5 s</text>
+<text x="210" y="61" text-anchor="end" fill="#0b0b0b">Start up, read the battery</text>
+<rect x="220.0" y="49" width="59.5" height="24" rx="3" fill="#eb6834"/>
+<text x="285.5" y="61" fill="#52514e">0.75 s</text>
+<text x="210" y="95" text-anchor="end" fill="#0b0b0b">Join Wi-Fi</text>
+<rect x="279.5" y="83" width="91.2" height="24" rx="3" fill="#2a78d6"/>
+<text x="376.6" y="95" fill="#52514e">1.15 s</text>
+<text x="210" y="129" text-anchor="end" fill="#0b0b0b">Download the page</text>
+<rect x="370.6" y="117" width="27.7" height="24" rx="3" fill="#2a78d6"/>
+<text x="404.4" y="129" fill="#52514e">0.35 s</text>
+<text x="210" y="163" text-anchor="end" fill="#0b0b0b">Prepare the picture</text>
+<rect x="398.4" y="151" width="55.5" height="24" rx="3" fill="#2a78d6"/>
+<text x="459.9" y="163" fill="#52514e">0.70 s</text>
+<text x="210" y="197" text-anchor="end" fill="#0b0b0b">Update the screen</text>
+<rect x="453.9" y="185" width="130.8" height="24" rx="3" fill="#eb6834"/>
+<text x="590.7" y="197" fill="#52514e">1.65 s</text>
+<text x="210" y="231" text-anchor="end" fill="#0b0b0b">Save a copy for the next wake</text>
+<rect x="584.7" y="219" width="63.4" height="24" rx="3" fill="#eb6834"/>
+<text x="654.1" y="231" fill="#52514e">0.80 s</text>
+</svg>
