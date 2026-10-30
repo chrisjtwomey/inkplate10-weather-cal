@@ -56,7 +56,7 @@ Inkplate 10. Wi-Fi is on only while the display gets the page.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/wake-steps-dark.svg">
-  <img alt="The steps of one wake: start up 0.75 s; join Wi-Fi 1.15 s, download the page 0.35 s and prepare the picture 0.70 s with Wi-Fi on; then update the screen 1.65 s and save a copy for the next wake 0.80 s with Wi-Fi off." src="assets/wake-steps-light.svg">
+  <img alt="The steps of one wake: start up 0.75 s; join Wi-Fi 1.15 s, download the page 0.35 s and prepare the picture 0.70 s with Wi-Fi on; then update the screen and save a copy for the next wake 2.45 s with Wi-Fi off." src="assets/wake-steps-light.svg">
 </picture>
 
 When a firmware update is waiting, Wi-Fi stays on until it is installed, and
