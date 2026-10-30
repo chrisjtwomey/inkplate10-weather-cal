@@ -265,7 +265,7 @@ void test_download_failure_increments_backoff_step_from_previous() {
 }
 
 // ---------------------------------------------------------------------------
-// No refresh header — server omits X-Next-Refresh-Seconds
+// No refresh header — server omits EPD-Next-Display-Refresh-Seconds
 // ---------------------------------------------------------------------------
 
 void test_no_refresh_header_backs_off_instead_of_sleeping_zero() {

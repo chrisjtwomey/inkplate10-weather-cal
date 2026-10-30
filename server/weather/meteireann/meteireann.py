@@ -342,7 +342,6 @@ class MetEireannService(WeatherService):
         }
 
         temps = [v["temperature_c"] for v in today_instants.values() if v["temperature_c"] is not None]
-        winds = [v for v in today_instants.values() if v["wind_ms"] is not None]
 
         # Representative entry: closest to noon
         noon_utc = now_utc.replace(hour=12, minute=0, second=0, microsecond=0)

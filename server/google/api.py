@@ -7,10 +7,8 @@ from pathlib import Path
 
 import requests
 from epd_server.source import DataSource
-from PIL import Image
 from googlemaps import Client
 from googlemaps.geocoding import geocode
-from googlemaps.timezone import timezone
 
 
 log = logging.getLogger(__name__)
@@ -62,11 +60,6 @@ class GoogleAPIService:
         cache.pop("location_center", None)
         cache.pop("static_map_url", None)
         cache.pop("static_map_image", None)
-
-    def get_timezone(self, location):
-        tz = timezone(self.client, location)
-        print(tz)
-        return tz
 
     def get_static_map_url(self, map_id, location):
         cache = self._load_cache()
@@ -215,12 +208,6 @@ class GoogleAPIService:
             )
 
             return url
-
-        def get_image(self, location, zoom=DEFAULT_ZOOM):
-            r = requests.get(self.get_url(location, zoom))
-            img = Image.open(r.raw)
-
-            return img
 
 
 class StaticMapSource(DataSource):

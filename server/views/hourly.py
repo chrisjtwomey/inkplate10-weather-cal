@@ -1,5 +1,3 @@
-import datetime as dt
-from airium import Airium
 from .detailed import DetailedPage
 
 
@@ -39,7 +37,7 @@ class HourlyPage(DetailedPage):
             hour = ""
             try:
                 hour = forecast["dt"].strftime("%-I")
-            except ValueError as ve:
+            except ValueError:
                 # platform-specific formatting error
                 #self.log.warning(str(ve))
                 hour = forecast["dt"].strftime("%I")
@@ -73,7 +71,7 @@ class HourlyPage(DetailedPage):
                             hour = ""
                             try:
                                 hour = forecast["dt"].strftime("%-I")
-                            except ValueError as ve:
+                            except ValueError:
                                 hour = forecast["dt"].strftime("%I")
                             hour = hour + forecast["dt"].strftime("%p").lower()
 

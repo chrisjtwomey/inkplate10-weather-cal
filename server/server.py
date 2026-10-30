@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Inkplate weather calendar server.
 
-Everything generic — HTTP routes, the X-Next-* headers, the regeneration
+Everything generic — HTTP routes, the EPD-Next-* headers, the regeneration
 loop, the client log relay, signal handling — is epd_server.DisplayServer.
 This file is the project: its config keys, its weather service, its five
 pages, and one run() call.

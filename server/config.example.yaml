@@ -16,7 +16,7 @@ server:
 # turn; here every pool is one image. The schedule names a pool at each wake
 # time (HH:MM:SS, in server.timezone). The server regenerates the image
 # regen_lead_seconds before the wake, then tells the client the next wake
-# time and URL in the X-Next-Refresh-Seconds and X-Next-URL headers.
+# time and URL in the EPD-Next-Display-Refresh-Seconds and EPD-Next-URL headers.
 # Defaults to today.png at 09:00:00 if omitted.
 display:
   pools:
