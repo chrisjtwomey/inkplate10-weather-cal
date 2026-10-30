@@ -166,17 +166,50 @@ void test_download_response_persists_next_url_for_next_boot() {
 // WiFi failure
 // ---------------------------------------------------------------------------
 
-void test_wifi_timeout_shows_error_and_sleeps_60s_from_epoch() {
+void test_wifi_timeout_shows_error_and_tries_again_in_2_minutes() {
     netStubs.wifiResult = ESP_ERR_TIMEOUT;
-    mockBoard.epochReturn = 1000;
 
     run_app();
 
     TEST_ASSERT_TRUE(dispStubs.displayMessageCalled);
-    TEST_ASSERT_TRUE(sleepStubs.sleepUntilCalled);
-    TEST_ASSERT_EQUAL((time_t)1060, sleepStubs.lastSleepUntilEpoch);
+    TEST_ASSERT_TRUE(sleepStubs.sleepForCalled);
+    TEST_ASSERT_EQUAL_UINT32(120, sleepStubs.lastSleepForSecs);
     // Must not have attempted a download
     TEST_ASSERT_EQUAL(0, netStubs.downloadCallCount);
+}
+
+// One more wake with no network, after the ones before it.
+static void wifiFailsAgain() {
+    resetAllStubs();
+    netStubs.wifiResult = ESP_ERR_TIMEOUT;
+    run_app();
+}
+
+void test_wifi_timeouts_back_off_up_to_an_hour_without_drawing_again() {
+    netStubs.wifiResult = ESP_ERR_TIMEOUT;
+    run_app();
+
+    const uint32_t waits[] = {360, 1080, 3240, 3600, 3600};
+    for (uint32_t wait : waits) {
+        wifiFailsAgain();
+        TEST_ASSERT_FALSE(dispStubs.displayMessageCalled);
+        TEST_ASSERT_EQUAL_UINT32(wait, sleepStubs.lastSleepForSecs);
+    }
+}
+
+void test_a_wifi_join_starts_the_back_off_again() {
+    netStubs.wifiResult = ESP_ERR_TIMEOUT;
+    run_app();
+    wifiFailsAgain();
+
+    resetAllStubs();
+    happyPathStubs();
+    run_app();
+    TEST_ASSERT_EQUAL(1, netStubs.downloadCallCount);
+
+    wifiFailsAgain();
+    TEST_ASSERT_TRUE(dispStubs.displayMessageCalled);
+    TEST_ASSERT_EQUAL_UINT32(120, sleepStubs.lastSleepForSecs);
 }
 
 void test_wifi_timeout_does_not_increment_backoff_step() {
@@ -574,7 +607,9 @@ int main(int argc, char** argv) {
     RUN_TEST(test_download_response_persists_next_url_for_next_boot);
 
     // WiFi failure
-    RUN_TEST(test_wifi_timeout_shows_error_and_sleeps_60s_from_epoch);
+    RUN_TEST(test_wifi_timeout_shows_error_and_tries_again_in_2_minutes);
+    RUN_TEST(test_wifi_timeouts_back_off_up_to_an_hour_without_drawing_again);
+    RUN_TEST(test_a_wifi_join_starts_the_back_off_again);
     RUN_TEST(test_wifi_timeout_does_not_increment_backoff_step);
 
     // MQTT: non-fatal failures

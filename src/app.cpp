@@ -38,9 +38,9 @@
 #define BATTERY_LOW_PERCENT 10
 // Below this a firmware update waits for a charge.
 #define BATTERY_FOR_UPDATE_PERCENT 20
-// How long to wait after WiFi did not connect. Short: the network is the
-// most likely thing to come back on its own.
-#define WIFI_RETRY_SECONDS 60
+// The longest wait between tries at WiFi. The back-off's own cap of a day would
+// leave the page that old after the network comes back.
+#define WIFI_RETRY_MAX_SECONDS 3600
 
 #if defined(TIMING_LOG)
 // When each step of a wake ended, in ms since boot. The radio is off before
@@ -106,6 +106,8 @@ RTC_DATA_ATTR int serverBackoffStep;
 // Next URL to fetch as directed by the server's Next-URL header.
 // Empty string on cold boot -> falls back to the config's server URL.
 RTC_DATA_ATTR char nextServerURL[256];
+// Failed tries at WiFi in a row. Zero-init on cold reset.
+RTC_DATA_ATTR int wifiBackoffStep;
 // Set once the panel shows that the battery is critical. The board then waits
 // for BATTERY_LOW_PERCENT, not BATTERY_CRITICAL_PERCENT: a cell's voltage
 // creeps up at rest, and each time it crossed back the panel would redraw.
@@ -115,6 +117,7 @@ RTC_DATA_ATTR bool batteryCritical;
 void reset_app_state() {
     bootCount = 0;
     batteryCritical = false;
+    wifiBackoffStep = 0;
     nextRefreshSeconds = 0;
     serverBackoffStep = 0;
     nextServerURL[0] = '\0';
@@ -180,15 +183,16 @@ void run_app() {
     if (connectNetwork(cfg) == ESP_ERR_TIMEOUT) {
         const char* errMsg = "wifi connect timeout";
         log(LOG_ERROR, errMsg);
-        displayMessage(errMsg, batteryPercent);
+        if (wifiBackoffStep == 0) displayMessage(errMsg, batteryPercent);
         if (trialBoot) {
             otaRollback(errMsg);
             return;  // terminal
         }
-        // Not the server's fault, so the back-off step is left alone.
-        sleepUntil(epdBoard().rtcGetEpoch() + WIFI_RETRY_SECONDS);
+        const uint32_t wait = computeBackoffSeconds(wifiBackoffStep++);
+        sleepFor(wait < WIFI_RETRY_MAX_SECONDS ? wait : WIFI_RETRY_MAX_SECONDS);
         return;  // terminal
     }
+    wifiBackoffStep = 0;
 
     markStep("network");
     logLastWakeTimings();
