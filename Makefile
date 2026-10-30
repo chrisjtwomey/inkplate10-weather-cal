@@ -2,6 +2,7 @@ REPO_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 IMAGE_NAME ?= ghcr.io/chrisjtwomey/inkplate10-weather-cal-server
 DOCKER_CONTEXT ?= ./server
 HOST_PORT ?= 8080
+HOST_HTTPS_PORT ?= 8443
 RUN_ARGS ?=
 
 LATEST_TAG := $(shell git -C "$(REPO_ROOT)" describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || echo v1.3.1)
@@ -22,7 +23,7 @@ build:
 
 run: build
 	@echo "Running $(IMAGE_NAME):$(SERVER_VERSION) on localhost:$(HOST_PORT)"
-	docker run --rm -p $(HOST_PORT):8080 $(if $(strip $(RUN_ARGS)),$(RUN_ARGS)) $(IMAGE_NAME):$(SERVER_VERSION)
+	docker run --rm -p $(HOST_PORT):8080 -p $(HOST_HTTPS_PORT):8443 $(if $(strip $(RUN_ARGS)),$(RUN_ARGS)) $(IMAGE_NAME):$(SERVER_VERSION)
 
 release: build
 	@echo "Release build complete for $(IMAGE_NAME):$(SERVER_VERSION)"
