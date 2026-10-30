@@ -24,14 +24,16 @@
 #include "settings.h"
 #include "sleep_utils.h"
 #include "wake.h"
-#include "time_utils.h"
 #include "user_agent.h"
 #include "version.h"
 
 // Portrait: the pages this client draws are taller than they are wide.
 #define PANEL_ROTATION 1
-// Below this the board sleeps until someone charges it.
+// At or below this the board shows that the battery is critical, and only
+// checks the battery until it is above BATTERY_LOW_PERCENT.
 #define BATTERY_CRITICAL_PERCENT 5
+// How often a board at critical battery wakes to see whether it was charged.
+#define BATTERY_CHECK_SECONDS 3600
 // Below this the log says so, and the wake carries on.
 #define BATTERY_LOW_PERCENT 10
 // Below this a firmware update waits for a charge.
@@ -104,10 +106,15 @@ RTC_DATA_ATTR int serverBackoffStep;
 // Next URL to fetch as directed by the server's Next-URL header.
 // Empty string on cold boot -> falls back to the config's server URL.
 RTC_DATA_ATTR char nextServerURL[256];
+// Set once the panel shows that the battery is critical. The board then waits
+// for BATTERY_LOW_PERCENT, not BATTERY_CRITICAL_PERCENT: a cell's voltage
+// creeps up at rest, and each time it crossed back the panel would redraw.
+RTC_DATA_ATTR bool batteryCritical;
 
 #ifdef NATIVE
 void reset_app_state() {
     bootCount = 0;
+    batteryCritical = false;
     nextRefreshSeconds = 0;
     serverBackoffStep = 0;
     nextServerURL[0] = '\0';
@@ -149,14 +156,23 @@ void run_app() {
     const int batteryPercent = readBatteryPercent();
     markStep("battery");
 
+    if (batteryCritical && batteryPercent <= BATTERY_LOW_PERCENT) {
+        logf(LOG_INFO, "battery at %d%%, still waiting for a charge", batteryPercent);
+        sleepFor(BATTERY_CHECK_SECONDS);
+        return;  // terminal
+    }
+    if (batteryCritical) log(LOG_NOTICE, "battery charged");
+    batteryCritical = false;
+
     ClientConfig cfg = loadConfig(builtInSettings());
     applySdConfig(&cfg);
     markStep("settings");
 
     if (batteryPercent <= BATTERY_CRITICAL_PERCENT) {
-        log(LOG_NOTICE, "battery critical! - sleeping until charged");
+        log(LOG_NOTICE, "battery critical! - checking hourly until charged");
         displayMessage("Battery critical, please charge!", batteryPercent);
-        sleepUntil(epdBoard().rtcGetEpoch() + SECONDS_IN_YEAR);
+        batteryCritical = true;
+        sleepFor(BATTERY_CHECK_SECONDS);
         return;  // terminal
     }
     if (batteryPercent <= BATTERY_LOW_PERCENT) log(LOG_WARNING, "battery low, charge soon!");

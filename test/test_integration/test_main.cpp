@@ -17,7 +17,6 @@
 #include "app.h"
 #include "backoff.h"
 #include "version.h"
-#include "time_utils.h"      // SECONDS_IN_DAY / SECONDS_IN_YEAR macros
 #include "integration_stubs.h"
 #include "WiFi.h"
 
@@ -253,16 +252,55 @@ void test_no_refresh_header_backs_off_instead_of_sleeping_zero() {
 // Battery critical / low
 // ---------------------------------------------------------------------------
 
-void test_battery_critical_sleeps_long_without_downloading() {
+void test_battery_critical_shows_it_and_checks_again_in_an_hour() {
     batteryStubs.percent = 3; // 3% — below the ≤5% threshold
-    mockBoard.epochReturn  = 500;
 
     run_app();
 
     TEST_ASSERT_TRUE(dispStubs.displayMessageCalled);
-    TEST_ASSERT_TRUE(sleepStubs.sleepUntilCalled);
-    TEST_ASSERT_EQUAL((time_t)(500 + SECONDS_IN_YEAR), sleepStubs.lastSleepUntilEpoch);
+    TEST_ASSERT_EQUAL_STRING("Battery critical, please charge!", dispStubs.lastDisplayMsg);
+    TEST_ASSERT_TRUE(sleepStubs.sleepForCalled);
+    TEST_ASSERT_EQUAL_UINT32(3600, sleepStubs.lastSleepForSecs);
     TEST_ASSERT_EQUAL(0, netStubs.downloadCallCount);
+}
+
+// A wake after the critical message: the battery only.
+static void wakeAfterCriticalAt(int percent) {
+    batteryStubs.percent = 3;
+    run_app();
+    resetAllStubs();
+    happyPathStubs();
+    netStubs.downloadNextRefresh = 1800;
+    batteryStubs.percent = percent;
+    run_app();
+}
+
+void test_battery_still_low_after_critical_checks_again_without_drawing() {
+    wakeAfterCriticalAt(4);
+
+    TEST_ASSERT_FALSE(dispStubs.displayMessageCalled);
+    TEST_ASSERT_EQUAL_UINT32(3600, sleepStubs.lastSleepForSecs);
+    TEST_ASSERT_EQUAL(0, netStubs.downloadCallCount);
+}
+
+void test_battery_that_creeps_above_critical_still_waits_for_a_charge() {
+    wakeAfterCriticalAt(10);
+
+    TEST_ASSERT_FALSE(dispStubs.displayMessageCalled);
+    TEST_ASSERT_EQUAL(0, netStubs.downloadCallCount);
+}
+
+void test_battery_charged_after_critical_draws_the_page_again() {
+    wakeAfterCriticalAt(11);
+
+    TEST_ASSERT_EQUAL(1, netStubs.downloadCallCount);
+    TEST_ASSERT_EQUAL_UINT32(1800, sleepStubs.lastSleepForSecs);  // the server's refresh
+
+    resetAllStubs();
+    happyPathStubs();
+    batteryStubs.percent = 8;
+    run_app();
+    TEST_ASSERT_EQUAL(1, netStubs.downloadCallCount);  // low, not critical: it carries on
 }
 
 void test_battery_low_continues_to_download() {
@@ -550,7 +588,10 @@ int main(int argc, char** argv) {
     RUN_TEST(test_no_refresh_header_backs_off_instead_of_sleeping_zero);
 
     // Battery
-    RUN_TEST(test_battery_critical_sleeps_long_without_downloading);
+    RUN_TEST(test_battery_critical_shows_it_and_checks_again_in_an_hour);
+    RUN_TEST(test_battery_still_low_after_critical_checks_again_without_drawing);
+    RUN_TEST(test_battery_that_creeps_above_critical_still_waits_for_a_charge);
+    RUN_TEST(test_battery_charged_after_critical_draws_the_page_again);
     RUN_TEST(test_battery_low_continues_to_download);
 
     // Draw failure

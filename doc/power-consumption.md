@@ -39,11 +39,11 @@ the screen. That leaves about 70 mAh in the battery, the shaded band.
 |---|---|---|
 | 20% | 3.64 V | Waits for a charge before it installs a firmware update |
 | 10% | 3.55 V | Logs "battery low, charge soon!" |
-| 5% | 3.51 V | Shows "Battery critical, please charge!" and stops waking |
+| 5% | 3.51 V | Shows "Battery critical, please charge!" and stops updating |
 
-At 5%, charge the battery, then press the display's reset button: charging does
-not wake it. Charge it within a few weeks of the warning: a LiPo left empty
-for long can be damaged.
+After the warning, the display checks the battery once an hour. Within an hour
+of being charged above 10%, it shows the page again. Charge it within a few
+weeks of the warning: a LiPo left empty for long can be damaged.
 
 Each battery's curve is a little different, so the percentage is a guide, not
 an exact figure.
