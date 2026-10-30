@@ -16,11 +16,14 @@ from epd_server.config import ConfigError, load_yaml, parse_network
 from epd_server.login import Login, SignInSite
 from flask import Blueprint, make_response, redirect, request
 from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError as RuamelYAMLError
+from yaml import YAMLError
 
 PASSWORD_ENV = "WEATHER_CAL_PASSWORD"
 SITE = SignInSite("weather-cal", data=frozenset({"/network.bin", "/logs"}), home="/settings")
 
 READ_ONLY = "Cannot save: config.yaml is read-only. Mount it writable, then restart the server."
+NOT_YAML = "Cannot save: config.yaml has a mistake in it. Correct the file, then save again."
 NO_PASSWORD = (f"No password is set, so anyone on the network can change these settings. "
                f"Set {PASSWORD_ENV} to turn on sign-in.")
 
@@ -200,7 +203,10 @@ def settings_blueprint(path: str, server, login: Login, mqtt_on: bool) -> Bluepr
     def change():
         typed = {f.name: request.form.get(f.name, "").strip()
                  for f in fields if f is not WIFI_PASSWORD}
-        config = load_yaml(path)
+        try:
+            config = load_yaml(path)
+        except (YAMLError, ConfigError):
+            return show(typed, {}, 500, alert=NOT_YAML)
         problems = refusals(fields, config, request.form)
         if problems:
             return show(typed, problems, 400)
@@ -214,6 +220,8 @@ def settings_blueprint(path: str, server, login: Login, mqtt_on: bool) -> Bluepr
             server.network = parse_network(load_yaml(path))
         except OSError:
             return show(typed, {}, 500, alert=READ_ONLY)
+        except RuamelYAMLError:
+            return show(typed, {}, 500, alert=NOT_YAML)
         return redirect("settings?saved=1", 303)
 
     @bp.route("/settings/token", methods=["POST"])

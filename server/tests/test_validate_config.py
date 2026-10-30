@@ -98,3 +98,21 @@ def test_a_bad_logs_keep_days_is_refused(caplog):
     with pytest.raises(SystemExit):
         validate_config(c)
     assert "logs.keep_days" in caplog.text
+
+
+@pytest.mark.parametrize("value", ["six", True, 2.5, -1])
+def test_a_bad_hourly_count_is_a_clear_error(value, caplog):
+    c = base()
+    c["weather"]["num_hourly_forecasts"] = value
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert "weather.num_hourly_forecasts must be non-negative" in caplog.text
+
+
+@pytest.mark.parametrize("value", [123, 1.5, ["Cork"]])
+def test_a_location_that_is_not_text_is_a_clear_error(value, caplog):
+    c = base()
+    c["location"] = value
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert "location must be a place name" in caplog.text

@@ -191,6 +191,20 @@ def test_a_file_it_cannot_write_says_so_and_nothing_changes(path, client, monkey
     assert path.read_text() == CONFIG
 
 
+@pytest.mark.parametrize("broken", [
+    "client: [unclosed\n",
+    "client:\n  wifi:\n    ssid: a\n    ssid: b\n",
+    "just text\n",
+])
+def test_a_file_with_a_mistake_in_it_says_so_and_stays(path, client, broken):
+    path.write_text(broken)
+    rsp = client.post("/settings", data=form(ssid="new-wifi"))
+    assert rsp.status_code == 500
+    assert soup(rsp).find(id="problem").text == sp.NOT_YAML
+    assert path.read_text() == broken
+    assert not (path.parent / "config.yaml.bak").exists()
+
+
 # ── Behind the sign-in ───────────────────────────────────────────────
 
 @pytest.fixture

@@ -124,9 +124,10 @@ def validate_config(config: dict) -> ServerConfig:
         num_hourly_forecasts = get_prop_by_keys(
             config, "weather", "num_hourly_forecasts", default=6
         )
-        if num_hourly_forecasts < 0:
+        if isinstance(num_hourly_forecasts, bool) or not isinstance(num_hourly_forecasts, int) \
+                or num_hourly_forecasts < 0:
             raise ConfigError(
-                f"weather.num_hourly_forecasts must be non-negative (got {num_hourly_forecasts})"
+                f"weather.num_hourly_forecasts must be non-negative (got {num_hourly_forecasts!r})"
             )
 
         # ---- google ----
@@ -134,7 +135,10 @@ def validate_config(config: dict) -> ServerConfig:
         staticmaps_mapid = get_prop_by_keys(config, "google", "staticmaps_mapid", required=True)
 
         # ---- location ----
-        location = get_prop(config, "location", required=True).strip()
+        location = get_prop(config, "location", required=True)
+        if not isinstance(location, str):
+            raise ConfigError(f"location must be a place name, in quotes if it is a number (got {location!r})")
+        location = location.strip()
 
         # ---- logs: the boards' log lines, kept on disk ----
         logs_path = str(get_prop_by_keys(config, "logs", "path", default="data/board-logs.db",
