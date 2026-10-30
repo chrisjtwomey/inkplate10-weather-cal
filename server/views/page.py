@@ -15,27 +15,6 @@ PNG_DIR = _VIEWS_DIR
 
 
 class Page(_Page):
-    def __init__(
-        self,
-        name,
-        width,
-        height,
-        inner_width=None,
-        inner_height=None,
-        inner_align_x="center",
-        inner_align_y="center",
-        **kwargs,
-    ):
+    def __init__(self, name, *geometry, **kwargs):
         # kwargs lets a caller pass renderer= / quantiser= through unchanged.
-        super().__init__(
-            name,
-            width,
-            height,
-            inner_width,
-            inner_height,
-            inner_align_x,
-            inner_align_y,
-            html_dir=HTML_DIR,
-            png_dir=PNG_DIR,
-            **kwargs,
-        )
+        super().__init__(name, *geometry, html_dir=HTML_DIR, png_dir=PNG_DIR, **kwargs)

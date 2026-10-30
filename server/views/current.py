@@ -5,23 +5,8 @@ from .simplified import SimplifiedPage
 class CurrentPage(SimplifiedPage):
     requires = ("map_url", "current_conditions", "daily_summary")
 
-    def __init__(
-        self,
-        width,
-        height,
-        inner_width=None,
-        inner_height=None,
-        inner_align_x="center",
-        inner_align_y="center",
-    ):
-        super().__init__(
-            width,
-            height,
-            inner_width,
-            inner_height,
-            inner_align_x,
-            inner_align_y,
-        )
+    def __init__(self, *geometry, **kwargs):
+        super().__init__(*geometry, **kwargs)
         self.name = "current"
 
     def _css_links(self, a):
