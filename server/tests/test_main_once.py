@@ -9,6 +9,7 @@ import logging.config
 import sys
 
 import pytest
+from flask import Flask
 import yaml
 from PIL import Image
 
@@ -71,17 +72,49 @@ def test_main_once_renders_every_page_and_exits(project_dir, caplog):
     assert "once: images generated, not starting the server" in caplog.text
 
 
-def test_the_boards_log_lines_are_kept_and_answer_logs(project_dir, monkeypatch):
-    made = {}
-
+def fake_server(made):
+    """A DisplayServer that keeps what it is given and a real Flask app, and does not run."""
     class FakeServer:
         def __init__(self, **kwargs):
             made.update(kwargs)
+            made["server"] = self
+            self.app = Flask(__name__)
+            self.network = kwargs["network"]
 
         def run(self, once=False):
             pass
 
-    monkeypatch.setattr(server, "DisplayServer", FakeServer)
+    return FakeServer
+
+
+def test_a_password_puts_the_settings_behind_a_sign_in(project_dir, monkeypatch):
+    made = {}
+    monkeypatch.setenv("WEATHER_CAL_PASSWORD", "correct horse")
+    monkeypatch.setattr(server, "DisplayServer", fake_server(made))
+    server.main()
+
+    client = made["server"].app.test_client()
+    assert client.get("/settings").status_code == 401
+    assert client.post("/login", data={"password": "correct horse"}).status_code == 303
+    assert client.get("/settings").status_code == 200
+    assert (project_dir / "data" / "login.json").exists()
+
+
+def test_without_a_password_the_settings_are_open_and_the_log_says_so(project_dir, monkeypatch, caplog):
+    made = {}
+    monkeypatch.delenv("WEATHER_CAL_PASSWORD", raising=False)
+    monkeypatch.setattr(server, "DisplayServer", fake_server(made))
+    server.main()
+
+    assert made["server"].app.test_client().get("/settings").status_code == 200
+    assert "no password" in caplog.text
+    assert not (project_dir / "data" / "login.json").exists()
+
+
+def test_the_boards_log_lines_are_kept_and_answer_logs(project_dir, monkeypatch):
+    made = {}
+
+    monkeypatch.setattr(server, "DisplayServer", fake_server(made))
     server.main()
 
     assert (project_dir / "data" / "board-logs.db").exists()

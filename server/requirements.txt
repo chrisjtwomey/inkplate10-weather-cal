@@ -2,6 +2,8 @@ selenium==4.44.0
 airium==0.2.7
 packaging==26.2
 PyYAML==6.0.3
+# The Settings page edits config.yaml and keeps its comments.
+ruamel.yaml==0.19.1
 googlemaps==4.10.0
 Flask==3.1.3
 Pillow==12.3.0

@@ -57,6 +57,9 @@ joined with `_`. `weather.apikey` is `WEATHER_APIKEY`, `server.timezone` is
 `SERVER_TIMEZONE`, and `client.firmware.dir` is `CLIENT_FIRMWARE_DIR`. A
 block, such as `display`, needs `config.yaml`.
 
+`WEATHER_CAL_PASSWORD` is not a key: it sets the password for
+[the Settings page](#the-settings-page-and-sign-in).
+
 ### Docker
 
 The image holds the example `config.yaml`, so a first run needs only the
@@ -75,7 +78,7 @@ To set the schedule or anything else in a block, mount your own
 
 ```sh
 docker run -d --restart unless-stopped -p 8080:8080 \
-  -v "$(pwd)/config.yaml:/app/config.yaml:ro" \
+  -v "$(pwd)/config.yaml:/app/config.yaml" \
   -v weather-cal-data:/app/data \
   ghcr.io/chrisjtwomey/inkplate10-weather-cal-server:latest
 ```
@@ -199,6 +202,27 @@ From a wake on 25 October 2026:
 2026-10-25 08:30:05 - client - INFO - inkplate10-weather-cal: 2026-10-25T08:30:05+00:00 - INFO - drawing image from buffer
 ```
 
+### The Settings page and sign-in
+
+`/settings` sets what a board gets when you install firmware: the server
+address, the Wi-Fi name and password, and the MQTT broker when MQTT is on. A
+save writes to `config.yaml`, keeps its comments, and keeps the old file as
+`config.yaml.bak`. So `config.yaml` must be writable. Every other setting stays
+in the file.
+
+Set `WEATHER_CAL_PASSWORD` to turn on the sign-in. A server without it logs a
+warning, and anyone on the network can read the Wi-Fi password and change these
+settings.
+
+With a password set:
+
+- `/settings`, `/logs` and `/network.bin` need a sign-in. The display's own
+  routes stay open.
+- The sign-in lasts 30 days. Five wrong passwords make that address wait 15 minutes.
+- Other apps send the access token shown on the Settings page, to read `/logs`
+  and `/network.bin`.
+- Behind a reverse proxy, set `server.reverse_proxy` to `true`.
+
 ### Reading the logs
 
 `GET /logs` answers with the kept lines as JSON, newest last:
@@ -209,7 +233,7 @@ curl -s 'http://localhost:8080/logs?q=battery%20voltage&limit=50'
 
 - `board`, `level` (that level and above) and `q` (text in the line) narrow the lines; `limit` caps them, at most 500.
 - `after` or `before` a line's `id` pages forward or back.
-- The server has no login: anyone who can reach it can read the logs.
+- With a password set, send the access token from the Settings page: `curl -H "Authorization: Bearer <token>" ...`.
 
 ### A broker
 

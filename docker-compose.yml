@@ -7,7 +7,7 @@ services:
       - "8080:8080"
     # Recommended: mount your config.yaml for server configuration
     volumes:
-      - ./server/config.yaml:/app/config.yaml:ro
+      - ./server/config.yaml:/app/config.yaml
       # Firmware images the board updates itself from. A named volume, not a
       # host path: the container runs as uid 1000 and could not write to a
       # directory the host owns. Omit it when client.firmware.source is set,
@@ -19,6 +19,9 @@ services:
     # Only override these if needed; most config is in config.yaml
     environment:
       LOCATION: "Cork"         # Optional: override location
+      # The password for the Settings page. Without it, anyone on the network
+      # can read the Wi-Fi password and change the settings.
+      # WEATHER_CAL_PASSWORD: "${WEATHER_CAL_PASSWORD}"
       SERVER_PORT: "8080"      # Optional: override port
       # A token for a private firmware repository. Keep it out of config.yaml.
       # CLIENT_FIRMWARE_SOURCE_TOKEN: "${CLIENT_FIRMWARE_SOURCE_TOKEN}"

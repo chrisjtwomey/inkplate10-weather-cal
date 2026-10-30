@@ -26,7 +26,9 @@ from views.tomorrow import TomorrowPage
 from google.api import GoogleAPIService
 from epd_server import DisplayServer, LogsQuery, LogStore, align_process_timezone
 from epd_server.config import ConfigError, MqttSettings, load_core_config, load_yaml
+from epd_server.login import Login, guard
 from epd_server.source import CompositeSource, StaticSource
+from settings_page import PASSWORD_ENV, SITE, settings_blueprint
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 log = logging.getLogger("server")
@@ -87,6 +89,8 @@ class ServerConfig:
     mqtt_port: Any
     mqtt_prefix: Any
     firmware: Any             # FirmwareSettings; server-driven client updates
+    network: Any              # NetworkSettings; what a USB flash writes to a board
+    reverse_proxy: Any        # bool; trust a proxy's X-Forwarded-* headers
     logs_path: Any            # str; the boards' log lines, relative to this folder
     logs_days: Any            # float; how long a line is kept
     debug: Any
@@ -180,6 +184,8 @@ def validate_config(config: dict) -> ServerConfig:
         mqtt_port=core.mqtt.port,
         mqtt_prefix=core.mqtt.prefix,
         firmware=core.firmware,
+        network=core.network,
+        reverse_proxy=core.server.reverse_proxy,
         logs_path=logs_path,
         logs_days=float(logs_days),
         debug=core.server.debug,
@@ -199,7 +205,8 @@ def main():
     )
     args = parser.parse_args()
 
-    config = load_yaml(os.path.join(cwd, "config.yaml"))
+    config_path = os.path.join(cwd, "config.yaml")
+    config = load_yaml(config_path)
 
     debug = get_prop(config, "debug", default=False)
     log_ini_path = os.path.join(cwd, "logging.dev.ini" if debug else "logging.ini")
@@ -263,6 +270,7 @@ def main():
             mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_prefix),
             mqtt_client_id=f"eink-cal-server-{socket.gethostname()}",
             firmware=cfg.firmware,
+            network=cfg.network,
             client_logs=board_logs,
             queries={"logs": LogsQuery(board_logs, cfg.timezone).answer},
         )
@@ -271,6 +279,12 @@ def main():
         # other config error rather than as a traceback.
         log.error(str(exc))
         sys.exit(1)
+    login = Login(os.environ.get(PASSWORD_ENV, ""), os.path.join(cwd, "data", "login.json"))
+    if not login.on:
+        log.warning("no password: anyone who can reach the server can change its settings. "
+                    "Set %s to turn on sign-in", PASSWORD_ENV)
+    guard(server.app, login, SITE, cfg.reverse_proxy)
+    server.app.register_blueprint(settings_blueprint(config_path, server, login, cfg.mqtt_enabled))
     server.run(once=args.once)
 
 
