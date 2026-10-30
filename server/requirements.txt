@@ -16,4 +16,4 @@ tzdata==2026.3; sys_platform == "win32"
 # at the release platformio.ini pins: the firmware and the server share the
 # header contract. Bump both together.
 # For local development against a checkout instead:  pip install -e ../../epd/server
-epd-server==0.21.0
+epd-server==0.22.0
