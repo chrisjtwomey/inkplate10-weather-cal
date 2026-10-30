@@ -1,19 +1,26 @@
 """Weather-service parsers driven by canned JSON fixtures via `responses`."""
+import inspect
 import json
 import re
+import traceback
 from datetime import datetime, timedelta, timezone
 
 import pytest
+import requests
 import responses
 from freezegun import freeze_time
 
+from weather.accuweather import accuweather
+from weather.meteireann import meteireann
+from weather.openmeteo import openmeteo
+from weather.openweathermap import openweathermap
 from weather.accuweather.accuweather import AccuweatherService
 from weather.openweathermap.openweathermap import OpenWeatherMapService
 from weather.mock.mock import MockWeatherService
 from weather.meteireann.meteireann import MetEireannService
 from weather.openmeteo.openmeteo import OpenMeteoService
 from weather.registry import registered_services, _REGISTRY
-from weather.service import WeatherService
+from weather.service import REQUEST_TIMEOUT_S, WeatherFetchError, WeatherService
 
 
 def _load(fixtures_dir, name):
@@ -410,3 +417,53 @@ def test_openmeteo_current_conditions(openmeteo_endpoints):
     assert cc["humidity"] == 74
     assert cc["wind"]["unit"] == "kmh"
     assert cc["uv_index"] is None
+
+
+# ── Requests ─────────────────────────────────────────────────────────
+
+KEYED_URL = "http://weather.test/forecast?apikey=SECRET"
+
+
+@pytest.fixture
+def service():
+    return MockWeatherService(location="Cork")
+
+
+def test_a_request_has_a_timeout(service):
+    with responses.RequestsMock() as rsps:
+        rsps.add(rsps.GET, KEYED_URL, json={})
+        service._get(KEYED_URL)
+        assert rsps.calls[0].request.req_kwargs["timeout"] == REQUEST_TIMEOUT_S
+
+
+@pytest.mark.parametrize("status", [401, 403, 429, 500])
+def test_a_refused_request_names_the_provider_and_status_but_not_the_key(service, status):
+    with responses.RequestsMock() as rsps:
+        rsps.add(rsps.GET, KEYED_URL, status=status)
+        with pytest.raises(WeatherFetchError) as caught:
+            service._get(KEYED_URL)
+    assert caught.value.status == status
+    assert str(caught.value) == f"mock: status {status}"
+
+
+@pytest.mark.parametrize("error", [requests.ConnectTimeout, requests.ReadTimeout, requests.ConnectionError])
+def test_no_answer_keeps_the_key_out_of_the_error_and_its_cause(service, error):
+    with responses.RequestsMock() as rsps:
+        rsps.add(rsps.GET, KEYED_URL, body=error(f"failed: {KEYED_URL}"))
+        with pytest.raises(WeatherFetchError) as caught:
+            service._get(KEYED_URL)
+    assert "SECRET" not in "".join(traceback.format_exception(caught.value))
+    assert caught.value.status is None
+
+
+@pytest.mark.parametrize("module", [accuweather, meteireann, openmeteo, openweathermap])
+def test_every_provider_requests_through_the_one_function(module):
+    assert "requests." not in inspect.getsource(module)
+
+
+def test_accuweather_says_a_403_on_the_5_day_forecast_may_need_a_plan_upgrade(accuweather_endpoints):
+    svc = AccuweatherService(apikey="key", location="Cork")
+    accuweather_endpoints.add(accuweather_endpoints.GET,
+                              re.compile(r".*/forecasts/v1/daily/5day/.*"), status=403)
+    with pytest.raises(PermissionError, match="plan upgrade"):
+        svc.get_5day_forecast()

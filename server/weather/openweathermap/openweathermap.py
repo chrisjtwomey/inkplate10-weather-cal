@@ -1,4 +1,3 @@
-import requests
 from collections import defaultdict
 from datetime import datetime, time as dt_time
 from ..service import WeatherService
@@ -18,7 +17,7 @@ class OpenWeatherMapService(WeatherService):
         self.lat, self.lon = self._get_location_coords(location)
 
     def get_daily_summary(self):
-        res = requests.get(
+        res = self._get(
             self.baseurl
             + "/data/2.5/weather?lat={}&lon={}&appid={}&units={}".format(
                 self.lat, self.lon, self.apikey, self.units
@@ -44,7 +43,7 @@ class OpenWeatherMapService(WeatherService):
         return forecast
 
     def get_current_conditions(self):
-        res = requests.get(
+        res = self._get(
             self.baseurl
             + "/data/2.5/weather?lat={}&lon={}&appid={}&units={}".format(
                 self.lat, self.lon, self.apikey, self.units
@@ -77,7 +76,7 @@ class OpenWeatherMapService(WeatherService):
         }
 
     def get_hourly_forecast(self):
-        res = requests.get(
+        res = self._get(
             self.baseurl
             + "/data/2.5/forecast?cnt={}&lat={}&lon={}&appid={}&units={}".format(
                 self.num_hours, self.lat, self.lon, self.apikey, self.units
@@ -119,7 +118,7 @@ class OpenWeatherMapService(WeatherService):
         return forecasts
 
     def get_5day_forecast(self):
-        res = requests.get(
+        res = self._get(
             self.baseurl
             + "/data/2.5/forecast?cnt=40&lat={}&lon={}&appid={}&units={}".format(
                 self.lat, self.lon, self.apikey, self.units
@@ -183,7 +182,7 @@ class OpenWeatherMapService(WeatherService):
         return forecasts
 
     def _get_location_coords(self, location):
-        res = requests.get(
+        res = self._get(
             self.baseurl
             + "/geo/1.0/direct?q={}&limit=1&appid={}".format(location, self.apikey)
         )

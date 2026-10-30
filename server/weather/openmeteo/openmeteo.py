@@ -2,7 +2,6 @@ import logging
 from datetime import datetime, date
 from pathlib import Path
 
-import requests
 
 from ..cache import DiskCache
 from ..service import WeatherService
@@ -45,7 +44,7 @@ class OpenMeteoService(WeatherService):
             log.debug("Open-Meteo coords cache hit for %s", location)
             return cached["lat"], cached["lon"]
 
-        res = requests.get(
+        res = self._get(
             _GEOCODING_URL,
             params={"name": location, "count": 1, "format": "json"},
         )
@@ -89,7 +88,7 @@ class OpenMeteoService(WeatherService):
         if cached is not None:
             return cached
 
-        res = requests.get(
+        res = self._get(
             self.baseurl,
             params={
                 "latitude": self.lat,
@@ -115,7 +114,6 @@ class OpenMeteoService(WeatherService):
                 "timezone": "auto",
             },
         )
-        res.raise_for_status()
         data = res.json()
         self.cache.set("forecast", data)
         return data

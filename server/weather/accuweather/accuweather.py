@@ -1,10 +1,9 @@
 import logging
-import requests
 from datetime import datetime
 from pathlib import Path
 from utils import even_select
 from ..cache import DiskCache
-from ..service import WeatherService
+from ..service import WeatherFetchError, WeatherService
 from ..registry import register
 
 log = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ class AccuweatherService(WeatherService):
 
         is_metric = self.units == "metric"
         path = f"{self.baseurl}/forecasts/v1/daily/1day/{self.location_key}?apikey={self.apikey}&metric={is_metric}&details=true"
-        res = requests.get(path)
+        res = self._get(path)
         data = res.json()
 
         if len(data) == 0:
@@ -84,7 +83,7 @@ class AccuweatherService(WeatherService):
 
         is_metric = self.units == "metric"
         path = f"{self.baseurl}/forecasts/v1/hourly/12hour/{self.location_key}?apikey={self.apikey}&metric={is_metric}&details=true"
-        res = requests.get(path)
+        res = self._get(path)
         data = res.json()
 
         if len(data) == 0:
@@ -130,13 +129,15 @@ class AccuweatherService(WeatherService):
             f"{self.baseurl}/forecasts/v1/daily/5day/{self.location_key}"
             f"?apikey={self.apikey}&metric={is_metric}&details=true"
         )
-        res = requests.get(path)
-
-        if res.status_code == 403:
-            raise PermissionError(
-                "AccuWeather 5-day endpoint returned 403 — "
-                "this endpoint may require a plan upgrade"
-            )
+        try:
+            res = self._get(path)
+        except WeatherFetchError as exc:
+            if exc.status == 403:
+                raise PermissionError(
+                    "AccuWeather 5-day endpoint returned 403 — "
+                    "this endpoint may require a plan upgrade"
+                ) from None
+            raise
 
         data = res.json()
         if not data.get("DailyForecasts"):
@@ -211,7 +212,7 @@ class AccuweatherService(WeatherService):
             return cached
 
         path = f"{self.baseurl}/currentconditions/v1/{self.location_key}?apikey={self.apikey}&details=true"
-        res = requests.get(path)
+        res = self._get(path)
         data = res.json()
 
         if len(data) == 0:
@@ -269,7 +270,7 @@ class AccuweatherService(WeatherService):
         path = (
             f"{self.baseurl}/locations/v1/search?apikey={self.apikey}&q={location}"
         )
-        res = requests.get(path)
+        res = self._get(path)
         data = res.json()
 
         if len(data) == 0:

@@ -40,6 +40,7 @@ raises `TypeError` when the server creates it, not later at a render.
 | `get_5day_forecast()` | One entry a day, for 5 days. |
 
 - `datasets()` gives these four to the pages by name: `current_conditions`, `daily_summary`, `hourly_forecasts` and `daily_forecasts`. A page fetches only what its `Page.requires` names.
+- `_get(url, ...)` makes a request with a 20 s timeout, and raises `WeatherFetchError` for no answer or a status of 400 or above. Use it for every request: its error holds no URL, so an API key in the URL stays out of the log.
 - `get_icon(icon_key)` turns the provider's icon code into a local icon, through the provider's `icon-map.json`.
 - `invalidate_forecast_cache()` does nothing by default. A provider that caches overrides it. The server calls it before each scheduled render, so each wake gets fresh weather.
 - `needs_apikey` is `True` by default. A provider whose API needs no key sets it to `False`, and the server then starts without `weather.apikey`.

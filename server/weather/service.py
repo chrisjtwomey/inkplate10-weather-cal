@@ -2,7 +2,20 @@ import os
 import json
 from abc import abstractmethod
 
+import requests
 from epd_server.source import DataSource
+
+REQUEST_TIMEOUT_S = 20
+
+
+class WeatherFetchError(Exception):
+    """A provider could not be reached or refused the request. Its message
+    holds no URL, since a URL can hold the API key and this reaches the log.
+    ``status`` is the HTTP status, or None with no answer."""
+
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        self.status = status
 
 
 class WeatherService(DataSource):
@@ -29,6 +42,21 @@ class WeatherService(DataSource):
         self.apikey = apikey
         self.units = "metric" if metric else "imperial"
         self.num_hours = num_hours
+
+    def _get(self, url, **kwargs):
+        """GET ``url``, with a timeout: a call that never returns would stop
+        every later page.
+
+        Raises:
+            WeatherFetchError: no answer, or a status of 400 or above.
+        """
+        try:
+            res = requests.get(url, timeout=REQUEST_TIMEOUT_S, **kwargs)
+        except requests.RequestException as exc:
+            raise WeatherFetchError(f"{self.service_name}: {type(exc).__name__}") from None
+        if res.status_code >= 400:
+            raise WeatherFetchError(f"{self.service_name}: status {res.status_code}", res.status_code)
+        return res
 
     def get_icon(self, icon_key):
         icon_key = str(icon_key)

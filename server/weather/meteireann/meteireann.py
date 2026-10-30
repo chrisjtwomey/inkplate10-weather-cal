@@ -4,7 +4,6 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import requests
 from astral import Observer
 from astral import sun
 
@@ -97,7 +96,7 @@ class MetEireannService(WeatherService):
             log.debug("Met Éireann coords cache hit for %s", location)
             return cached["lat"], cached["lon"]
 
-        res = requests.get(
+        res = self._get(
             _NOMINATIM_URL,
             params={"q": location, "format": "json", "limit": 1},
             headers={"User-Agent": _USER_AGENT},
@@ -123,8 +122,7 @@ class MetEireannService(WeatherService):
             return cached
 
         url = f"{self.baseurl}?lat={self.lat};long={self.lon}"
-        res = requests.get(url, headers={"User-Agent": _USER_AGENT})
-        res.raise_for_status()
+        res = self._get(url, headers={"User-Agent": _USER_AGENT})
         xml_text = res.text
         self.cache.set("xml_raw", xml_text)
         return xml_text
