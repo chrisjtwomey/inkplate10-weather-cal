@@ -15,7 +15,7 @@ import json
 import argparse
 import dataclasses
 import logging.config
-from typing import Any, NoReturn
+from typing import NoReturn
 
 from utils import get_prop, get_prop_by_keys
 from views.hourly import HourlyPage
@@ -25,7 +25,7 @@ from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
 from google.api import GoogleAPIService, StaticMapSource
 from epd_server import DisplayServer, InstallBoard, LogsQuery, LogStore, align_process_timezone
-from epd_server.config import ConfigError, MqttSettings, load_core_config, load_yaml
+from epd_server.config import ConfigError, CoreConfig, load_core_config, load_yaml
 from epd_server.login import Login, guard
 from epd_server.source import CompositeSource
 from settings_page import PASSWORD_ENV, SITE, settings_blueprint
@@ -67,39 +67,19 @@ def _server_version() -> str:
     return version
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class ServerConfig:
-    # Fields are typed as Any because values come from a generic YAML/env-var
-    # accessor whose return type cannot be statically narrowed.  Type safety
-    # is enforced by the validation logic in validate_config(), not here.
-    port: Any
-    https_port: Any           # int; the browser's install page needs HTTPS. 0 for none
-    timezone: Any             # tzinfo / ZoneInfo
-    schedule: Any                # WakeSchedule from the display block; drives both regen and client wakes
-    regen_lead_seconds: Any    # int; seconds before wake time to regenerate the image
-    image_width: Any
-    image_height: Any
-    image_inner_width: Any
-    image_inner_height: Any
-    image_inner_align_x: Any
-    image_inner_align_y: Any
-    weather_service: Any      # one of _SUPPORTED_WEATHER_SERVICES
-    weather_apikey: Any       # str, or None for mock service
-    weather_metric: Any
-    num_hourly_forecasts: Any
-    google_apikey: Any
-    staticmaps_mapid: Any
-    location: Any
-    mqtt_enabled: Any
-    mqtt_host: Any
-    mqtt_port: Any
-    mqtt_prefix: Any
-    firmware: Any             # FirmwareSettings; server-driven client updates
-    network: Any              # NetworkSettings; what a USB flash writes to a board
-    reverse_proxy: Any        # bool; trust a proxy's X-Forwarded-* headers
-    logs_path: Any            # str; the boards' log lines, relative to this folder
-    logs_days: Any            # float; how long a line is kept
-    debug: Any
+    """epd's config, and the keys only this project has."""
+    core: CoreConfig
+    weather_service: str      # one of registered_services()
+    weather_apikey: str | None  # None for a provider with no key
+    weather_metric: bool
+    num_hourly_forecasts: int
+    google_apikey: str
+    staticmaps_mapid: str
+    location: str
+    logs_path: str            # the boards' log lines, relative to this folder
+    logs_days: float          # how long a line is kept
 
 
 def validate_config(config: dict) -> ServerConfig:
@@ -168,17 +148,7 @@ def validate_config(config: dict) -> ServerConfig:
         _err(exc.args[0] if exc.args else str(exc))
 
     return ServerConfig(
-        port=core.server.port,
-        https_port=core.server.https_port,
-        timezone=core.server.timezone,
-        schedule=core.server.schedule,
-        regen_lead_seconds=core.server.regen_lead_seconds,
-        image_width=core.image.width,
-        image_height=core.image.height,
-        image_inner_width=core.image.inner_width,
-        image_inner_height=core.image.inner_height,
-        image_inner_align_x=core.image.inner_align_x,
-        image_inner_align_y=core.image.inner_align_y,
+        core=core,
         weather_service=weather_service,
         weather_apikey=weather_apikey,
         weather_metric=weather_metric,
@@ -186,16 +156,8 @@ def validate_config(config: dict) -> ServerConfig:
         google_apikey=google_apikey,
         staticmaps_mapid=staticmaps_mapid,
         location=location,
-        mqtt_enabled=core.mqtt.enabled,
-        mqtt_host=core.mqtt.host,
-        mqtt_port=core.mqtt.port,
-        mqtt_prefix=core.mqtt.prefix,
-        firmware=core.firmware,
-        network=core.network,
-        reverse_proxy=core.server.reverse_proxy,
         logs_path=logs_path,
         logs_days=float(logs_days),
-        debug=core.server.debug,
     )
 
 
@@ -223,11 +185,11 @@ def main():
 
     cfg = validate_config(config)
 
-    # Logging timestamps follow the process TZ, not cfg.timezone; align them.
-    align_process_timezone(cfg.timezone)
-    log.info(f"timezone: {cfg.timezone}")
-    log.info(f"display: {cfg.schedule.describe()}")
-    log.info(f"regen_lead_seconds: {cfg.regen_lead_seconds}")
+    # Logging timestamps follow the process TZ, not cfg.core.server.timezone; align them.
+    align_process_timezone(cfg.core.server.timezone)
+    log.info(f"timezone: {cfg.core.server.timezone}")
+    log.info(f"display: {cfg.core.server.schedule.describe()}")
+    log.info(f"regen_lead_seconds: {cfg.core.server.regen_lead_seconds}")
 
     gapi = GoogleAPIService(cfg.google_apikey, os.path.join(cwd, "data", "map-cache"))
 
@@ -241,20 +203,13 @@ def main():
         metric=cfg.weather_metric,
     ))
 
-    geometry = (
-        cfg.image_width,
-        cfg.image_height,
-        cfg.image_inner_width,
-        cfg.image_inner_height,
-        cfg.image_inner_align_x,
-        cfg.image_inner_align_y,
-    )
+    geometry = cfg.core.image.page_kwargs()
     pages = [
-        TodayPage(*geometry),
-        CurrentPage(*geometry),
-        HourlyPage(*geometry),
-        DailyPage(*geometry),
-        TomorrowPage(*geometry),
+        TodayPage(**geometry),
+        CurrentPage(**geometry),
+        HourlyPage(**geometry),
+        DailyPage(**geometry),
+        TomorrowPage(**geometry),
     ]
     # Both fetch at the first render, after the server is up. Each page
     # declares what it needs in Page.requires.
@@ -268,21 +223,21 @@ def main():
         server = DisplayServer(
             pages=pages,
             source=source,
-            schedule=cfg.schedule,
-            tz=cfg.timezone,
-            regen_lead_seconds=cfg.regen_lead_seconds,
-            port=cfg.port,
-            https_port=cfg.https_port,
+            schedule=cfg.core.server.schedule,
+            tz=cfg.core.server.timezone,
+            regen_lead_seconds=cfg.core.server.regen_lead_seconds,
+            port=cfg.core.server.port,
+            https_port=cfg.core.server.https_port,
             certificate_dir=os.path.join(cwd, "data", "certificate"),
-            mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_prefix),
+            mqtt=cfg.core.mqtt,
             mqtt_client_id=f"eink-cal-server-{socket.gethostname()}",
-            firmware=cfg.firmware,
-            network=cfg.network,
+            firmware=cfg.core.firmware,
+            network=cfg.core.network,
             install_boards=INSTALL_BOARDS,
             settings_url="settings",
             login_url="login",
             client_logs=board_logs,
-            queries={"logs": LogsQuery(board_logs, cfg.timezone).answer},
+            queries={"logs": LogsQuery(board_logs, cfg.core.server.timezone).answer},
         )
     except ValueError as exc:
         # The schedule names a page that does not exist. Report it like every
@@ -293,8 +248,8 @@ def main():
     if not login.on:
         log.warning("no password: anyone who can reach the server can change its settings. "
                     "Set %s to turn on sign-in", PASSWORD_ENV)
-    guard(server.app, login, SITE, cfg.reverse_proxy)
-    server.app.register_blueprint(settings_blueprint(config_path, server, login, cfg.mqtt_enabled))
+    guard(server.app, login, SITE, cfg.core.server.reverse_proxy)
+    server.app.register_blueprint(settings_blueprint(config_path, server, login, cfg.core.mqtt.enabled))
     server.run(once=args.once)
 
 

@@ -22,19 +22,19 @@ def base():
 
 def test_happy_path_flattens_core_and_project_keys():
     cfg = validate_config(base())
-    assert cfg.port == 8080
-    assert str(cfg.timezone) == "Europe/Dublin"
-    assert list(cfg.schedule) == [("09:00:00", "today"), ("18:00:00", "hourly")]
-    assert cfg.schedule.pages() == {"today.png", "hourly.png"}
-    assert cfg.regen_lead_seconds == 120                       # core default
-    assert (cfg.image_width, cfg.image_inner_width) == (825, 825)
+    assert cfg.core.server.port == 8080
+    assert str(cfg.core.server.timezone) == "Europe/Dublin"
+    assert list(cfg.core.server.schedule) == [("09:00:00", "today"), ("18:00:00", "hourly")]
+    assert cfg.core.server.schedule.pages() == {"today.png", "hourly.png"}
+    assert cfg.core.server.regen_lead_seconds == 120                       # core default
+    assert (cfg.core.image.width, cfg.core.image.inner_width) == (825, 825)
     assert cfg.weather_service == "mock" and cfg.weather_apikey is None
     assert cfg.num_hourly_forecasts == 9
     assert cfg.location == "Dublin"                            # stripped
-    assert cfg.mqtt_prefix == "mqtt/weather-cal"               # project default
+    assert cfg.core.mqtt.prefix == "mqtt/weather-cal"               # project default
     assert cfg.logs_path == "data/board-logs.db"
     assert cfg.logs_days == 90
-    assert cfg.debug is False
+    assert cfg.core.server.debug is False
 
 
 def test_mock_service_needs_no_apikey_but_others_do(caplog):

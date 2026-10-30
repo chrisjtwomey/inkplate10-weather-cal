@@ -39,8 +39,8 @@ def _base_config():
 
 def test_alignment_defaults_to_center_center():
     cfg = validate_config(_base_config())
-    assert cfg.image_inner_align_x == "center"
-    assert cfg.image_inner_align_y == "center"
+    assert cfg.core.image.inner_align_x == "center"
+    assert cfg.core.image.inner_align_y == "center"
 
 
 def test_accepts_alignment_options():
@@ -49,8 +49,8 @@ def test_accepts_alignment_options():
     config["image"]["innerAlignY"] = "bottom"
 
     cfg = validate_config(config)
-    assert cfg.image_inner_align_x == "left"
-    assert cfg.image_inner_align_y == "bottom"
+    assert cfg.core.image.inner_align_x == "left"
+    assert cfg.core.image.inner_align_y == "bottom"
 
 
 @pytest.mark.parametrize(
