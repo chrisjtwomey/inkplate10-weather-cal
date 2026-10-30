@@ -7,8 +7,8 @@ The server needs an API key and a map ID.
 ## The API key
 
 1. In [Google's developer console](https://console.cloud.google.com/), create a project.
-2. In Google Maps Platform, enable the **Maps Static API**.
-3. In **Credentials**, create an **API key**. You can restrict it to the Maps Static API.
+2. In Google Maps Platform, enable the **Maps Static API**. Also enable the **Geocoding API** to centre the map on exact coordinates. Without it, Google centres the map on the place name.
+3. In **Credentials**, create an **API key**. You can restrict it to these APIs.
 
 ## The map style (optional)
 

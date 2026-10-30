@@ -8,6 +8,7 @@ from pathlib import Path
 import requests
 from epd_server.source import DataSource
 from googlemaps import Client
+from googlemaps.exceptions import ApiError
 from googlemaps.geocoding import geocode
 
 
@@ -159,7 +160,7 @@ class GoogleAPIService:
 
     def _get_location_center(self, location):
         """The map's centre as coordinates, the place name itself when Google
-        knows no such place, or None when the lookup failed."""
+        answers with none, or None when there was no answer."""
         # Use coordinates for a stable map center even when place-name geocoding shifts.
         if isinstance(location, (list, tuple)) and len(location) == 2:
             return "{:.6f},{:.6f}".format(float(location[0]), float(location[1]))
@@ -170,6 +171,10 @@ class GoogleAPIService:
                 if len(geocode_result) > 0:
                     point = geocode_result[0]["geometry"]["location"]
                     return "{:.6f},{:.6f}".format(point["lat"], point["lng"])
+            except ApiError as exc:
+                # Google's answer, as for a key without the Geocoding API. It
+                # would give the same answer again, so the name is kept.
+                log.warning("Google will not look up %s: %s", location, exc.status)
             except Exception as exc:  # noqa: BLE001 - the name still gives a map
                 log.warning("Could not look up %s: %s", location, type(exc).__name__)
                 return None

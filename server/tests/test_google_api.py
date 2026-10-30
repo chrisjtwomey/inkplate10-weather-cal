@@ -7,6 +7,8 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 import requests
 
+from googlemaps.exceptions import ApiError
+
 from google.api import GoogleAPIService, MapFetchError, StaticMapSource
 
 
@@ -141,6 +143,15 @@ def test_a_failed_lookup_gives_a_map_of_the_name_and_is_not_kept(gapi):
     with patch("google.api.geocode", return_value=fake_result):
         url = gapi.get_static_map_url(FAKE_MAP_ID, "Cork")
     assert parse_qs(urlparse(url).query)["center"] == ["51.898500,-8.475600"]
+
+
+def test_a_key_without_the_geocoding_api_asks_only_once(gapi):
+    with patch("google.api.geocode", side_effect=ApiError("REQUEST_DENIED")) as lookup:
+        first = gapi.get_static_map_url(FAKE_MAP_ID, "Cork")
+        second = gapi.get_static_map_url(FAKE_MAP_ID, "Cork")
+    assert first == second
+    assert parse_qs(urlparse(first).query)["center"] == ["Cork"]
+    assert lookup.call_count == 1
 
 
 def test_location_center_falls_back_to_raw_string_on_empty_geocode(gapi):
