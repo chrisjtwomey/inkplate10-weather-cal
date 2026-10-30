@@ -3,7 +3,7 @@ from datetime import datetime, date
 from pathlib import Path
 
 
-from ..cache import DiskCache
+from epd_server.cache import DiskCache
 from ..service import WeatherService
 from ..registry import register
 

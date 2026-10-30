@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from utils import even_select
-from ..cache import DiskCache
+from epd_server.cache import DiskCache
 from ..service import WeatherFetchError, WeatherService
 from ..registry import register
 

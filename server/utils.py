@@ -1,9 +1,4 @@
-"""Config helpers.
-
-Re-exports the resolver from ``epd_server.config`` under this module's
-import path, and holds ``even_select``, a weather-specific sampling helper.
-"""
-from epd_server.config import get_by_path, get_prop, get_prop_by_keys  # noqa: F401  (re-exported)
+"""``even_select``, a sampling helper for the weather providers."""
 
 
 def even_select(n, l):

@@ -7,7 +7,7 @@ from pathlib import Path
 from astral import Observer
 from astral import sun
 
-from ..cache import DiskCache
+from epd_server.cache import DiskCache
 from ..service import WeatherService
 from ..registry import register
 

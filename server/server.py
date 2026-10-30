@@ -17,7 +17,6 @@ import dataclasses
 import logging.config
 from typing import NoReturn
 
-from utils import get_prop, get_prop_by_keys
 from views.hourly import HourlyPage
 from views.today import TodayPage
 from views.current import CurrentPage
@@ -25,7 +24,8 @@ from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
 from google.api import GoogleAPIService, StaticMapSource
 from epd_server import DisplayServer, InstallBoard, LogsQuery, LogStore, align_process_timezone
-from epd_server.config import ConfigError, CoreConfig, load_core_config, load_yaml
+from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_keys, load_core_config,
+                               load_yaml)
 from epd_server.login import Login, guard
 from epd_server.source import CompositeSource
 from settings_page import PASSWORD_ENV, SITE, settings_blueprint
