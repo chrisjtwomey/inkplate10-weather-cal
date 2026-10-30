@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install PlatformIO Core
-        run: pip install --upgrade platformio
+        run: pip install platformio==6.2.0
 
       - name: Create defaults.cpp from example
         run: cp src/defaults.example.cpp src/defaults.cpp
