@@ -42,16 +42,16 @@ def accuweather_endpoints(fixtures_dir):
     hourly = _load(fixtures_dir, "accuweather_hourly.json")
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         rsps.add(rsps.GET,
-                 re.compile(r"http://dataservice\.accuweather\.com/locations/v1/search.*"),
+                 re.compile(r"https://dataservice\.accuweather\.com/locations/v1/search.*"),
                  json=location)
         rsps.add(rsps.GET,
-                 re.compile(r"http://dataservice\.accuweather\.com/forecasts/v1/daily/1day/.*"),
+                 re.compile(r"https://dataservice\.accuweather\.com/forecasts/v1/daily/1day/.*"),
                  json=daily)
         rsps.add(rsps.GET,
-                 re.compile(r"http://dataservice\.accuweather\.com/currentconditions/v1/.*"),
+                 re.compile(r"https://dataservice\.accuweather\.com/currentconditions/v1/.*"),
                  json=current)
         rsps.add(rsps.GET,
-                 re.compile(r"http://dataservice\.accuweather\.com/forecasts/v1/hourly/12hour/.*"),
+                 re.compile(r"https://dataservice\.accuweather\.com/forecasts/v1/hourly/12hour/.*"),
                  json=hourly)
         yield rsps
 
@@ -103,7 +103,7 @@ def test_accuweather_hourly_forecast_returns_requested_count(accuweather_endpoin
 def test_accuweather_raises_on_empty_location_response(fixtures_dir):
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         rsps.add(rsps.GET,
-                 re.compile(r"http://dataservice\.accuweather\.com/locations/v1/search.*"),
+                 re.compile(r"https://dataservice\.accuweather\.com/locations/v1/search.*"),
                  json=[])
         with pytest.raises(ValueError, match="Unexpected response"):
             AccuweatherService(apikey="fake-key", location="Cork")
@@ -505,3 +505,8 @@ def test_a_deferred_provider_tries_again_after_a_failure():
 
 def test_a_deferred_provider_offers_what_a_provider_offers():
     assert set(DATASET_NAMES) == set(MockWeatherService(location="Cork").datasets())
+
+
+def test_accuweather_sends_its_key_over_https_only(accuweather_endpoints):
+    AccuweatherService(apikey="key", location="Cork")
+    assert accuweather_endpoints.calls[0].request.url.startswith("https://")

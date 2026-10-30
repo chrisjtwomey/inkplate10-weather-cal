@@ -14,7 +14,7 @@ class AccuweatherService(WeatherService):
     def __init__(self, *, apikey=None, location=None, num_hours=6, metric=True):
         super().__init__(
             apikey,
-            "http://dataservice.accuweather.com",
+            "https://dataservice.accuweather.com",
             "accuweather",
             num_hours,
             metric,
