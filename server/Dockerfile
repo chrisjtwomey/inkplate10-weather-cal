@@ -34,6 +34,6 @@ RUN mkdir -p /app/firmware /app/data \
     && chown -R app:app /app
 
 USER app
-EXPOSE 8080
+EXPOSE 8080 8443
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/entrypoint.sh"]

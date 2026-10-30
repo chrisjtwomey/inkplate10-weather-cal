@@ -111,6 +111,32 @@ def test_without_a_password_the_settings_are_open_and_the_log_says_so(project_di
     assert not (project_dir / "data" / "login.json").exists()
 
 
+def test_the_install_page_sits_behind_the_sign_in_and_its_files_do_not(project_dir, monkeypatch):
+    made = {}
+
+    class NoRun(server.DisplayServer):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            made["server"] = self
+
+        def run(self, once=False):
+            pass
+
+    monkeypatch.setenv("WEATHER_CAL_PASSWORD", "correct horse")
+    monkeypatch.setattr(server, "DisplayServer", NoRun)
+    server.main()
+
+    client = made["server"].app.test_client()
+    assert client.get("/install").status_code == 401
+    assert client.get("/network.bin").status_code == 401
+    assert client.get("/install/install.js").status_code == 200
+    assert client.get("/install-firmware.sh").status_code == 200
+    assert client.post("/login", data={"password": "correct horse"}).status_code == 303
+    page = client.get("/install").get_data(as_text=True)
+    assert '"chip": "ESP32"' in page and '"settingsUrl": "settings"' in page
+    assert "display|inkplate10-weather-cal|esp32|Display|0x1a86" in client.get("/install-firmware.sh").get_data(as_text=True)
+
+
 def test_the_boards_log_lines_are_kept_and_answer_logs(project_dir, monkeypatch):
     made = {}
 

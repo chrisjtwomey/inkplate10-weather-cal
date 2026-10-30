@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+      # The install page. The same number on the host: the HTTP page links to it.
+      - "8443:8443"
     # Recommended: mount your config.yaml for server configuration
     volumes:
       - ./server/config.yaml:/app/config.yaml

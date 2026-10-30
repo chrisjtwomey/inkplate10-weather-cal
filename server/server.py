@@ -24,7 +24,7 @@ from views.current import CurrentPage
 from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
 from google.api import GoogleAPIService
-from epd_server import DisplayServer, LogsQuery, LogStore, align_process_timezone
+from epd_server import DisplayServer, InstallBoard, LogsQuery, LogStore, align_process_timezone
 from epd_server.config import ConfigError, MqttSettings, load_core_config, load_yaml
 from epd_server.login import Login, guard
 from epd_server.source import CompositeSource, StaticSource
@@ -36,6 +36,10 @@ log = logging.getLogger("server")
 # One wake a day when config.yaml has no display block.
 DEFAULT_DISPLAY = {"pools": {"today": ["today.png"]},
                    "schedule": {"type": "times", "09:00:00": "today"}}
+
+FIRMWARE_PRODUCT = "inkplate10-weather-cal"
+# The Inkplate 10's USB-to-serial chip is a CH340C.
+INSTALL_BOARDS = [InstallBoard(FIRMWARE_PRODUCT, "Display", chip="ESP32", usb_vendor_ids=(0x1A86,))]
 
 
 # Import all service modules so that their @register decorators run and
@@ -68,6 +72,7 @@ class ServerConfig:
     # accessor whose return type cannot be statically narrowed.  Type safety
     # is enforced by the validation logic in validate_config(), not here.
     port: Any
+    https_port: Any           # int; the browser's install page needs HTTPS. 0 for none
     timezone: Any             # tzinfo / ZoneInfo
     schedule: Any                # WakeSchedule from the display block; drives both regen and client wakes
     regen_lead_seconds: Any    # int; seconds before wake time to regenerate the image
@@ -115,7 +120,7 @@ def validate_config(config: dict) -> ServerConfig:
         core = load_core_config(
             config,
             default_display=DEFAULT_DISPLAY,
-            default_firmware_product="inkplate10-weather-cal",
+            default_firmware_product=FIRMWARE_PRODUCT,
             base_dir=cwd,
             default_mqtt_prefix="mqtt/weather-cal",
         )
@@ -163,6 +168,7 @@ def validate_config(config: dict) -> ServerConfig:
 
     return ServerConfig(
         port=core.server.port,
+        https_port=core.server.https_port,
         timezone=core.server.timezone,
         schedule=core.server.schedule,
         regen_lead_seconds=core.server.regen_lead_seconds,
@@ -267,10 +273,15 @@ def main():
             tz=cfg.timezone,
             regen_lead_seconds=cfg.regen_lead_seconds,
             port=cfg.port,
+            https_port=cfg.https_port,
+            certificate_dir=os.path.join(cwd, "data", "certificate"),
             mqtt=MqttSettings(cfg.mqtt_enabled, cfg.mqtt_host, cfg.mqtt_port, cfg.mqtt_prefix),
             mqtt_client_id=f"eink-cal-server-{socket.gethostname()}",
             firmware=cfg.firmware,
             network=cfg.network,
+            install_boards=INSTALL_BOARDS,
+            settings_url="settings",
+            login_url="login",
             client_logs=board_logs,
             queries={"logs": LogsQuery(board_logs, cfg.timezone).answer},
         )

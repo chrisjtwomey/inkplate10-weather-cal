@@ -116,6 +116,12 @@ def test_a_save_changes_only_its_lines_and_keeps_the_comments(path, client):
     assert soup(client.get(rsp.headers["Location"])).find(id="notice").text == "Settings saved."
 
 
+def test_a_save_keeps_the_files_opening_marker(path, client):
+    path.write_text("---\n" + CONFIG)
+    client.post("/settings", data=form(ssid="new-wifi"))
+    assert path.read_text() == "---\n" + CONFIG.replace("ssid: old-wifi", "ssid: new-wifi")
+
+
 def test_a_save_takes_effect_without_a_restart(path, no_login):
     app = site(path, no_login)
     app.test_client().post("/settings", data=form(ssid="new-wifi", password="a-new-password"))

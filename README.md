@@ -69,8 +69,18 @@ The server renders the pages and tells the display when to wake next.
 
 | | Settings come from | Firmware |
 |---|---|---|
+| From a browser | the server's Settings page | the server's install page |
 | With an SD card | `config.yaml` on the card | `firmware.factory.bin` from a [release](https://github.com/chrisjtwomey/inkplate10-weather-cal/releases/latest) |
 | Without an SD card | `src/defaults.cpp`, built into the firmware | built from source |
+
+**From a browser**, with Chrome, Edge, Opera or Firefox:
+
+1. In the server's `config.yaml`, set `client.firmware.enabled` to `true` and `client.firmware.dir` to `builds/nocard`. Restart the server.
+2. Open `http://<server>:8080/settings`, fill in the server address, as the display reaches it, and your Wi-Fi. Select **Save changes**.
+3. Connect the display over USB. Select **install firmware**, then **Install**. The browser warns about the certificate, because the server makes its own.
+4. The page writes the firmware and the settings, then checks that the display joins Wi-Fi and reaches the server.
+
+On a computer with no such browser, `install-firmware.sh` does the same from a terminal: see [The install page](server/README.md#the-install-page).
 
 **With an SD card:**
 
@@ -87,7 +97,7 @@ The server renders the pages and tells the display when to wake next.
 
 4. Put the card in and start the display.
 
-**Without an SD card:** copy `src/defaults.example.cpp` to `src/defaults.cpp`, fill in your Wi-Fi and server address, and build and flash the `release` environment: see [CONTRIBUTING.md](CONTRIBUTING.md#client-firmware-development-platformio).
+**Built from source, without an SD card:** copy `src/defaults.example.cpp` to `src/defaults.cpp`, fill in your Wi-Fi and server address, and build and flash the `release` environment: see [CONTRIBUTING.md](CONTRIBUTING.md#client-firmware-development-platformio).
 
 After the first flash, the display updates itself from the server: see [Firmware updates](server/README.md#firmware-updates).
 
@@ -158,6 +168,7 @@ At each wake, the display:
 | Weather provider API keys | [doc/weather-apis.md](doc/weather-apis.md) |
 | Google Static Maps | [doc/google-static-maps.md](doc/google-static-maps.md) |
 | Add a weather provider | [server/weather/README.md](server/weather/README.md) |
+| Install firmware from a browser, the Settings page and the sign-in | [server/README.md](server/README.md#the-settings-page-and-sign-in) |
 | Battery life and measurements | [doc/power-consumption.md](doc/power-consumption.md) |
 | Build, flash and test the firmware | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Another e-paper display | [epd's custom-board guide](https://github.com/chrisjtwomey/epd/blob/main/docs/custom-board.md) |

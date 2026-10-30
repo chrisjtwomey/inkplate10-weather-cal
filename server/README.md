@@ -36,8 +36,9 @@ cp config.example.yaml config.yaml
 | `image.width`, `image.height` | `825`, `1200` | The page size in pixels: the Inkplate 10's panel, upright. |
 | `image.innerWidth`, `image.innerHeight` | the page size | The area the content fits in. See [Fitting a photo mat](#fitting-a-photo-mat). |
 | `image.innerAlignX`, `image.innerAlignY` | `center` | Where that area sits: `left`, `center` or `right`; `top`, `center` or `bottom`. |
+| `server.https_port` | `8443` | The same routes over HTTPS, for [the install page](#the-install-page). `0` for none. |
 | `client.firmware.enabled` | `false` | Offer firmware updates to the display. See [Firmware updates](#firmware-updates). |
-| `client.firmware.dir` | `firmware` | The folder of `<version>.bin` images. The newest is offered. `builds/nocard`, `builds/sdcard` or `builds/timing` offers the firmware the server image carries. |
+| `client.firmware.dir` | `firmware` | The folder of `<version>.bin` images. The newest is offered. `builds/nocard`, `builds/sdcard` or `builds/timing` offers the firmware the server image carries. The install page needs `<version>.merged.bin` beside it, which those folders hold. |
 | `client.firmware.product` | `inkplate10-weather-cal` | Only a display that reports this name is offered an image. |
 | `client.firmware.offer_dev_builds` | `false` | Offer a display that runs a development build any other build, not only a newer one. |
 | `client.firmware.source.github` | – | Fill `dir` from this repository's releases, as `owner/repo`. |
@@ -180,7 +181,7 @@ What the display does with an offer:
 - Below 20% battery, it waits for a charge.
 - To make it check now, press RST.
 
-A display needs one USB flash first: see the [main README](../README.md#2-set-up-the-display). A display last flashed over USB before v2.0.0 needs one again, since v2.0.0 changed the partition table, which an update over the air cannot change.
+A display needs one USB flash first: see the [main README](../README.md#2-set-up-the-display), or [the install page](#the-install-page). A display last flashed over USB before v2.0.0 needs one again, since v2.0.0 changed the partition table, which an update over the air cannot change.
 
 ## MQTT
 
@@ -216,12 +217,43 @@ settings.
 
 With a password set:
 
-- `/settings`, `/logs` and `/network.bin` need a sign-in. The display's own
-  routes stay open.
+- `/settings`, `/install`, `/logs` and `/network.bin` need a sign-in. The
+  display's own routes stay open, and so do the install page's scripts.
 - The sign-in lasts 30 days. Five wrong passwords make that address wait 15 minutes.
 - Other apps send the access token shown on the Settings page, to read `/logs`
   and `/network.bin`.
 - Behind a reverse proxy, set `server.reverse_proxy` to `true`.
+
+### The install page
+
+`/install` writes the firmware and the Settings page's values to a display
+over USB, from Chrome, Edge, Opera or Firefox. It needs:
+
+- `client.firmware.enabled` set to `true`, and a `<version>.merged.bin` in
+  `client.firmware.dir`.
+- The server address, the Wi-Fi name and the Wi-Fi password on the Settings page.
+  The address is the one the display reaches: in Docker, the host's, not the
+  container's.
+- HTTPS, because a browser lets a page use a USB port only over HTTPS.
+  `server.https_port`, 8443 unless set, serves every route with a certificate
+  the server makes and keeps in `data/certificate`. So the browser warns about
+  it once. Map the port to the same number on the host, as
+  [`docker-compose.yml`](../docker-compose.yml) does. Set it to `0` behind a
+  reverse proxy that has a certificate of its own. If the port is taken, the
+  server logs it and runs on HTTP alone.
+
+After it writes, the page checks that the display joins Wi-Fi, reaches the
+server and, with MQTT on, reaches the broker.
+
+Where a browser cannot be used:
+
+```sh
+curl -O http://<server>:8080/install-firmware.sh
+sh install-firmware.sh display
+```
+
+With a password set, the script asks for it. With `TOKEN` set to the access
+token, it does not.
 
 ### Reading the logs
 

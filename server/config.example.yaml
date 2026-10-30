@@ -1,6 +1,9 @@
 ---
 server:
   port: 8080
+  # The install page's port: a browser lets a page use USB only over HTTPS.
+  # 0 for none.
+  https_port: 8443
   # IANA timezone in which display.schedule times are interpreted
   # (e.g. Europe/Dublin, Europe/London, America/New_York). Handles DST transitions
   # automatically. If omitted, the server's OS-level timezone is used (UTC in
@@ -62,6 +65,8 @@ client:
   # Server-driven firmware updates. The board is offered the image on its
   # next page fetch, and flashes itself after it has drawn.
   firmware:
+    # The install page needs this true, and <version>.merged.bin in dir: the
+    # builds/ folders hold one.
     enabled: false
     # A directory of <version>.bin; the newest file is the image offered.
     # In the Docker image, builds/nocard and builds/sdcard hold the firmware

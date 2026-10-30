@@ -77,6 +77,7 @@ def edited(text: str, values: list[tuple[tuple[str, ...], str]]) -> str:
     y.preserve_quotes = True
     y.width = 4096
     y.indent(mapping=2, sequence=4, offset=2)
+    y.explicit_start = text.startswith("---")
     data = y.load(text) or {}
     for keys, value in values:
         level = data
@@ -156,7 +157,7 @@ button {{ font: inherit; padding: .5rem 1rem; margin-top: 1rem; }}
 </head>
 <body>
 <h1>Settings</h1>
-<p>Boards get these when you install firmware. Every other setting is in config.yaml.</p>
+<p>Boards get these when you <a href="install">install firmware</a>. Every other setting is in config.yaml.</p>
 {banners}
 <form method="post" action="settings" id="settings-form" novalidate>
 {rows}
