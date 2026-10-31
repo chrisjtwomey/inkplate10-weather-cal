@@ -223,7 +223,7 @@ With a password set:
 - `/settings`, `/install`, `/logs` and `/network.bin` need a sign-in. The
   display's own routes stay open, and so do the install page's scripts.
 - The sign-in lasts 30 days. Five wrong passwords make that address wait 15 minutes.
-- Other apps send the access token shown on the Settings page, to read `/logs`
+- Other apps send the access token on the Access tab of the Settings page, to read `/logs`
   and `/network.bin`.
 - Behind a reverse proxy, set `server.reverse_proxy` to `true`.
 
@@ -289,7 +289,7 @@ curl -s 'http://localhost:8080/logs?q=battery%20voltage&limit=50'
 
 - `board`, `level` (that level and above) and `q` (text in the line) narrow the lines; `limit` caps them, at most 500.
 - `after` or `before` a line's `id` pages forward or back.
-- With a password set, send the access token from the Settings page: `curl -H "Authorization: Bearer <token>" ...`.
+- With a password set, send the access token from the Access tab of the Settings page: `curl -H "Authorization: Bearer <token>" ...`.
 
 ### A broker
 
