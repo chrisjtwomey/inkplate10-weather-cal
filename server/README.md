@@ -28,7 +28,7 @@ cp config.example.yaml config.yaml
 | `display.schedule` | `09:00:00: today` | `type: times`, then `HH:MM:SS: pool` for each wake. |
 | `weather.service` | – (required) | `accuweather`, `meteireann`, `openmeteo`, `openweathermap`, or `mock` for made-up weather. |
 | `weather.apikey` | – (required, except for `meteireann`, `openmeteo` and `mock`) | The provider's API key. |
-| `weather.num_hourly_forecasts` | `6` | How many hours the hourly page shows. |
+| `weather.num_hourly_forecasts` | `6` | How many hours the hourly page shows. At 0 the page is not drawn. |
 | `weather.metric` | `true` | Metric units, or imperial. |
 | `google.apikey` | – (required) | The Google API key, for the map. |
 | `google.staticmaps_mapid` | – (required) | The map ID, for the map's style. |
@@ -123,6 +123,10 @@ the page is ready when the display asks. Every page answer carries
 `EPD-Next-URL`, the page to fetch then. The display sleeps for that long, so
 it needs no time zone of its own; a change of the clocks is the server's
 alone.
+
+A page shows the date and forecast from when it is rendered. So a wake within
+`server.regen_lead_seconds` after midnight shows the day before: at the default,
+keep wake times after 00:02.
 
 ```sh
 $ curl -sI http://localhost:8080/today.png | grep -i next-display-refresh
@@ -278,6 +282,10 @@ weather cannot be fetched, the log says so, and the next scheduled render tries
 again. Until then the server offers the pages it already made. A server that
 has just updated has none, so the display shows its last page under an error
 banner, and backs off.
+
+A page with no forecast to show, such as the hourly page at 0 hours, is skipped:
+the log says so, the server keeps that page's last image, and the other pages
+still render.
 
 ### Reading the logs
 

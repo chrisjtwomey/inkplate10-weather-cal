@@ -1,4 +1,7 @@
 import datetime as dt
+
+from epd_server.page import SkipPage
+
 from .detailed import DetailedPage, wind_arrow, wind_unit_words
 
 
@@ -133,6 +136,8 @@ document.addEventListener('DOMContentLoaded', function () {
         # Drop any days already in the past (API sometimes returns yesterday)
         today = dt.date.today()
         forecasts = [f for f in kwargs["daily_forecasts"] if f["dt"].date() >= today]
+        if not forecasts:
+            raise SkipPage("no daily forecasts from today on")
 
         week_min = min(f["temperature"]["min"] for f in forecasts)
         week_max = max(f["temperature"]["max"] for f in forecasts)

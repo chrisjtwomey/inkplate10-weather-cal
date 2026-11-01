@@ -1,3 +1,5 @@
+from epd_server.page import SkipPage
+
 from .detailed import DetailedPage, wind_arrow, wind_unit_words
 
 
@@ -104,6 +106,8 @@ class HourlyPage(DetailedPage):
 
     def _render_body(self, a, **kwargs):
         forecasts = kwargs["hourly_forecasts"]
+        if not forecasts:
+            raise SkipPage("no hourly forecasts")
         with a.div(id="bottom-banner", klass="container"):
             with a.table(id="forecast-table", style=f"--hourly-columns:{len(forecasts)};"):
                 _icon_row(a, forecasts)

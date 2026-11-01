@@ -111,3 +111,21 @@ def test_tomorrow_page_skips_when_tomorrow_is_missing(tmp_path, pages):
     source = StaticSource(map_url=MAP_URL, daily_forecasts=stale)
     assert regenerate([tomorrow], source) == []
     assert not (tmp_path / "tomorrow.png").exists()
+
+
+@pytest.mark.parametrize("dataset, skipped", [("hourly_forecasts", "hourly.png"), ("daily_forecasts", "daily.png")])
+def test_a_page_with_no_forecasts_is_skipped_and_the_others_render(weather, pages, dataset, skipped):
+    data = {**{name: fetch() for name, fetch in weather.datasets().items()}, "map_url": MAP_URL, dataset: []}
+    rendered = {p.png_filename for p in regenerate(pages, StaticSource(**data))}
+    expected = {p.png_filename for p in pages} - {skipped}
+    if dataset == "daily_forecasts":
+        expected -= {"tomorrow.png"}
+    assert rendered == expected
+
+
+def test_a_daily_forecast_with_only_past_days_is_skipped(weather, pages):
+    data = {**{name: fetch() for name, fetch in weather.datasets().items()}, "map_url": MAP_URL}
+    long_ago = dt.datetime(2000, 1, 1)
+    data["daily_forecasts"] = [{**f, "dt": long_ago} for f in data["daily_forecasts"]]
+    rendered = {p.png_filename for p in regenerate(pages, StaticSource(**data))}
+    assert "daily.png" not in rendered and "today.png" in rendered
