@@ -100,16 +100,7 @@ class HourlyPage(DetailedPage):
         a.link(rel="stylesheet", href="hourly.css")
 
     def _script_tags(self, a):
-        a.script(type="text/javascript", src="https://unpkg.com/chart.js@2.8.0")
-        a.script(type="text/javascript", src="https://unpkg.com/roughjs@3.1.0/dist/rough.js")
-        a.script(
-            type="text/javascript",
-            src="https://unpkg.com/chartjs-plugin-datalabels@1.0.0",
-        )
-        a.script(
-            type="text/javascript",
-            src="https://unpkg.com/chartjs-plugin-rough@latest/dist/chartjs-plugin-rough.min.js",
-        )
+        a.script(src="rough.iife.min.js")
 
     def _render_body(self, a, **kwargs):
         forecasts = kwargs["hourly_forecasts"]

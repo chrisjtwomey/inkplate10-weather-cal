@@ -115,12 +115,11 @@ def test_forecast_table_has_one_cell_per_hour_per_row(rendered_html):
         assert 0 <= pct <= 100
 
 
-def test_external_chart_libraries_are_loaded(rendered_html):
-    """Roughjs + Chart.js are required by the precipitation canvas script."""
+def test_the_only_script_it_loads_is_the_local_rough_js(rendered_html):
+    """A render must not depend on a third party's server."""
     soup = BeautifulSoup(rendered_html, "html.parser")
-    srcs = {attr(s, "src") for s in soup.find_all("script") if attr(s, "src")}
-    assert any("rough" in s for s in srcs), "expected roughjs to be loaded"
-    assert any("chart.js" in s for s in srcs), "expected chart.js to be loaded"
+    srcs = [attr(s, "src") for s in soup.find_all("script") if attr(s, "src")]
+    assert srcs == ["rough.iife.min.js"]
 
 
 def test_local_stylesheet_link_present(rendered_html):
