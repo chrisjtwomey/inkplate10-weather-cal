@@ -13,6 +13,7 @@
   width: 100%;
   height: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   margin-top: 0.2vh;
 }
 
@@ -54,8 +55,9 @@
   max-height: 100%;
 }
 
+/* Sized so that a 4-character label such as 11pm fits one column, for the last column. */
 .forecast-hour {
-  font-size: 2.8vw;
+  font-size: min(2.8vw, calc(90vw / var(--hourly-columns, 9) / 2.8));
   font-weight: 700;
   line-height: 1.2;
   padding-bottom: 1.5vh;

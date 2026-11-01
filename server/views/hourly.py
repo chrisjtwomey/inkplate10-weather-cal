@@ -105,7 +105,7 @@ class HourlyPage(DetailedPage):
     def _render_body(self, a, **kwargs):
         forecasts = kwargs["hourly_forecasts"]
         with a.div(id="bottom-banner", klass="container"):
-            with a.table(id="forecast-table", style="--hourly-row-count:5;"):
+            with a.table(id="forecast-table", style=f"--hourly-columns:{len(forecasts)};"):
                 _icon_row(a, forecasts)
                 _hour_row(a, forecasts)
                 _temperature_row(a, forecasts)
