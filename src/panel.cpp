@@ -15,6 +15,15 @@
 #define VERSION_TEXT_X 12
 #define VERSION_TEXT_Y 32
 
+// A page is drawn in the panel's 3-bit mode, where a colour is a level. The
+// driver's BLACK and WHITE are its 1-bit values.
+static const uint16_t kLevelBlack = 0;
+static const uint16_t kLevelWhite = 7;
+
+// Where the battery text's baseline sits in the height of its bounds, to line
+// it up with the icon.
+static const double kBatteryBaselineRatio = 0.75;
+
 // The version, small, in the corner of every page. It is the only proof from
 // across the room that an update landed: the number changes and nobody went
 // near the board.
@@ -43,9 +52,9 @@ void displayMessage(const char* msg, int batteryRemainingPercent) {
     epdBoard().setTextColor(BLACK);
     epdBoard().setTextWrap(true);
     epdBoard().getTextBounds(msg, 0, 0, &x, &y, &w, &h);
-    epdBoard().fillRect(0, 0, epdBoard().getHeight(), h * 2.5, 0x8080);
+    epdBoard().fillRect(0, 0, epdBoard().getHeight(), h * 2.5, kLevelBlack);
     epdBoard().setCursor(cX - w / 2, cY + h * 1.5);
-    epdBoard().setTextColor(0xFFFF);
+    epdBoard().setTextColor(kLevelWhite);
     epdBoard().print(msg);
 
     String nowFmt = nowTzFmt();
@@ -59,23 +68,17 @@ void displayMessage(const char* msg, int batteryRemainingPercent) {
 }
 
 void displayBatteryStatus(int batteryRemainingPercent, bool invert) {
-    // PS apologies for all the hackiness here...
     char msg[5];
     snprintf(msg, sizeof(msg), "%d%%", batteryRemainingPercent);
     epdBoard().setFont(&Merienda_Regular12pt7b);
     epdBoard().setTextSize(1);
-    if (invert) {
-        epdBoard().setTextColor(0xFF);
-    } else {
-        epdBoard().setTextColor(0x00);
-    }
+    epdBoard().setTextColor(invert ? kLevelWhite : kLevelBlack);
 
     int16_t tX, tY;
     uint16_t tW, tH;
     epdBoard().getTextBounds(msg, epdBoard().getHeight() * 0.9, batteryIconSize, &tX, &tY, &tW,
                         &tH);
-    // who knows why 0.75 but that lines things up
-    epdBoard().setCursor(tX, tY + tH * 0.75);
+    epdBoard().setCursor(tX, tY + tH * kBatteryBaselineRatio);
     epdBoard().print(msg);
 
     // epdBitmapBatteryFull
