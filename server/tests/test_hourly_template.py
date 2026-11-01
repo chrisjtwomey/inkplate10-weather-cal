@@ -8,16 +8,21 @@ docker run separately. The goal is to catch airium / Pillow / template-call
 regressions when bumping deps, without needing a browser.
 """
 from datetime import datetime
+from pathlib import Path
 
 import pytest
+from airium import Airium
 from bs4 import BeautifulSoup
 from freezegun import freeze_time
+from PIL import Image
 
 from tests.html import attr, one
+from views.detailed import wind_arrow
 from views.hourly import HourlyPage
 from weather.mock.mock import MockWeatherService
 
 
+ARROW_ICON = Path(__file__).parent.parent / "views" / "html" / "icon" / "wind-arrow.png"
 NUM_HOURS = 6
 WIDTH = 825
 HEIGHT = 1200
@@ -113,6 +118,23 @@ def test_forecast_table_has_one_cell_per_hour_per_row(rendered_html):
         canvas = one(cell, "canvas")
         pct = int(attr(canvas, "data_precip"))
         assert 0 <= pct <= 100
+
+
+@pytest.mark.parametrize("from_degrees, rotation", [(0, 180), (90, 270), (180, 0), (270, 90)])
+def test_a_wind_arrow_turns_downwind(from_degrees, rotation):
+    a = Airium()
+    wind_arrow(a, {"direction_degrees": from_degrees, "value": 10, "unit": "kmh"})
+    assert f"rotate({rotation}deg)" in str(a)
+
+
+def test_the_wind_arrow_icon_points_straight_up():
+    """wind_arrow turns the image by the heading alone, so its tip must start at the top."""
+    icon = Image.open(ARROW_ICON).convert("RGBA").getchannel("A").point(lambda v: 255 if v > 128 else 0)
+    left, top, right, bottom = icon.getbbox()
+    tip_row = icon.crop((0, top, icon.width, top + 1)).getbbox()
+    tip_x = (tip_row[0] + tip_row[2]) / 2
+    assert abs(tip_x - (left + right) / 2) < icon.width * 0.02
+    assert abs(tip_x - icon.width / 2) < icon.width * 0.04
 
 
 def test_the_only_script_it_loads_is_the_local_rough_js(rendered_html):
