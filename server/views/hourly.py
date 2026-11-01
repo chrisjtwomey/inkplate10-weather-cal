@@ -147,11 +147,17 @@ class HourlyPage(DetailedPage):
                         ctx.font      = 'bold ' + fontSize + 'px Merienda-Regular, sans-serif';
                         ctx.textAlign = 'center';
 
-                        // Always render label above bar, except >= 80% where it would clip
+                        // Above the bar, or inside it on white when the top of the canvas would cut it off.
                         var showLabel = canvas.getAttribute('data_show_label') !== 'false';
                         var label  = pct + '%';
-                        if (showLabel && pct < 80) {
+                        if (showLabel) {
                             var labelY = h - barH - 6;
+                            if (labelY - fontSize < 0) {
+                                labelY = h - barH + fontSize + 10;
+                                var labelW = ctx.measureText(label).width;
+                                ctx.fillStyle = '#fff';
+                                ctx.fillRect((w - labelW) / 2 - 4, labelY - fontSize - 1, labelW + 8, fontSize + 7);
+                            }
                             ctx.fillStyle = '#000';
                             ctx.fillText(label, w / 2, labelY);
                         }
