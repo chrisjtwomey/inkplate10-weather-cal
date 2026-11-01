@@ -1,4 +1,88 @@
-from .detailed import DetailedPage
+from .detailed import DetailedPage, wind_arrow, wind_unit_words
+
+
+def _legend(a, icon, unit=None):
+    with a.td(klass="legend-cell"):
+        a.img(src=icon, klass="legend-icon")
+        if unit is not None:
+            a.span(klass="legend-unit", _t=unit)
+        a.canvas(klass="legend-divider")
+
+
+def _every_column_fits(forecasts):
+    """Past 6 columns, only every second one has room for a label."""
+    return len(forecasts) <= 6
+
+
+def _hour_words(when):
+    try:
+        hour = when.strftime("%-I")
+    except ValueError:
+        hour = when.strftime("%I")
+    return hour + when.strftime("%p").lower()
+
+
+def _icon_row(a, forecasts):
+    with a.tr():
+        with a.td(klass="legend-cell"):
+            a.canvas(klass="legend-divider")
+        for forecast in forecasts:
+            with a.td(klass="forecast-cell"):
+                with a.div(klass="forecast-icon"):
+                    a.img(src=forecast["icon"])
+
+
+def _hour_row(a, forecasts):
+    with a.tr():
+        _legend(a, "icon/wall-clock.png")
+        for i, forecast in enumerate(forecasts):
+            with a.td(klass="forecast-cell"):
+                with a.div(klass="forecast-hour"):
+                    a(_hour_words(forecast["dt"]) if _every_column_fits(forecasts) or i % 2 == 0 else "")
+
+
+def _temperature_row(a, forecasts):
+    """Each temperature, blank where it repeats the one before."""
+    previous = None
+    with a.tr():
+        _legend(a, "icon/thermometer.png", forecasts[0]["temperature"]["unit"])
+        for forecast in forecasts:
+            value = forecast["temperature"]["value"]
+            with a.td(klass="forecast-cell"):
+                with a.div(klass="forecast-temp"):
+                    a(str(value) + "°" if value != previous else "")
+            previous = value
+
+
+def _wind_row(a, forecasts):
+    """Each wind's arrow and speed, the speed blank where it repeats the one before."""
+    previous = None
+    with a.tr():
+        _legend(a, "icon/wind.png", wind_unit_words(forecasts[0]["wind"]))
+        for forecast in forecasts:
+            speed = str(round(forecast["wind"]["value"]))
+            with a.td(klass="forecast-cell"):
+                with a.div(klass="forecast-wind"):
+                    wind_arrow(a, forecast["wind"])
+                    a.span(klass="wind-speed", _t=speed if speed != previous else "")
+            previous = speed
+
+
+def _rain_row(a, forecasts):
+    """Each chance of rain as a bar, labelled unless the label repeats the one before."""
+    previous = None
+    with a.tr(klass="precip-row"):
+        _legend(a, "icon/raindrops.png")
+        for i, forecast in enumerate(forecasts):
+            chance = forecast["rain_probability"]
+            show_label = (_every_column_fits(forecasts) or i % 2 == 0) and chance != previous
+            with a.td(klass="forecast-cell"):
+                a.canvas(
+                    klass="precip-canvas",
+                    data_precip=str(chance),
+                    data_show_label="true" if show_label else "false",
+                )
+            previous = chance
 
 
 class HourlyPage(DetailedPage):
@@ -28,114 +112,17 @@ class HourlyPage(DetailedPage):
         )
 
     def _render_body(self, a, **kwargs):
-        hourly_forecasts = kwargs["hourly_forecasts"]
-
-        hours = []
-        temps = []
-        precip_percents = []
-        for forecast in hourly_forecasts:
-            hour = ""
-            try:
-                hour = forecast["dt"].strftime("%-I")
-            except ValueError:
-                # platform-specific formatting error
-                #self.log.warning(str(ve))
-                hour = forecast["dt"].strftime("%I")
-
-            hour = hour + forecast["dt"].strftime("%p").lower()
-            hours.append(hour)
-            temps.append(forecast["temperature"]["value"])
-            precip_percents.append(forecast["rain_probability"])
-
-        temp_unit = hourly_forecasts[0]["temperature"]["unit"]
-        wind_unit_raw = hourly_forecasts[0]["wind"]["unit"]
-        wind_unit_display = "kph" if wind_unit_raw == "kmh" else "mph"
-
+        forecasts = kwargs["hourly_forecasts"]
         with a.div(id="bottom-banner", klass="container"):
             with a.table(id="forecast-table", style="--hourly-row-count:5;"):
-                    # Icon row
-                    with a.tr():
-                        with a.td(klass="legend-cell"):
-                            a.canvas(klass="legend-divider")
-                        for forecast in hourly_forecasts:
-                            with a.td(klass="forecast-cell"):
-                                with a.div(klass="forecast-icon"):
-                                    a.img(src=forecast["icon"])
+                _icon_row(a, forecasts)
+                _hour_row(a, forecasts)
+                _temperature_row(a, forecasts)
+                _wind_row(a, forecasts)
+                _rain_row(a, forecasts)
+        self._bars_script(a)
 
-                    # Hour row — show every second label to stay readable at distance
-                    with a.tr():
-                        with a.td(klass="legend-cell"):
-                            a.img(src="icon/wall-clock.png", klass="legend-icon")
-                            a.canvas(klass="legend-divider")
-                        for i, forecast in enumerate(hourly_forecasts):
-                            hour = ""
-                            try:
-                                hour = forecast["dt"].strftime("%-I")
-                            except ValueError:
-                                hour = forecast["dt"].strftime("%I")
-                            hour = hour + forecast["dt"].strftime("%p").lower()
-
-                            with a.td(klass="forecast-cell"):
-                                with a.div(klass="forecast-hour"):
-                                    show_hour = len(hourly_forecasts) <= 6 or i % 2 == 0
-                                    a(hour if show_hour else "")
-
-                    # Temperature row — hide repeated adjacent values
-                    prev_temp = None
-                    with a.tr():
-                        with a.td(klass="legend-cell"):
-                            a.img(src="icon/thermometer.png", klass="legend-icon")
-                            a.span(klass="legend-unit", _t=temp_unit)
-                            a.canvas(klass="legend-divider")
-                        for forecast in hourly_forecasts:
-                            temp_val = forecast["temperature"]["value"]
-                            with a.td(klass="forecast-cell"):
-                                with a.div(klass="forecast-temp"):
-                                    a(str(temp_val) + "°" if temp_val != prev_temp else "")
-                            prev_temp = temp_val
-
-                    # Wind direction and speed row — hide repeated adjacent speeds
-                    prev_wind_speed = None
-                    with a.tr():
-                        with a.td(klass="legend-cell"):
-                            a.img(src="icon/wind.png", klass="legend-icon")
-                            a.span(klass="legend-unit", _t=wind_unit_display)
-                            a.canvas(klass="legend-divider")
-                        for forecast in hourly_forecasts:
-                            deg = forecast["wind"]["direction_degrees"]
-                            speed_val = forecast["wind"]["value"]
-                            speed = str(round(speed_val))
-                            # Scale arrow between 2.5vw–6vw based on speed (normalised to km/h)
-                            speed_kmh = speed_val if forecast["wind"]["unit"] == "kmh" else speed_val * 1.609
-                            arrow_size = round(2.5 + 2.5 * min(speed_kmh / 80.0, 1.0) ** 0.5, 2)
-                            with a.td(klass="forecast-cell"):
-                                with a.div(klass="forecast-wind"):
-                                    a.img(
-                                        src="icon/wind-arrow.png",
-                                        klass="wind-arrow",
-                                        style=f"transform: rotate({(deg + 180) % 360}deg); width: {arrow_size}vw; height: {arrow_size}vw;",
-                                    )
-                                    a.span(klass="wind-speed", _t=speed if speed != prev_wind_speed else "")
-                            prev_wind_speed = speed
-
-                    # Precipitation bar row — hide repeated adjacent labels, and only on even columns
-                    prev_precip = None
-                    with a.tr(klass="precip-row"):
-                        with a.td(klass="legend-cell"):
-                            a.img(src="icon/raindrops.png", klass="legend-icon")
-                            a.canvas(klass="legend-divider")
-                        for i, forecast in enumerate(hourly_forecasts):
-                            precip = forecast["rain_probability"]
-                            show_even = len(hourly_forecasts) <= 6 or i % 2 == 0
-                            show_label = show_even and precip != prev_precip
-                            with a.td(klass="forecast-cell"):
-                                a.canvas(
-                                    klass="precip-canvas",
-                                    data_precip=str(precip),
-                                    data_show_label="true" if show_label else "false",
-                                )
-                            prev_precip = precip
-
+    def _bars_script(self, a):
         with a.script():
             a("""
                 window.onload = function() {

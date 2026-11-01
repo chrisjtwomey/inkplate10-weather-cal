@@ -3,6 +3,21 @@ from airium import Airium
 from .page import Page
 
 
+def wind_unit_words(wind: dict) -> str:
+    return "kph" if wind["unit"] == "kmh" else "mph"
+
+
+def wind_arrow(a, wind: dict) -> None:
+    """The arrow for ``wind``: it points the way the wind blows, and grows with its speed."""
+    speed_kmh = wind["value"] if wind["unit"] == "kmh" else wind["value"] * 1.609
+    size = round(2.5 + 2.5 * min(speed_kmh / 80.0, 1.0) ** 0.5, 2)
+    a.img(
+        src="icon/wind-arrow.png",
+        klass="wind-arrow",
+        style=f"transform: rotate({(wind['direction_degrees'] + 180) % 360}deg); width: {size}vw; height: {size}vw;",
+    )
+
+
 class DetailedPage(Page):
     def __init__(self, *geometry, **kwargs):
         super().__init__("detailed", *geometry, **kwargs)
