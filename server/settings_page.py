@@ -27,7 +27,7 @@ NETWORK_FIELDS = (
           hint="http://weather.local:8080",
           refused="Enter it as http://host:port, with nothing after the port."),
     Field("client.wifi.ssid", "Wi-Fi name", refused="Too long. A Wi-Fi name has at most 32 characters."),
-    Field("client.wifi.password", "Wi-Fi password", "8 to 63 characters.", "secret",
+    Field("client.wifi.password", "Wi-Fi password", "8 to 63 characters.", "exact-secret",
           refused="Enter 8 to 63 characters."),
     Field("client.mqtt_host", "MQTT broker", "The address boards reach the broker at.",
           when="mqtt.enabled=true", refused="Enter the name or address alone. The port is on the Logs tab."),

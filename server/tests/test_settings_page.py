@@ -124,7 +124,7 @@ def test_a_bad_wifi_password_says_what_to_enter(path):
     assert soup(rsp).find(id="f-client-wifi-password-problem").text == "Enter 8 to 63 characters."
 
 
-@pytest.mark.parametrize("password", ["has # a: hash", "12345678", "'quoted'", 'dou"ble"'])
+@pytest.mark.parametrize("password", ["has # a: hash", "12345678", "'quoted'", 'dou"ble"', " spaces at each end "])
 def test_a_wifi_password_reads_back_as_typed(path, password):
     post(site(path).test_client(), client__wifi__password=password)
     assert read(path.read_text())["client"]["wifi"]["password"] == password
