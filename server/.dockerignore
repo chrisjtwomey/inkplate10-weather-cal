@@ -1,4 +1,5 @@
 config.yaml
+mods/
 views/today.png
 views/daily.png
 # only the generated html, not the whole dir (which holds styles.css, fonts, icons)

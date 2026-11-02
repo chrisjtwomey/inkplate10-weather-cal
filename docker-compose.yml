@@ -18,6 +18,9 @@ services:
       # Kept across restarts and updates: the boards' log lines (logs.path), the
       # map image, the sign-in's keep file and the HTTPS certificate.
       - weather-cal-data:/app/data
+      # Extra pages with their own data: server/README.md, "Mods". A mod runs
+      # inside the server and can read every setting.
+      # - ./server/mods:/app/mods:ro
     # Only override these if needed; most config is in config.yaml
     environment:
       # The password for the Settings page. Without it, anyone on the network

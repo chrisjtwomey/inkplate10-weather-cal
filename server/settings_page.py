@@ -125,6 +125,11 @@ FORM = Form(TABS)
 NETWORK_KEYS = frozenset(f.key for f in NETWORK_FIELDS)
 
 
+def form_with_mods(groups: tuple[Group, ...]) -> Form:
+    """The form, with a Mods tab that holds ``groups`` when there are any."""
+    return Form(TABS + (Tab("mods", "Mods", groups),)) if groups else FORM
+
+
 def _image(cfg: dict, key: str, default: int) -> int:
     image = cfg.get("image")
     return image.get(key, default) if isinstance(image, dict) else default

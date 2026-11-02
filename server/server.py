@@ -5,7 +5,7 @@
 Everything generic — HTTP routes, the EPD-Next-* headers, the regeneration
 loop, the client log relay, signal handling — is epd_server.DisplayServer.
 This file is the project: its config keys, its weather service, its five
-pages, and one run() call.
+pages and any mods, and one run() call.
 """
 
 import os
@@ -28,8 +28,8 @@ from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_ke
                                load_yaml, parse_network)
 from epd_server.login import Login, guard
 from epd_server.settings_page import settings_blueprint
-from epd_server.source import CompositeSource
-from settings_page import DEFAULT_DISPLAY, FORM, NETWORK_KEYS, PASSWORD_ENV, SITE, check_config
+from mod_loader import ModError, load_mods
+from settings_page import DEFAULT_DISPLAY, NETWORK_KEYS, PASSWORD_ENV, SITE, check_config, form_with_mods
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 log = logging.getLogger("server")
@@ -216,7 +216,12 @@ def main():
     ]
     # Both fetch at the first render, after the server is up. Each page
     # declares what it needs in Page.requires.
-    source = CompositeSource(StaticMapSource(gapi, cfg.staticmaps_mapid, cfg.location), weather_svc)
+    sources = [StaticMapSource(gapi, cfg.staticmaps_mapid, cfg.location), weather_svc]
+    try:
+        mods = load_mods(os.path.join(cwd, "mods"), os.path.join(cwd, "data", "mods"), config, geometry, pages, sources)
+    except ModError as exc:
+        log.exception(str(exc))
+        sys.exit(1)
 
     logs_file = os.path.join(cwd, cfg.logs_path)
     os.makedirs(os.path.dirname(logs_file), exist_ok=True)
@@ -224,8 +229,8 @@ def main():
 
     try:
         server = DisplayServer(
-            pages=pages,
-            source=source,
+            pages=mods.pages,
+            source=mods.source,
             schedule=cfg.core.server.schedule,
             tz=cfg.core.server.timezone,
             regen_lead_seconds=cfg.core.server.regen_lead_seconds,
@@ -257,7 +262,7 @@ def main():
         server.network = parse_network(yaml.safe_load(text))
 
     server.app.register_blueprint(settings_blueprint(
-        FORM, config_path, lambda text: check_config(text, load_settings), login=login,
+        form_with_mods(mods.groups), config_path, lambda text: check_config(text, load_settings), login=login,
         live_keys=NETWORK_KEYS, take_live=take_network, links=(("install", "Install firmware"),),
         password_env=PASSWORD_ENV))
     server.run(once=args.once)

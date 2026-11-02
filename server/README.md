@@ -1,7 +1,7 @@
 # Inkplate 10 Weather Calendar Server
 
-The server renders the display's five pages, serves them, and tells the
-display when to wake next.
+The server renders the display's five pages and any [mods](#mods), serves them,
+and tells the display when to wake next.
 
 - Weather from AccuWeather, Met Éireann, Open-Meteo or OpenWeatherMap: [doc/weather-apis.md](../doc/weather-apis.md). To add a provider, see [weather/README.md](weather/README.md).
 - A map of your area from Google's [Static Maps API](https://developers.google.com/maps/documentation/maps-static/overview): [doc/google-static-maps.md](../doc/google-static-maps.md).
@@ -153,6 +153,93 @@ image:
 - `innerWidth` and `innerHeight` can be at most `width` and `height`.
 - `python3 server.py --once` renders the pages without a display, to try values quickly.
 
+## Mods
+
+A mod adds a page with its own data. It is Python code that runs inside the
+server, so it can read every setting, including your API keys and Wi-Fi password.
+Use a mod at your own risk, and only from someone you trust. A server update can
+change what a mod relies on.
+
+Put each mod in its own folder in `server/mods`. The folder's name can hold
+lowercase letters, digits and `_`. In Docker, mount the folder:
+
+```yaml
+volumes:
+  - ./server/mods:/app/mods:ro
+```
+
+The server loads mods when it starts, so restart it after you add or change one.
+
+A mod needs a `mod.py`, and can hold other files for its pages. This one, in
+`mods/tides/mod.py`, shows the tides beside today's high, with a `tides.css` in
+the same folder:
+
+```python
+from airium import Airium
+from epd_server.page import Page
+from epd_server.settings_form import Field
+from epd_server.source import DataSource
+
+SETTINGS = (
+    Field("apikey", "API key", "From your tides account.", "secret"),
+    Field("station", "Station", "Such as Cobh.", default="Cobh"),
+)
+
+class Tides(DataSource):
+    def __init__(self, apikey, station):
+        self.apikey, self.station = apikey, station
+
+    def datasets(self):
+        return {"tides": self.fetch}
+
+    def fetch(self):
+        ...
+
+class TidesPage(Page):
+    requires = ("tides", "daily_summary")
+
+    def template(self, tides, daily_summary):
+        self.airium = a = Airium()
+        a("<!DOCTYPE html>")
+        with a.html():
+            with a.head():
+                a.link(rel="stylesheet", href="tides.css")
+            with a.body(style=self.layout_css_variables()):
+                a.p(_t=f"{tides} {daily_summary['temperature']['max']}")
+
+def setup(mod):
+    return [TidesPage("tides", **mod.page_kwargs)], Tides(mod.get("apikey"), mod.get("station"))
+```
+
+To show the page, add `tides.png` to a set in `display.pools`.
+`python3 server.py --once` renders it, to try it quickly.
+
+- `setup(mod)` gives the mod's pages and its source. Give `None` for the source if the pages read only the server's data.
+- `**mod.page_kwargs` gives a page its size and output folder. The server copies the mod's files to `data/mods/<folder>` and writes the page there, so a link such as `tides.css` works.
+- `requires` can also name the server's data: `map_url`, and the four names in [weather/README.md](weather/README.md#how-a-provider-fits-in).
+- Keep a mod's Python in `mod.py`. The server does not make its other Python files available to import.
+- A mod can import only what the server image holds, such as `requests` and `airium`. For anything else, build your own image.
+
+### A mod's settings
+
+`SETTINGS` gives a mod its own section on the **Mods** tab of the Settings page.
+A mod with no `SETTINGS` has no section.
+
+- The tides mod's settings are `mods.tides.apikey` and `mods.tides.station` in `config.yaml`. An environment variable overrides one, as with any key: `MODS_TIDES_APIKEY`.
+- `mod.get("apikey")` gives the value, the field's default, or `None` for a blank value.
+- Do not stop in `setup` when a value is blank. Raise an error in the fetch: the server then starts, and you can add the value on the Settings page.
+- Send an API key in a header if the service allows it. A failed request's error can hold its URL, and the log prints that error. Otherwise, catch the error and raise one with no URL.
+
+### When a mod fails
+
+| Failure | Result |
+|---|---|
+| A mod cannot load: a fault in `mod.py`, a page or data name already in use, or a page that requires data no source gives | The log names the mod, and the server stops. |
+| A set names the page of a mod you removed | The server stops. Remove the page from the set in `config.yaml`. |
+| A fetch or a render fails at a scheduled render | The log says so, and that page keeps its last image. |
+| A fetch fails at the first render after a start | The log says so, and no page is drawn in that render. Each page is drawn at its scheduled render. |
+| A render fails at the first render after a start | The log says so, and that page and the pages after it are not drawn. Each of them is drawn at its scheduled render. |
+
 ## Firmware updates
 
 With `client.firmware.enabled`, the display updates itself from the server,
@@ -274,6 +361,7 @@ does. It keeps these across updates:
   volume the server fetches once per location and map ID. Without it, every
   update fetches again.
 - The sign-in's keep file and the HTTPS certificate.
+- A copy of each mod's files, and its pages' HTML and images, in `data/mods`.
 
 ### When Google or the weather provider is down
 
