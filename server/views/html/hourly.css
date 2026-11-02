@@ -14,7 +14,7 @@
   height: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  margin-top: 0.2vh;
+  margin-top: calc(var(--inner-vh) * 0.2);
 }
 
 #forecast-table tr {
@@ -57,24 +57,24 @@
 
 /* Sized so that a 4-character label such as 11pm fits one column, for the last column. */
 .forecast-hour {
-  font-size: min(2.8vw, calc(90vw / var(--hourly-columns, 9) / 2.8));
+  font-size: min(calc(var(--inner-vw) * 2.8), calc(var(--inner-vw) * 90 / var(--hourly-columns, 9) / 2.8));
   font-weight: 700;
   line-height: 1.2;
-  padding-bottom: 1.5vh;
+  padding-bottom: calc(var(--inner-vh) * 1.5);
 }
 
 .forecast-temp {
-  font-size: 2.7vw;
+  font-size: calc(var(--inner-vw) * 2.7);
   font-weight: 600;
   line-height: 1.2;
-  padding-bottom: 0.8vh;
+  padding-bottom: calc(var(--inner-vh) * 0.8);
 }
 
 .forecast-wind {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5vh;
+  gap: calc(var(--inner-vh) * 1.5);
 }
 
 .precip-canvas {
@@ -87,7 +87,7 @@
 .legend-cell {
   vertical-align: middle;
   text-align: center;
-  width: 5vw;
+  width: calc(var(--inner-vw) * 5);
   padding: 0.4rem !important;
   position: relative;
 }
@@ -102,7 +102,7 @@
 }
 
 .legend-icon {
-  width: 3.5vw;
+  width: calc(var(--inner-vw) * 3.5);
   height: auto;
   display: block;
   margin: 0 auto;
@@ -110,9 +110,9 @@
 
 .legend-unit {
   display: block;
-  font-size: 1.5vw;
+  font-size: calc(var(--inner-vw) * 1.5);
   font-weight: 600;
   text-align: center;
   line-height: 1.2;
-  margin-top: 0.3vh;
+  margin-top: calc(var(--inner-vh) * 0.3);
 }

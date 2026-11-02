@@ -14,7 +14,7 @@ def wind_arrow(a, wind: dict) -> None:
     a.img(
         src="icon/wind-arrow.png",
         klass="wind-arrow",
-        style=f"transform: rotate({(wind['direction_degrees'] + 180) % 360}deg); width: {size}vw; height: {size}vw;",
+        style=f"transform: rotate({(wind['direction_degrees'] + 180) % 360}deg); width: calc(var(--inner-vw) * {size}); height: calc(var(--inner-vw) * {size});",
     )
 
 

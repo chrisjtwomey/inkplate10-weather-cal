@@ -136,7 +136,8 @@ epd-next-display-refresh-seconds: 17602
 ## Fitting a photo mat
 
 When a frame's mat hides the edges of the panel, keep the content inside the
-part that shows. The page stays the panel's size; only its content moves in.
+part that shows. The page stays the panel's size; its content scales to fit
+that part.
 
 ```yaml
 image:
