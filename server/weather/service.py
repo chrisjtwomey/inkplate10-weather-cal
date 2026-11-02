@@ -1,11 +1,18 @@
 import os
 import json
+import logging
+import time
 from abc import abstractmethod
 
 import requests
 from epd_server.source import DataSource
 
+log = logging.getLogger(__name__)
+
 REQUEST_TIMEOUT_S = 20
+# The waits before the second and third tries. Three timeouts and these waits fit
+# inside the default server.regen_lead_seconds.
+RETRY_WAITS_S = (5, 20)
 DATASET_NAMES = ("current_conditions", "daily_summary", "hourly_forecasts", "daily_forecasts")
 
 
@@ -68,11 +75,23 @@ class WeatherService(DataSource):
 
     def _get(self, url, **kwargs):
         """GET ``url``, with a timeout: a call that never returns would stop
-        every later page.
+        every later page. No answer or a status of 500 or above gets more tries,
+        since a failed fetch leaves the old page up until the next wake.
 
         Raises:
-            WeatherFetchError: no answer, or a status of 400 or above.
+            WeatherFetchError: a status from 400 to 499, or the last try failed.
         """
+        for wait in RETRY_WAITS_S:
+            try:
+                return self._try_get(url, **kwargs)
+            except WeatherFetchError as exc:
+                if exc.status is not None and exc.status < 500:
+                    raise
+                log.warning("%s. Trying again in %d s.", exc, wait)
+                time.sleep(wait)
+        return self._try_get(url, **kwargs)
+
+    def _try_get(self, url, **kwargs):
         try:
             res = requests.get(url, timeout=REQUEST_TIMEOUT_S, **kwargs)
         except requests.RequestException as exc:

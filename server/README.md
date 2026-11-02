@@ -279,7 +279,9 @@ does. It keeps these across updates:
 
 The server starts anyway, and fetches at the first render. If the map cannot be
 fetched, the page renders with no map, and the next render tries again. If the
-weather cannot be fetched, the log says so, and the next scheduled render tries
+weather cannot be fetched, the server tries twice more, 5 s and then 20 s later.
+A refused request, such as a wrong API key, gets no more tries. If the weather
+still cannot be fetched, the log says so, and the next scheduled render tries
 again. Until then the server offers the pages it already made. A server that
 has just updated has none, so the display shows its last page under an error
 banner, and backs off.

@@ -20,7 +20,7 @@ from weather.mock.mock import MockWeatherService
 from weather.meteireann.meteireann import MetEireannService
 from weather.openmeteo.openmeteo import OpenMeteoService
 from weather.registry import registered_services, _REGISTRY
-from weather.service import (DATASET_NAMES, REQUEST_TIMEOUT_S, DeferredWeather, WeatherFetchError,
+from weather.service import (DATASET_NAMES, REQUEST_TIMEOUT_S, RETRY_WAITS_S, DeferredWeather, WeatherFetchError,
                              WeatherService)
 
 
@@ -449,6 +449,14 @@ def service():
     return MockWeatherService(location="Cork")
 
 
+@pytest.fixture(autouse=True)
+def waits(monkeypatch):
+    """The seconds ``_get`` waited, in order. It does not really wait."""
+    waited = []
+    monkeypatch.setattr("weather.service.time.sleep", waited.append)
+    return waited
+
+
 def test_a_request_has_a_timeout(service):
     with responses.RequestsMock() as rsps:
         rsps.add(rsps.GET, KEYED_URL, json={})
@@ -474,6 +482,57 @@ def test_no_answer_keeps_the_key_out_of_the_error_and_its_cause(service, error):
             service._get(KEYED_URL)
     assert "SECRET" not in "".join(traceback.format_exception(caught.value))
     assert caught.value.status is None
+
+
+def test_a_request_with_no_answer_is_tried_again(service, waits):
+    with responses.RequestsMock() as rsps:
+        rsps.add(rsps.GET, KEYED_URL, body=requests.ConnectionError())
+        rsps.add(rsps.GET, KEYED_URL, json={"ok": True})
+        assert service._get(KEYED_URL).json() == {"ok": True}
+    assert waits == [RETRY_WAITS_S[0]]
+
+
+def test_a_server_fault_is_tried_again(service, waits):
+    with responses.RequestsMock() as rsps:
+        rsps.add(rsps.GET, KEYED_URL, status=503)
+        rsps.add(rsps.GET, KEYED_URL, status=500)
+        rsps.add(rsps.GET, KEYED_URL, json={"ok": True})
+        assert service._get(KEYED_URL).json() == {"ok": True}
+    assert waits == list(RETRY_WAITS_S)
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 429])
+def test_a_refusal_is_not_tried_again(service, waits, status):
+    with responses.RequestsMock() as rsps:
+        rsps.add(rsps.GET, KEYED_URL, status=status)
+        with pytest.raises(WeatherFetchError):
+            service._get(KEYED_URL)
+        assert len(rsps.calls) == 1
+    assert waits == []
+
+
+def test_the_last_failure_is_raised_after_every_try(service, waits):
+    with responses.RequestsMock() as rsps:
+        rsps.add(rsps.GET, KEYED_URL, status=503)
+        with pytest.raises(WeatherFetchError) as caught:
+            service._get(KEYED_URL)
+        assert len(rsps.calls) == len(RETRY_WAITS_S) + 1
+    assert caught.value.status == 503
+    assert waits == list(RETRY_WAITS_S)
+
+
+def test_a_retry_keeps_the_key_out_of_the_log(service, caplog):
+    with responses.RequestsMock() as rsps:
+        rsps.add(rsps.GET, KEYED_URL, body=requests.ConnectionError(f"failed: {KEYED_URL}"))
+        with pytest.raises(WeatherFetchError):
+            service._get(KEYED_URL)
+    assert "mock: ConnectionError" in caplog.text
+    assert "SECRET" not in caplog.text
+
+
+def test_every_try_fits_inside_the_default_render_lead():
+    tries = len(RETRY_WAITS_S) + 1
+    assert tries * REQUEST_TIMEOUT_S + sum(RETRY_WAITS_S) < 120
 
 
 @pytest.mark.parametrize("module", [accuweather, meteireann, openmeteo, openweathermap])
