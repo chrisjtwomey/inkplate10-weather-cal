@@ -47,7 +47,7 @@ cp config.example.yaml config.yaml
 | `client.firmware.source.token` | – | For a private repository. Set `CLIENT_FIRMWARE_SOURCE_TOKEN` rather than write it here. |
 | `mqtt.enabled` | `false` | Take the display's log lines from an MQTT broker. See [MQTT](#mqtt). |
 | `mqtt.host`, `mqtt.port` | `localhost`, `1883` | The broker. |
-| `mqtt.prefix` | `mqtt/weather-cal` | The server takes every topic under `<prefix>/`; the display logs to `<prefix>/inkplate10-weather-cal`. |
+| `mqtt.prefix` | `mqtt/weather-cal` | The display logs to `<prefix>/inkplate10-weather-cal`, and the server takes each `<prefix>/<display>` topic. |
 | `logs.path` | `data/board-logs.db` | Where the display's log lines are kept, beside `config.yaml`. In Docker, mount a volume on `/app/data` to keep them across updates. |
 | `logs.keep_days` | `90` | How many days a line is kept. `0` keeps them all. |
 
@@ -294,6 +294,16 @@ From a wake on 25 October 2026:
 2026-10-25 08:30:05 - client - INFO - inkplate10-weather-cal: 2026-10-25T08:30:04+00:00 - INFO - received header EPD-Next-Display-Refresh-Seconds: 3594
 2026-10-25 08:30:05 - client - INFO - inkplate10-weather-cal: 2026-10-25T08:30:05+00:00 - INFO - drawing image from buffer
 ```
+
+### Charge reminder
+
+At 10% battery, about a month before the display shows its critical banner, the
+server publishes `low` to `<mqtt.prefix>/<display>/battery`. Above 20% it publishes `ok`.
+Subscribe to that topic, for example from Home Assistant, to get the reminder.
+
+- It publishes once for each change, and the broker keeps the last message for a subscriber that starts later.
+- After a server restart it publishes the current state once more, so a subscriber can get a second `low` in one low period.
+- It needs `mqtt.enabled` on the server and `mqtt_logger.enabled` on the display.
 
 ### The Settings page and sign-in
 

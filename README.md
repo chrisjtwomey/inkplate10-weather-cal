@@ -157,6 +157,7 @@ At each wake, the display:
 - **Power:** about 24 µA in deep sleep. A wake takes about 5 seconds: about a minute a day at 11 pages a day.
 - **Time:** the real-time clock wakes the display. The server sends the seconds to the next refresh, so the display needs no time zone rules of its own.
 - **Errors:** a message across the top of the last page, for example a flat battery, no Wi-Fi or a failed update. After a server failure the display backs off: 6 minutes, 18, 54, and so on, up to 24 hours. With no Wi-Fi it tries again after 2 minutes, 6, 18, 54, and then each hour.
+- **Battery:** each page shows the percent. From 10% the icon is empty: charge within about a month. With MQTT on, the server also sends a [charge reminder](server/README.md#charge-reminder).
 - **Logs:** with MQTT on, the server keeps the display's log lines, and answers `GET /logs` with them.
 - **Updates:** the display takes new firmware from the server, and shows a progress bar while it installs.
 

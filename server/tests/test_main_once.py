@@ -173,6 +173,22 @@ def test_the_boards_log_lines_are_kept_and_answer_logs(project_dir, monkeypatch)
     assert answer["boards"] == ["inkplate10-weather-cal"]
 
 
+def test_a_low_battery_is_published_with_the_servers_mqtt_client(project_dir, monkeypatch):
+    made = {}
+    published = []
+
+    class Client:
+        def publish(self, topic, payload, qos, retain):
+            published.append((topic, payload))
+
+    monkeypatch.setattr(server, "DisplayServer", fake_server(made))
+    server.main()
+
+    made["server"].mqtt_client = Client()
+    made["client_logs"].add("inkplate10-weather-cal", "WARNING - battery low, charge soon!")
+    assert published == [("mqtt/weather-cal/inkplate10-weather-cal/battery", "low")]
+
+
 def test_main_exits_on_bad_config(project_dir, caplog):
     cfg = yaml.safe_load((project_dir / "config.yaml").read_text())
     cfg["display"] = {"pools": {"nope": ["nope.png"]}, "schedule": {"type": "times", "08:00:00": "nope"}}

@@ -22,8 +22,9 @@ from views.today import TodayPage
 from views.current import CurrentPage
 from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
+from battery_reminder import RemindingLogStore
 from google.api import GoogleAPIService, StaticMapSource
-from epd_server import DisplayServer, InstallBoard, LogsQuery, LogStore, align_process_timezone
+from epd_server import DisplayServer, InstallBoard, LogsQuery, align_process_timezone
 from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_keys, load_core_config,
                                load_yaml, parse_network)
 from epd_server.login import Login, guard
@@ -225,7 +226,8 @@ def main():
 
     logs_file = os.path.join(cwd, cfg.logs_path)
     os.makedirs(os.path.dirname(logs_file), exist_ok=True)
-    board_logs = LogStore(logs_file, keep_days=cfg.logs_days)
+    board_logs = RemindingLogStore(logs_file, prefix=cfg.core.mqtt.prefix, mqtt_client=lambda: server.mqtt_client,
+                                   keep_days=cfg.logs_days)
 
     try:
         server = DisplayServer(
