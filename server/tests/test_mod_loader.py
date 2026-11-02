@@ -349,6 +349,32 @@ def test_the_server_renders_and_schedules_a_mods_page(project):
     assert (project / "out" / "today.png").exists()
 
 
+def test_the_settings_check_knows_a_mods_page(project, monkeypatch):
+    made = {}
+
+    class FakeServer:
+        def __init__(self, **kwargs):
+            self.app = Flask(__name__)
+            self.network = kwargs["network"]
+            made["server"] = self
+
+        def run(self, once=False):
+            pass
+
+    write_mod(project / "mods", "tides", TIDES)
+    monkeypatch.delenv("WEATHER_CAL_PASSWORD", raising=False)
+    monkeypatch.setattr(server, "DisplayServer", FakeServer)
+    server.main()
+
+    rsp = made["server"].app.test_client().post("/settings", data={
+        "mode": "form", "action": "save", "display.pools": "1", "display.pools.name": ["a"],
+        "display.pools.pages": ["nosuchpage.png"], "display.schedule": "1",
+        "display.schedule.at": ["08:00"], "display.schedule.pool": ["a"]})
+    words = BeautifulSoup(rsp.data, "html.parser").get_text()
+    assert rsp.status_code == 400
+    assert "does not exist: nosuchpage.png" in words and "tides.png" in words
+
+
 def test_a_mod_that_cannot_load_stops_the_server_with_its_name_in_the_log(project, caplog):
     write_mod(project / "mods", "tides", "raise RuntimeError('import fault')")
     with pytest.raises(SystemExit) as stopped:

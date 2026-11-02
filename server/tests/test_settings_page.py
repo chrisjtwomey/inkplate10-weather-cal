@@ -14,6 +14,7 @@ from server import load_settings
 
 EXAMPLE = open(os.path.join(os.path.dirname(__file__), "..", "config.example.yaml")).read()
 PASSWORD = "correct horse"
+PAGES = {"today.png", "current.png", "hourly.png", "daily.png", "tomorrow.png"}
 
 
 @pytest.fixture
@@ -31,7 +32,7 @@ def site(path, login=None):
     def restart():
         app.restarts += 1
 
-    app.register_blueprint(settings_blueprint(sp.FORM, str(path), lambda t: sp.check_config(t, load_settings),
+    app.register_blueprint(settings_blueprint(sp.FORM, str(path), lambda t: sp.check_config(t, load_settings, PAGES),
                                               restart=restart, login=login))
     if login is not None:
         guard(app, login, sp.SITE)
@@ -50,6 +51,15 @@ def soup(rsp):
 def post(client, action="save", **fields):
     data = {k.replace("__", "."): v for k, v in fields.items()}
     return client.post("/settings", data={"mode": "form", "action": action, **data})
+
+
+def client_save_sets(path, pages, client=None):
+    client = client or site(path).test_client()
+    return client.post("/settings", data={"mode": "form", "action": "save",
+                                          "display.pools": "1", "display.pools.name": ["a"],
+                                          "display.pools.pages": [pages],
+                                          "display.schedule": "1", "display.schedule.at": ["08:00"],
+                                          "display.schedule.pool": ["a"]})
 
 
 # ── Every option ─────────────────────────────────────────────────────
@@ -117,6 +127,33 @@ def test_a_set_the_wake_times_do_not_name_is_refused(path):
     rsp = client.post("/settings", data={"mode": "form", "action": "save", "display.schedule": "1",
                                          "display.schedule.at": ["08:00"], "display.schedule.pool": ["nope"]})
     assert rsp.status_code == 400 and path.read_text() == EXAMPLE
+
+
+def test_a_wake_set_that_names_a_missing_page_is_refused_and_says_which(path):
+    rsp = client_save_sets(path, "nosuchpage.png")
+    assert rsp.status_code == 400 and path.read_text() == EXAMPLE
+    words = soup(rsp).get_text()
+    assert "A set has a page that does not exist: nosuchpage.png." in words
+    assert "The pages are: current.png, daily.png, hourly.png, today.png, tomorrow.png." in words
+
+
+def test_a_set_no_wake_uses_can_name_any_page(path):
+    client = site(path).test_client()
+    rsp = client.post("/settings", data={"mode": "form", "action": "save",
+                                         "display.pools": "1", "display.pools.name": ["a", "spare"],
+                                         "display.pools.pages": ["today.png", "nosuchpage.png"],
+                                         "display.schedule": "1", "display.schedule.at": ["08:00"],
+                                         "display.schedule.pool": ["a"]})
+    assert rsp.status_code < 400
+
+
+def test_a_mods_page_can_be_in_a_set(path):
+    app = Flask(__name__)
+    app.register_blueprint(settings_blueprint(sp.FORM, str(path),
+                                              lambda t: sp.check_config(t, load_settings, PAGES | {"tides.png"}),
+                                              restart=lambda: None))
+    rsp = client_save_sets(path, "tides.png", app.test_client())
+    assert rsp.status_code < 400
 
 
 def test_a_bad_wifi_password_says_what_to_enter(path):

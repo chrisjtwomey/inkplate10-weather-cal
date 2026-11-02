@@ -135,11 +135,12 @@ def _image(cfg: dict, key: str, default: int) -> int:
     return image.get(key, default) if isinstance(image, dict) else default
 
 
-def check_config(text: str, load) -> None:
-    """Refuse ``text``, with the problem, unless ``load`` would start the server on it.
+def check_config(text: str, load, pages: set[str]) -> None:
+    """Refuse ``text``, with the problem, unless the server would start on it with ``pages``.
 
     Raises:
-        ValueError: it is not YAML, writes a key twice, or ``load`` refuses it.
+        ValueError: it is not YAML, writes a key twice, ``load`` refuses it, or
+            a wake time's set names a page outside ``pages``.
     """
     try:
         config = yaml.safe_load(text)
@@ -153,6 +154,10 @@ def check_config(text: str, load) -> None:
     if not isinstance(config, dict):
         raise ValueError("The top level must be a mapping.")
     try:
-        load(config)
+        settings = load(config)
     except Exception as exc:  # noqa: BLE001 - the same error at start would stop the server
         raise ValueError(exc.args[0] if exc.args else repr(exc)) from None
+    missing = sorted(settings.core.server.schedule.pages() - pages)
+    if missing:
+        raise ValueError(f"A set has a page that does not exist: {', '.join(missing)}. "
+                         f"The pages are: {', '.join(sorted(pages))}.")

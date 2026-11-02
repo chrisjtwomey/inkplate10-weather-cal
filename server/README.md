@@ -235,7 +235,7 @@ A mod with no `SETTINGS` has no section.
 | Failure | Result |
 |---|---|
 | A mod cannot load: a fault in `mod.py`, a page or data name already in use, or a page that requires data no source gives | The log names the mod, and the server stops. |
-| A set names the page of a mod you removed | The server stops. Remove the page from the set in `config.yaml`. |
+| A set that a wake time uses names the page of a mod you removed | The server stops at the next start. Remove the page from the set in `config.yaml`. |
 | A fetch or a render fails at a scheduled render | The log says so, and that page keeps its last image. |
 | A fetch fails at the first render after a start | The log says so, and no page is drawn in that render. Each page is drawn at its scheduled render. |
 | A render fails at the first render after a start | The log says so, and that page and the pages after it are not drawn. Each of them is drawn at its scheduled render. |
@@ -303,6 +303,7 @@ file's comments, keeps the old file as `config.yaml.bak`, and restarts the serve
 **Restore** puts the `.bak` back. So `config.yaml` must be writable.
 
 - API keys and passwords never reach the page. Leave one blank to keep it.
+- A save is refused if a set that a wake time uses has a page that does not exist. The message lists the pages.
 - A key an environment variable sets is locked on the page.
 - A change only to the **Install** tab needs no restart.
 

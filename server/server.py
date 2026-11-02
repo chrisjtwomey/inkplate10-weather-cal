@@ -258,11 +258,13 @@ def main():
                     "Set %s to turn on sign-in", PASSWORD_ENV)
     guard(server.app, login, SITE, cfg.core.server.reverse_proxy)
 
+    served = {page.png_filename for page in mods.pages}
+
     def take_network(text: str) -> None:
         server.network = parse_network(yaml.safe_load(text))
 
     server.app.register_blueprint(settings_blueprint(
-        form_with_mods(mods.groups), config_path, lambda text: check_config(text, load_settings), login=login,
+        form_with_mods(mods.groups), config_path, lambda text: check_config(text, load_settings, served), login=login,
         live_keys=NETWORK_KEYS, take_live=take_network, links=(("install", "Install firmware"),),
         password_env=PASSWORD_ENV))
     server.run(once=args.once)
