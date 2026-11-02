@@ -83,8 +83,13 @@
 
 .temp-high,
 .temp-low {
+  flex: none;
   font-size: calc(var(--inner-vw) * 2.2);
   white-space: nowrap;
+}
+
+.temp-low {
+  text-align: right;
 }
 
 .temp-high {

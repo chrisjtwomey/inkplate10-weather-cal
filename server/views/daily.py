@@ -92,7 +92,17 @@ class DailyPage(DetailedPage):
         a.script(src="rough.iife.min.js")
         with a.script():
             a("""
-document.addEventListener('DOMContentLoaded', function () {
+function sameWidth(selector) {
+    var labels = document.querySelectorAll(selector);
+    var widest = Math.max.apply(null, Array.from(labels, function (label) {
+        return label.getBoundingClientRect().width;
+    }));
+    labels.forEach(function (label) { label.style.width = Math.ceil(widest) + 'px'; });
+}
+
+function drawTemperatureBars() {
+    sameWidth('.temp-low');
+    sameWidth('.temp-high');
     document.querySelectorAll('canvas.temp-bar-canvas').forEach(function (canvas) {
         var leftPct  = parseFloat(canvas.getAttribute('data-left'))  / 100;
         var rightPct = parseFloat(canvas.getAttribute('data-right')) / 100;
@@ -129,6 +139,10 @@ document.addEventListener('DOMContentLoaded', function () {
             strokeWidth:  1.3
         });
     });
+}
+
+window.addEventListener('load', function () {
+    document.fonts.ready.then(drawTemperatureBars);
 });
             """)
 
