@@ -25,7 +25,7 @@ class TodayPage(SimplifiedPage):
                 "temperature": {
                     "unit": temp["unit"],
                     "min": temp.get("min"),
-                    "max": temp.get("max", temp.get("value")),
+                    "max": temp["max"],
                     "feels_like": temp.get("feels_like"),
                 },
                 "wind": ds.get("wind"),

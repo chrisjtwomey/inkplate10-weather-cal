@@ -79,10 +79,7 @@ class DetailedPage(Page):
                                     a.h4(
                                         id="temp",
                                         klass="numcircle text-center",
-                                        _t=str(
-                                            daily_summary["temperature"].get("value")
-                                            or daily_summary["temperature"]["max"]
-                                        )
+                                        _t=str(daily_summary["temperature"]["max"])
                                         + daily_summary["temperature"]["unit"],
                                     )
 

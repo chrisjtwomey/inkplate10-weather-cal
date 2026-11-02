@@ -81,7 +81,6 @@ class MockWeatherService(WeatherService):
                 "unit": temp_unit,
                 "min": rng.randint(temp_range[0], temp_range[1] - 5),
                 "max": rng.randint(temp_range[0] + 5, temp_range[1]),
-                "value": rng.randint(temp_range[0] + 2, temp_range[1] - 2),
                 "feels_like": rng.randint(temp_range[0], temp_range[1] - 3),
             },
             "wind": {
