@@ -148,7 +148,7 @@ class HourlyPage(DetailedPage):
                         var ctx      = canvas.getContext('2d');
                         // Scale label font with the available row height.
                         var fontSize = Math.max(12, Math.round(h * 0.1));
-                        ctx.font      = 'bold ' + fontSize + 'px Merienda-Regular, sans-serif';
+                        ctx.font      = 'bold ' + fontSize + 'px Merienda, sans-serif';
                         ctx.textAlign = 'center';
 
                         // Above the bar, or inside it on white when the top of the canvas would cut it off.

@@ -49,7 +49,6 @@
 
 /* ── Day name / date cell ───────────────────────────────────── */
 .day-name {
-  font-family: "Merienda-Bold", serif;
   font-size: 3.5vw;
   font-weight: 700;
   line-height: 1.1;
@@ -89,7 +88,6 @@
 }
 
 .temp-high {
-  font-family: "Merienda-Bold", serif;
   font-weight: 700;
 }
 
@@ -125,7 +123,6 @@
 }
 
 .precip-value {
-  font-family: "Merienda-Bold", serif;
   font-size: 2.5vw;
   font-weight: 700;
   line-height: 1;
@@ -188,7 +185,7 @@
 }
 
 .sun-hours-value {
-  font-family: "Merienda-Bold", serif;
+  font-weight: 700;
 }
 
 .sun-hours-unit {

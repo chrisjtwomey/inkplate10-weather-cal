@@ -1,11 +1,13 @@
 @font-face {
-  font-family: "Merienda-Bold";
-  src: url('Merienda-Bold.ttf');
+  font-family: "Merienda";
+  font-weight: 400;
+  src: url('Merienda-Regular.ttf');
 }
 
 @font-face {
-  font-family: "Merienda-Regular";
-  src: url('Merienda-Regular.ttf');
+  font-family: "Merienda";
+  font-weight: 700;
+  src: url('Merienda-Bold.ttf');
 }
 
 /* ── Grayscale swatch (4-level e-ink) ──────────────────────── */
@@ -29,7 +31,7 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: "Merienda-Regular";
+  font-family: "Merienda";
   font-weight: 400;
   line-height: 1.5;
   text-align: left;
