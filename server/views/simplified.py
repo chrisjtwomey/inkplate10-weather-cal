@@ -6,13 +6,6 @@ class SimplifiedPage(Page):
     def __init__(self, *geometry, **kwargs):
         super().__init__("simplified", *geometry, **kwargs)
 
-    def _css_links(self, a):
-        a.link(rel="stylesheet", href="styles.css")
-        a.link(rel="stylesheet", href="simplified.css")
-
-    def _script_tags(self, a):
-        pass  # subclasses may add extra <script> tags in <head>
-
     def template(self, **kwargs):
         self.airium = Airium()
         a = self.airium
@@ -46,8 +39,8 @@ class SimplifiedPage(Page):
                     content="width=device-width, initial-scale=1",
                 )
                 a.title(_t="Day Forecast")
-                self._css_links(a)
-                self._script_tags(a)
+                a.link(rel="stylesheet", href="styles.css")
+                a.link(rel="stylesheet", href="simplified.css")
 
             with a.body(style=self.layout_css_variables()):
                 with a.div(klass="inner-canvas-outer"):

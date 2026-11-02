@@ -34,10 +34,7 @@ class CurrentPage(SimplifiedPage):
                     "max": cc["temperature"]["value"],
                     "feels_like": cc["temperature"].get("feels_like"),
                 },
-                "wind": cc["wind"],
                 "rain_probability": daily_summary.get("rain_probability", 0) if daily_summary else 0,
-                "uv_index": cc.get("uv_index"),
                 "day_phrase": cc.get("weather_text"),
-                "pollen": daily_summary.get("pollen") if daily_summary else None,
             },
         )

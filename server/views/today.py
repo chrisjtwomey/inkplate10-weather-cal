@@ -24,10 +24,7 @@ class TodayPage(SimplifiedPage):
                     "max": temp["max"],
                     "feels_like": temp.get("feels_like"),
                 },
-                "wind": ds.get("wind"),
                 "rain_probability": ds.get("rain_probability", 0),
-                "uv_index": ds.get("uv_index"),
                 "day_phrase": ds.get("day_phrase"),
-                "pollen": ds.get("pollen"),
             },
         )

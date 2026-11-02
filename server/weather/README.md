@@ -105,9 +105,10 @@ only the arguments its constructor declares.
 
 ## What each method returns
 
-The pages need these keys. [mock/mock.py](mock/mock.py) returns every one of them,
-and [accuweather/accuweather.py](accuweather/accuweather.py) is a full provider.
+[mock/mock.py](mock/mock.py) returns all of these keys, and
+[accuweather/accuweather.py](accuweather/accuweather.py) is a full provider.
 
+- A provider can leave out the keys no page reads: `wind`, `humidity` and `uv_index` in the current conditions, `wind`, `humidity` and `pollen` in the daily summary, `humidity` in an hourly entry, and `pollen`, `hours_of_rain` and `night_phrase` in a 5-day entry.
 - `value`, `min` and `max` are the real temperature. Only `feels_like` holds the temperature it feels like.
 
 **`get_current_conditions()`**

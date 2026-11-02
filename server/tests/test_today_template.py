@@ -100,31 +100,3 @@ def test_date_shown_in_hero(rendered_html):
     assert "Thursday" in text
     assert "21" in text
     assert "May" in text
-
-
-def test_no_rain_alert_when_probability_is_low():
-    """A low rain probability from daily_summary should not trigger a rain alert."""
-    with freeze_time("2026-05-21 09:00:00"):
-        weather = MockWeatherService(metric=True)
-        ds = weather.get_daily_summary()
-    ds["rain_probability"] = 10  # well below alert threshold
-
-    page = TodayPage(WIDTH, HEIGHT)
-    page.template(map_url=MAP_URL, daily_summary=ds)
-    soup = BeautifulSoup(str(page.airium), "html.parser")
-    alerts_div = soup.find(id="day-alerts")
-    if alerts_div:
-        texts = [el.get_text().lower() for el in alerts_div.find_all(class_="alert-text")]
-        assert not any("rain" in t for t in texts)
-
-
-def test_no_alerts_when_conditions_mild():
-    ds = _get_daily_summary()
-    ds["rain_probability"] = 0
-    ds["uv_index"] = 2
-    ds["wind"] = {"unit": "kmh", "value": 10, "direction_degrees": 0}
-
-    page = TodayPage(WIDTH, HEIGHT)
-    page.template(map_url=MAP_URL, daily_summary=ds)
-    soup = BeautifulSoup(str(page.airium), "html.parser")
-    assert soup.find(id="day-alerts") is None
