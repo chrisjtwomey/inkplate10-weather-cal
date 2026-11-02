@@ -108,6 +108,8 @@ only the arguments its constructor declares.
 The pages need these keys. [mock/mock.py](mock/mock.py) returns every one of them,
 and [accuweather/accuweather.py](accuweather/accuweather.py) is a full provider.
 
+- `value`, `min` and `max` are the real temperature. Only `feels_like` holds the temperature it feels like.
+
 **`get_current_conditions()`**
 ```python
 {

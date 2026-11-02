@@ -92,12 +92,31 @@ def test_accuweather_hourly_forecast_returns_requested_count(accuweather_endpoin
     first = hourly[0]
     assert isinstance(first["dt"], datetime)
     assert first["temperature"]["unit"] == "\N{DEGREE SIGN}C"
-    assert first["temperature"]["value"] == 16
+    assert first["temperature"]["value"] == 18                 # Temperature, not RealFeel (16)
     assert first["wind"]["unit"] == "kmh"
     assert first["wind"]["direction_degrees"] == 270
     assert first["humidity"] == 60
     assert first["rain_probability"] == 10
     assert first["icon"] == "icon/day/clear.png"               # Icon=1 -> clear day
+
+
+def test_accuweather_5day_forecast_uses_the_actual_temperature(fixtures_dir):
+    location = _load(fixtures_dir, "accuweather_location.json")
+    daily = _load(fixtures_dir, "accuweather_daily.json")
+    entry = daily["DailyForecasts"][0]
+    entry["EpochDate"] = 1747900800
+    entry["Day"]["Wind"] = {"Speed": {"Value": 12.4}}
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        rsps.add(rsps.GET,
+                 re.compile(r"https://dataservice\.accuweather\.com/locations/v1/search.*"),
+                 json=location)
+        rsps.add(rsps.GET,
+                 re.compile(r"https://dataservice\.accuweather\.com/forecasts/v1/daily/5day/.*"),
+                 json=daily)
+        svc = AccuweatherService(apikey="fake-key", location="Cork", num_hours=6, metric=True)
+        first = svc.get_5day_forecast()[0]
+    assert first["temperature"]["min"] == 10    # round(10.3), not RealFeel (8.6)
+    assert first["temperature"]["max"] == 20    # round(19.5), not RealFeel (18.2)
 
 
 def test_accuweather_raises_on_empty_location_response(fixtures_dir):
@@ -152,7 +171,7 @@ def test_openweathermap_hourly_forecast_parses(openweathermap_endpoints):
     assert len(hourly) == 6
     first = hourly[0]
     assert isinstance(first["dt"], datetime)
-    assert first["temperature"]["value"] == 16   # round(16)
+    assert first["temperature"]["value"] == 18   # main.temp, not feels_like (16)
     assert first["humidity"] == 60
     assert first["wind"]["direction_degrees"] == 250
     assert first["rain_probability"] == 10       # round(0.1 * 100)

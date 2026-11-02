@@ -103,7 +103,7 @@ class AccuweatherService(WeatherService):
                 "icon": self.get_icon(entry["WeatherIcon"]),
                 "temperature": {
                     "unit": temp_units,
-                    "value": round(entry["RealFeelTemperature"]["Value"]),
+                    "value": round(entry["Temperature"]["Value"]),
                 },
                 "wind": {
                     "unit": speed_units,
@@ -184,8 +184,8 @@ class AccuweatherService(WeatherService):
                 "icon": self.get_icon(entry["Day"]["Icon"]),
                 "temperature": {
                     "unit": temp_unit,
-                    "min": round(entry["RealFeelTemperature"]["Minimum"]["Value"]),
-                    "max": round(entry["RealFeelTemperature"]["Maximum"]["Value"]),
+                    "min": round(entry["Temperature"]["Minimum"]["Value"]),
+                    "max": round(entry["Temperature"]["Maximum"]["Value"]),
                 },
                 "wind": {
                     "unit": speed_unit,

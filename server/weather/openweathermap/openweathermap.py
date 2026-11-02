@@ -102,7 +102,7 @@ class OpenWeatherMapService(WeatherService):
                 "icon": self.get_icon(entry["weather"][0]["icon"]),
                 "temperature": {
                     "unit": temp_units,
-                    "value": round(entry["main"]["feels_like"]),
+                    "value": round(entry["main"]["temp"]),
                 },
                 "wind": {
                     "unit": speed_units,
