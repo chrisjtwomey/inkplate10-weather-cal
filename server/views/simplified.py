@@ -33,11 +33,8 @@ class SimplifiedPage(Page):
         a("<!DOCTYPE html>")
         with a.html(lang="en"):
             with a.head():
-                a.meta(
-                    charset="utf-8",
-                    name="viewport",
-                    content="width=device-width, initial-scale=1",
-                )
+                a.meta(charset="utf-8")
+                a.meta(name="viewport", content="width=device-width, initial-scale=1")
                 a.title(_t="Day Forecast")
                 a.link(rel="stylesheet", href="styles.css")
                 a.link(rel="stylesheet", href="simplified.css")

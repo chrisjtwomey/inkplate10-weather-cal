@@ -112,11 +112,11 @@ def test_forecast_table_has_one_cell_per_hour_per_row(rendered_html):
         assert "rotate" in (arrow.get("style") or "")
         assert cell.find("span", class_="wind-speed") is not None
 
-    # Each data cell in row 4 (precip) holds a <canvas> with a data_precip attribute;
+    # Each data cell in row 4 (precip) holds a <canvas> with a data-precip attribute;
     # skip the first (legend) cell.
     for cell in rows[4].find_all("td")[1:]:
         canvas = one(cell, "canvas")
-        pct = int(attr(canvas, "data_precip"))
+        pct = int(attr(canvas, "data-precip"))
         assert 0 <= pct <= 100
 
 

@@ -49,11 +49,8 @@ class DetailedPage(Page):
         a("<!DOCTYPE html>")
         with a.html(lang="en"):
             with a.head():
-                a.meta(
-                    charset="utf-8",
-                    name="viewport",
-                    content="width=device-width, initial-scale=1",
-                )
+                a.meta(charset="utf-8")
+                a.meta(name="viewport", content="width=device-width, initial-scale=1")
                 a.title(_t=self._title())
                 self._css_links(a)
                 self._script_tags(a)

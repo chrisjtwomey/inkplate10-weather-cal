@@ -81,7 +81,7 @@ def _rain_row(a, forecasts):
             with a.td(klass="forecast-cell"):
                 a.canvas(
                     klass="precip-canvas",
-                    data_precip=str(chance),
+                    **{"data-precip": str(chance)},
                     data_show_label="true" if show_label else "false",
                 )
             previous = chance
@@ -123,7 +123,7 @@ class HourlyPage(DetailedPage):
                 window.onload = function() {
                     var bars = document.querySelectorAll('.precip-canvas');
                     bars.forEach(function(canvas) {
-                        var pct  = parseInt(canvas.getAttribute('data_precip'), 10);
+                        var pct  = parseInt(canvas.getAttribute('data-precip'), 10);
                         var rect = canvas.getBoundingClientRect();
                         var w    = Math.max(1, Math.round(rect.width || canvas.parentElement.offsetWidth || 80));
                         var h    = Math.max(40, Math.round(rect.height || canvas.parentElement.offsetHeight || 120));
