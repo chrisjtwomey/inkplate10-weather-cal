@@ -61,8 +61,8 @@ TABS = (
             Field("location", "Location", "Such as Dublin or Cork,IE."),
             Field("weather.service", "Provider", "", "choice", choices=PROVIDERS),
             Field("weather.apikey", "API key", "", "secret", when=f"weather.service={PROVIDERS_WITH_A_KEY}"),
-            Field("weather.num_hourly_forecasts", "Hours", "How many hours the hourly page shows.", "int", 6,
-                  minimum=0),
+            Field("weather.num_hourly_forecasts", "Hours",
+                  "How many hours the hourly page shows. At 0, the page is not drawn.", "int", 6, minimum=0),
             Field("weather.metric", "Metric units", "", "bool", True),
         )),
         Group("Map", (

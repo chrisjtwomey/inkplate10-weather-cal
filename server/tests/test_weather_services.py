@@ -178,6 +178,12 @@ def test_openweathermap_hourly_forecast_parses(openweathermap_endpoints):
     assert first["icon"] == "icon/day/clear.png" # "01d" -> clear
 
 
+def test_openweathermap_asks_for_nothing_at_0_hours(openweathermap_endpoints):
+    svc = OpenWeatherMapService(apikey="fake-key", location="Cork", num_hours=0, metric=True)
+    assert svc.get_hourly_forecast() == []
+    assert not any("/forecast" in call.request.url for call in openweathermap_endpoints.calls)
+
+
 def test_openweathermap_raises_on_non_200_forecast(fixtures_dir):
     geo = _load(fixtures_dir, "openweathermap_geo.json")
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:

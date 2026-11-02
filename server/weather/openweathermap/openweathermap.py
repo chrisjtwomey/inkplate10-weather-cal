@@ -76,6 +76,9 @@ class OpenWeatherMapService(WeatherService):
         }
 
     def get_hourly_forecast(self):
+        if self.num_hours == 0:
+            return []
+
         res = self._get(
             self.baseurl
             + "/data/2.5/forecast?cnt={}&lat={}&lon={}&appid={}&units={}".format(
