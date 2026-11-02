@@ -16,7 +16,7 @@
   --color-dark:  #555;  /* Level 1 – dark gray                  */
   --color-light: #aaa;  /* Level 2 – light gray                 */
   --color-paper: #fff;  /* Level 3 – white                      */
-  --map-height: clamp(40%, 55%, 55%);
+  --map-height: 55%;
 }
 
 .text-uppercase {

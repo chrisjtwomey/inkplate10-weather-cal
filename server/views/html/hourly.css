@@ -22,11 +22,11 @@
 }
 
 #forecast-table tr:not(.precip-row) {
-  height: var(--hourly-fixed-row-height, 14%);
+  height: 14%;
 }
 
 #forecast-table tr.precip-row {
-  height: calc(100% - (var(--hourly-fixed-row-height, 14%) * 4));
+  height: 44%;
 }
 
 #forecast-table td {

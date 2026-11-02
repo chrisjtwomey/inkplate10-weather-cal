@@ -9,10 +9,6 @@ class TodayPage(SimplifiedPage):
         super().__init__(*geometry, **kwargs)
         self.name = "today"
 
-    def _css_links(self, a):
-        super()._css_links(a)
-        a.link(rel="stylesheet", href="tomorrow.css")
-
     def template(self, **kwargs):
         ds = kwargs["daily_summary"]
         temp = ds["temperature"]

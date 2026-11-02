@@ -9,10 +9,6 @@ class CurrentPage(SimplifiedPage):
         super().__init__(*geometry, **kwargs)
         self.name = "current"
 
-    def _css_links(self, a):
-        super()._css_links(a)
-        a.link(rel="stylesheet", href="current.css")
-
     @staticmethod
     def _rounded_hour_phrase(now: dt.datetime) -> str:
         rounded = (now + dt.timedelta(minutes=30)).replace(minute=0, second=0, microsecond=0)

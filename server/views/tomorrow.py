@@ -26,7 +26,3 @@ class TomorrowPage(SimplifiedPage):
         if forecast is None:
             raise SkipPage("no forecast entry for tomorrow in daily_forecasts")
         super().template(map_url=kwargs["map_url"], forecast=forecast)
-
-    def _css_links(self, a):
-        super()._css_links(a)
-        a.link(rel="stylesheet", href="tomorrow.css")

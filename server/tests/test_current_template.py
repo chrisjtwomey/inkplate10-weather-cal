@@ -70,12 +70,11 @@ def test_inner_canvas_wrapper_and_layout_variables_present(rendered_html):
     assert "--outer-height:1200px" in style
 
 
-def test_loads_day_and_current_css(rendered_html):
+def test_loads_day_css(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
     hrefs = [link["href"] for link in soup.find_all("link", rel="stylesheet")]
     assert "styles.css" in hrefs
     assert "simplified.css" in hrefs
-    assert "current.css" in hrefs
 
 
 def test_map_image_uses_provided_url(rendered_html):
