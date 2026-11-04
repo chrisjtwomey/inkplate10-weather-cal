@@ -273,6 +273,11 @@ def _draw_ofm(style_body=json.dumps(BRIGHT)):
     return pages[0], png
 
 
+def test_openfreemap_runs_only_the_maplibre_file_it_was_written_for():
+    page, _ = _draw_ofm()
+    assert 'src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-' in page
+
+
 def test_openfreemap_draws_the_bright_style_at_the_place():
     page, _ = _draw_ofm()
     assert "center: [-8.470610, 51.897970]" in page and "zoom: 9," in page and "pixelRatio: 2" in page

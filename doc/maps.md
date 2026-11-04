@@ -75,6 +75,10 @@ that renders the pages, and saves the result. This takes a few seconds, once
 for each location. The server gives the style the same water, roads and place
 names as the Geoapify map.
 
+The server needs to reach `tiles.openfreemap.org` for the map, and `unpkg.com`
+for [MapLibre](https://maplibre.org/), the script that draws it. The server
+checks the script against a fixed hash, and does not run a changed copy.
+
 ```yaml
 map:
   provider: openfreemap

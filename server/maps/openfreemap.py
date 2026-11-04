@@ -21,6 +21,7 @@ from .source import MapFetchError, download
 
 STYLE_URL = "https://tiles.openfreemap.org/styles/bright"
 MAPLIBRE = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
+MAPLIBRE_SHA384 = "sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj"
 ZOOM = 9
 LOAD_SECONDS = 60
 # The greys of the Geoapify map, for the panel's four greys.
@@ -30,7 +31,7 @@ ROAD_LAYERS = ("highway-", "bridge-", "tunnel-")
 CREDIT = "OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
-<script src="%(maplibre)s"></script>
+<script src="%(maplibre)s" integrity="%(maplibre_sha384)s" crossorigin="anonymous"></script>
 <style>html,body,#map{margin:0;width:600px;height:600px}</style></head><body><div id="map"></div><script>
 window.state = "loading";
 try {
@@ -125,5 +126,6 @@ class OpenFreeMap:
             style = greyed(json.loads(download(style_url)))
         except (ValueError, KeyError, TypeError):
             raise MapFetchError("the map style is not valid") from None
-        return with_credit(self.draw(PAGE % {"maplibre": MAPLIBRE, "style": json.dumps(style),
+        return with_credit(self.draw(PAGE % {"maplibre": MAPLIBRE, "maplibre_sha384": MAPLIBRE_SHA384,
+                                             "style": json.dumps(style),
                                              "lat": lat, "lon": lon, "zoom": zoom}))
