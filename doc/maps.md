@@ -72,7 +72,8 @@ needs no key.
 [OpenFreeMap](https://openfreemap.org/) serves map data, not pictures, so the
 server draws the map itself: it opens the `bright` style in the same Chromium
 that renders the pages, and saves the result. This takes a few seconds, once
-for each location.
+for each location. The server gives the style the same water, roads and place
+names as the Geoapify map.
 
 ```yaml
 map:

@@ -239,18 +239,67 @@ def _blank_png():
     return out.getvalue()
 
 
-def test_openfreemap_draws_the_bright_style_at_the_place():
+def _layer(name, kind, **paint):
+    return {"id": name, "type": kind, "paint": paint}
+
+
+BRIGHT = {"version": 8, "layers": [
+    _layer("water", "fill", **{"fill-color": "#AECFE2"}),
+    _layer("waterway-river", "line", **{"line-color": "#a0c8f0"}),
+    _layer("water_name_point_label", "symbol", **{"text-color": "#495e91"}),
+    _layer("highway-motorway-casing", "line", **{"line-color": "#e9ac77"}),
+    _layer("highway-motorway", "line", **{"line-color": "#fc8", "line-width": ["zoom"]}),
+    _layer("bridge-minor", "line", **{"line-color": "#fff", "line-width": ["zoom"]}),
+    _layer("highway-name-major", "symbol", **{"text-color": "#666"}),
+    _layer("label_city", "symbol", **{"text-color": "#333"}),
+]}
+
+
+class _Style:
+    def __init__(self, body):
+        self.content = body
+
+    def raise_for_status(self):
+        return None
+
+
+def _draw_ofm(style_body=json.dumps(BRIGHT)):
+    """Fetches an OpenFreeMap map; gives the page it drew and the image."""
     pages = []
     ofm = OpenFreeMap(draw=lambda page: pages.append(page) or _blank_png())
-    ofm.fetch(ofm.image_url("51.897970,-8.470610"))
-    page = pages[0]
-    assert '"https://tiles.openfreemap.org/styles/bright"' in page
+    with patch("maps.source.requests.get", return_value=_Style(style_body)) as fetch:
+        png = ofm.fetch(ofm.image_url("51.897970,-8.470610"))
+    assert fetch.call_args.args[0] == "https://tiles.openfreemap.org/styles/bright"
+    return pages[0], png
+
+
+def test_openfreemap_draws_the_bright_style_at_the_place():
+    page, _ = _draw_ofm()
     assert "center: [-8.470610, 51.897970]" in page and "zoom: 9," in page and "pixelRatio: 2" in page
 
 
+def test_openfreemap_draws_with_the_greys_of_the_geoapify_map():
+    page, _ = _draw_ofm()
+    style = json.loads(page.split("style: ", 1)[1].split(", center:", 1)[0])
+    layers = {layer["id"]: layer for layer in style["layers"]}
+    assert layers["water"]["paint"]["fill-color"] == "#666666"
+    assert layers["waterway-river"]["paint"]["line-color"] == "#666666"
+    assert layers["water_name_point_label"]["paint"] == {"text-color": "#495e91"}
+    assert layers["highway-motorway-casing"]["layout"]["visibility"] == "none"
+    assert layers["highway-motorway"]["paint"] == {"line-color": "#808080", "line-width": 2}
+    assert layers["bridge-minor"]["paint"] == {"line-color": "#808080", "line-width": 1}
+    assert layers["highway-name-major"]["paint"] == {"text-color": "#666"}
+    assert layers["label_city"]["paint"]["text-color"] == "#000000"
+
+
+def test_a_style_that_is_not_valid_gives_no_map():
+    with pytest.raises(MapFetchError, match="the map style is not valid"):
+        _draw_ofm("<html>")
+
+
 def test_openfreemap_puts_its_credit_in_the_bottom_right_corner_of_the_image():
-    ofm = OpenFreeMap(draw=lambda page: _blank_png())
-    img = Image.open(io.BytesIO(ofm.fetch(ofm.image_url("51.9,-8.5")))).convert("L")
+    _, png = _draw_ofm()
+    img = Image.open(io.BytesIO(png)).convert("L")
     assert img.size == (1200, 1200)
     corner = img.crop((600, 1160, 1200, 1200))
     assert corner.getextrema()[0] < 100                     # dark text on the strip

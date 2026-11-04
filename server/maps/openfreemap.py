@@ -17,12 +17,15 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.service import Service
 
 from .geocode import open_meteo_centre
-from .source import MapFetchError
+from .source import MapFetchError, download
 
 STYLE_URL = "https://tiles.openfreemap.org/styles/bright"
 MAPLIBRE = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
 ZOOM = 9
 LOAD_SECONDS = 60
+# The greys of the Geoapify map, for the panel's four greys.
+WATER, ROAD, PLACE_NAME = "#666666", "#808080", "#000000"
+ROAD_LAYERS = ("highway-", "bridge-", "tunnel-")
 # The words OpenFreeMap asks for where its MapLibre credit cannot show.
 CREDIT = "OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 
@@ -38,6 +41,24 @@ try {
   map.on("error", e => { window.state = "error: " + (e.error && e.error.message); });
 } catch (e) { window.state = "error: " + e.message; }
 </script></body></html>"""
+
+
+def greyed(style: dict) -> dict:
+    """``style`` with dark water, thin grey roads with no edges, and black
+    place names, as the Geoapify map has them."""
+    for layer in style["layers"]:
+        name, paint = layer["id"], layer.setdefault("paint", {})
+        if name.startswith("water") and layer["type"] in ("fill", "line"):
+            paint["fill-color" if layer["type"] == "fill" else "line-color"] = WATER
+        elif name.startswith(ROAD_LAYERS) and layer["type"] == "line":
+            if name.endswith("-casing"):
+                layer.setdefault("layout", {})["visibility"] = "none"
+            else:
+                paint["line-color"] = ROAD
+                paint["line-width"] = 2 if "motorway" in name else 1
+        elif name.startswith("label_"):
+            paint["text-color"] = PLACE_NAME
+    return style
 
 
 def draw_in_chromium(page_html: str) -> bytes:
@@ -98,7 +119,11 @@ class OpenFreeMap:
         return f"{STYLE_URL}#{ZOOM}/{lat}/{lon}"
 
     def fetch(self, url):
-        style, view = urlsplit(url)._replace(fragment="").geturl(), urlsplit(url).fragment
+        style_url, view = urlsplit(url)._replace(fragment="").geturl(), urlsplit(url).fragment
         zoom, lat, lon = view.split("/")
+        try:
+            style = greyed(json.loads(download(style_url)))
+        except (ValueError, KeyError, TypeError):
+            raise MapFetchError("the map style is not valid") from None
         return with_credit(self.draw(PAGE % {"maplibre": MAPLIBRE, "style": json.dumps(style),
                                              "lat": lat, "lon": lon, "zoom": zoom}))
