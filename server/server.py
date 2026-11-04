@@ -23,7 +23,7 @@ from views.current import CurrentPage
 from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
 from battery_reminder import RemindingLogStore
-from google.api import GoogleAPIService, StaticMapSource
+from maps import MAP_PROVIDERS, MapCache, StaticMapSource, create_provider
 from epd_server import DisplayServer, InstallBoard, LogsQuery, align_process_timezone
 from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_keys, load_core_config,
                                load_yaml, parse_network)
@@ -73,8 +73,10 @@ class ServerConfig:
     weather_apikey: str | None  # None for a provider with no key
     weather_metric: bool
     num_hourly_forecasts: int
-    google_apikey: str
-    staticmaps_mapid: str
+    map_provider: str         # one of MAP_PROVIDERS
+    google_apikey: str | None   # set when map_provider is google
+    staticmaps_mapid: str | None
+    geoapify_apikey: str | None  # set when map_provider is geoapify
     location: str
     logs_path: str            # the boards' log lines, relative to this folder
     logs_days: float          # how long a line is kept
@@ -85,7 +87,7 @@ def load_settings(config: dict) -> ServerConfig:
 
     The generic blocks (server, image, mqtt, display, debug) are
     validated by epd_server.config.load_core_config. This function adds the
-    keys only this project has (weather, google, location).
+    keys only this project has (weather, map, google, geoapify, location).
 
     Raises:
         ConfigError, KeyError: a value is wrong, or a required key is absent.
@@ -122,9 +124,17 @@ def load_settings(config: dict) -> ServerConfig:
             f"weather.num_hourly_forecasts must be non-negative (got {num_hourly_forecasts!r})"
         )
 
-    # ---- google ----
-    google_apikey = get_prop_by_keys(config, "google", "apikey", required=True)
-    staticmaps_mapid = get_prop_by_keys(config, "google", "staticmaps_mapid", required=True)
+    # ---- map ----
+    map_provider = get_prop_by_keys(config, "map", "provider", default="google", required=False)
+    if map_provider not in MAP_PROVIDERS:
+        raise ConfigError(
+            f"map.provider '{map_provider}' is not supported (choose from: {', '.join(MAP_PROVIDERS)})"
+        )
+    on_google = map_provider == "google"
+    google_apikey = get_prop_by_keys(config, "google", "apikey", required=on_google, default=None)
+    staticmaps_mapid = get_prop_by_keys(config, "google", "staticmaps_mapid", required=on_google, default=None)
+    geoapify_apikey = get_prop_by_keys(config, "geoapify", "apikey", required=map_provider == "geoapify",
+                                       default=None)
 
     # ---- location ----
     location = get_prop(config, "location", required=True)
@@ -145,8 +155,10 @@ def load_settings(config: dict) -> ServerConfig:
         weather_apikey=weather_apikey,
         weather_metric=weather_metric,
         num_hourly_forecasts=num_hourly_forecasts,
+        map_provider=map_provider,
         google_apikey=google_apikey,
         staticmaps_mapid=staticmaps_mapid,
+        geoapify_apikey=geoapify_apikey,
         location=location,
         logs_path=logs_path,
         logs_days=float(logs_days),
@@ -195,7 +207,10 @@ def main():
     log.info(f"display: {cfg.core.server.schedule.describe()}")
     log.info(f"regen_lead_seconds: {cfg.core.server.regen_lead_seconds}")
 
-    gapi = GoogleAPIService(cfg.google_apikey, os.path.join(cwd, "data", "map-cache"))
+    map_cache = MapCache(create_provider(cfg.map_provider, google_apikey=cfg.google_apikey,
+                                         staticmaps_mapid=cfg.staticmaps_mapid,
+                                         geoapify_apikey=cfg.geoapify_apikey),
+                         os.path.join(cwd, "data", "map-cache"))
 
     if cfg.weather_service == "mock":
         log.info("Using mock weather service — randomised data")
@@ -217,7 +232,7 @@ def main():
     ]
     # Both fetch at the first render, after the server is up. Each page
     # declares what it needs in Page.requires.
-    sources = [StaticMapSource(gapi, cfg.staticmaps_mapid, cfg.location), weather_svc]
+    sources = [StaticMapSource(map_cache, cfg.location), weather_svc]
     try:
         mods = load_mods(os.path.join(cwd, "mods"), os.path.join(cwd, "data", "mods"), config, geometry, pages, sources)
     except ModError as exc:

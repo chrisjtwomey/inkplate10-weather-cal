@@ -39,6 +39,9 @@ weather:
   apikey: XXXX
   num_hourly_forecasts: 9
   metric: true
+map:
+  # google, geoapify or openfreemap. See doc/maps.md for each one's keys.
+  provider: google
 google:
   apikey: XXXX
   staticmaps_mapid: XXXX

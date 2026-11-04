@@ -4,7 +4,7 @@ The server renders the display's five pages and any [mods](#mods), serves them,
 and tells the display when to wake next.
 
 - Weather from AccuWeather, Met Éireann, Open-Meteo or OpenWeatherMap: [doc/weather-apis.md](../doc/weather-apis.md). To add a provider, see [weather/README.md](weather/README.md).
-- A map of your area from Google's [Static Maps API](https://developers.google.com/maps/documentation/maps-static/overview): [doc/google-static-maps.md](../doc/google-static-maps.md).
+- A map of your area from Google, Geoapify or OpenFreeMap: [doc/maps.md](../doc/maps.md).
 - Each page is HTML, rendered to a PNG in Chrome, and served with [Flask](https://flask.palletsprojects.com/). The generic parts come from [epd](https://github.com/chrisjtwomey/epd)'s `epd-server`.
 
 To set up a display, start with the [main README](../README.md). To work on
@@ -30,8 +30,10 @@ cp config.example.yaml config.yaml
 | `weather.apikey` | – (required, except for `meteireann`, `openmeteo` and `mock`) | The provider's API key. |
 | `weather.num_hourly_forecasts` | `6` | How many hours the hourly page shows. At 0 the page is not drawn. |
 | `weather.metric` | `true` | Metric units, or imperial. |
-| `google.apikey` | – (required) | The Google API key, for the map. |
-| `google.staticmaps_mapid` | – (required) | The map ID, for the map's style. |
+| `map.provider` | `google` | `google`, `geoapify` or `openfreemap`. See [doc/maps.md](../doc/maps.md). |
+| `google.apikey` | – (required for `google`) | The Google API key, for the map. |
+| `google.staticmaps_mapid` | – (required for `google`) | The map ID, for the map's style. |
+| `geoapify.apikey` | – (required for `geoapify`) | The Geoapify API key, for the map. |
 | `location` | – (required) | The place to show, such as `Dublin` or `Cork,IE`. |
 | `image.width`, `image.height` | `825`, `1200` | The page size in pixels: the Inkplate 10's panel, upright. |
 | `image.innerWidth`, `image.innerHeight` | the page size | The area the content fits in. See [Fitting a photo mat](#fitting-a-photo-mat). |
@@ -368,13 +370,13 @@ Mount a volume on `/app/data`, as [`docker-compose.yml`](../docker-compose.yml)
 does. It keeps these across updates:
 
 - The display's log lines.
-- The map image, in `data/map-cache`. Google counts each fetch, so with the
-  volume the server fetches once per location and map ID. Without it, every
-  update fetches again.
+- The map image, in `data/map-cache`. Google and Geoapify count each fetch,
+  so with the volume the server fetches once per location and provider.
+  Without it, every update fetches again.
 - The sign-in's keep file and the HTTPS certificate.
 - A copy of each mod's files, and its pages' HTML and images, in `data/mods`.
 
-### When Google or the weather provider is down
+### When the map or the weather provider is down
 
 The server starts anyway, and fetches at the first render. If the map cannot be
 fetched, the page renders with no map, and the next render tries again. If the

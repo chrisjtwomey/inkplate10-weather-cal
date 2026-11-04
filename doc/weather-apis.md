@@ -9,8 +9,8 @@ Choose one, and set it in the server's `config.yaml` as `weather.service`.
 | [Open-Meteo](#open-meteo) | worldwide, free for non-commercial use | – |
 | [OpenWeatherMap](#openweathermap) | worldwide | needed |
 
-Each provider finds the place from `location` in the same config. The map
-needs a Google key too: see [google-static-maps.md](google-static-maps.md).
+Each provider finds the place from `location` in the same config. The map has
+its own provider: see [maps.md](maps.md).
 
 ## AccuWeather
 

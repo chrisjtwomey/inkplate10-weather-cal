@@ -19,6 +19,7 @@ PROVIDERS = (("accuweather", "AccuWeather"), ("meteireann", "Met Éireann"),
              ("openmeteo", "Open-Meteo"), ("openweathermap", "OpenWeatherMap"),
              ("mock", "Made-up weather"))
 PROVIDERS_WITH_A_KEY = "accuweather|openweathermap"
+MAP_PROVIDERS = (("google", "Google"), ("geoapify", "Geoapify"), ("openfreemap", "OpenFreeMap"))
 ALIGN_X = (("left", "Left"), ("center", "Centre"), ("right", "Right"))
 ALIGN_Y = (("top", "Top"), ("center", "Centre"), ("bottom", "Bottom"))
 
@@ -66,8 +67,10 @@ TABS = (
             Field("weather.metric", "Metric units", "", "bool", True),
         )),
         Group("Map", (
-            Field("google.apikey", "Google API key", "", "secret"),
-            Field("google.staticmaps_mapid", "Map ID", "For the map's style."),
+            Field("map.provider", "Provider", "", "choice", "google", choices=MAP_PROVIDERS),
+            Field("google.apikey", "API key", "", "secret", when="map.provider=google", long="Map API key"),
+            Field("google.staticmaps_mapid", "Map ID", "For the map's style.", when="map.provider=google"),
+            Field("geoapify.apikey", "API key", "", "secret", when="map.provider=geoapify", long="Map API key"),
         )),
     )),
     Tab("image", "Image", (

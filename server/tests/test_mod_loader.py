@@ -311,11 +311,11 @@ def test_a_key_an_environment_variable_sets_is_locked(tmp_path, monkeypatch):
 
 # ── The server ───────────────────────────────────────────────────────
 
-class StubGoogle:
+class StubMap:
     def __init__(self, *a, **k):
         pass
 
-    def get_static_map_local_src(self, map_id, location):
+    def local_src(self, location):
         return "map.png"
 
 
@@ -333,7 +333,8 @@ def project(tmp_path, monkeypatch):
     }
     (tmp_path / "config.yaml").write_text(yaml.safe_dump(config))
     monkeypatch.setattr(server, "cwd", str(tmp_path))
-    monkeypatch.setattr(server, "GoogleAPIService", StubGoogle)
+    monkeypatch.setattr(server, "create_provider", lambda name, **keys: name)
+    monkeypatch.setattr(server, "MapCache", StubMap)
     monkeypatch.setattr(logging.config, "fileConfig", lambda *a, **k: None)
     monkeypatch.setattr("epd_server.page.ChromiumRenderer", FakeRenderer)
     monkeypatch.setattr(views.page, "HTML_DIR", str(tmp_path / "html"))

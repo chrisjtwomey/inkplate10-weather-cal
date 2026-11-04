@@ -1,6 +1,6 @@
 """Run server.main() with --once end to end.
 
-Everything external is replaced: the Google API with a stub, the weather
+Everything external is replaced: the map with a stub, the weather
 service with the registered mock, Chromium with a fake renderer, and the
 views' output dirs with a temp dir. What is left is exactly the wiring in
 main(): config -> validate -> pages -> source -> DisplayServer.run(once).
@@ -13,18 +13,18 @@ from flask import Flask
 import yaml
 from PIL import Image
 
-from google.api import MapFetchError as server_map_error
+from maps import MapFetchError
 import server
 from weather.service import WeatherFetchError
 import views.page
 
 
-class StubGoogle:
-    def __init__(self, key, cache_dir):
-        self.key = key
+class StubMap:
+    def __init__(self, provider, cache_dir):
+        self.provider = provider
 
-    def get_static_map_local_src(self, map_id, location):
-        return f"map-cache/staticmap_{map_id}_{location}.png"
+    def local_src(self, location):
+        return f"map-cache/staticmap_{self.provider}_{location}.png"
 
 
 class FakeRenderer:
@@ -50,7 +50,8 @@ def project_dir(tmp_path, monkeypatch):
     (tmp_path / "version.json").write_text('{"version": "vtest"}')
 
     monkeypatch.setattr(server, "cwd", str(tmp_path))
-    monkeypatch.setattr(server, "GoogleAPIService", StubGoogle)
+    monkeypatch.setattr(server, "create_provider", lambda name, **keys: name)
+    monkeypatch.setattr(server, "MapCache", StubMap)
     monkeypatch.setattr(logging.config, "fileConfig", lambda *a, **k: None)
     monkeypatch.setattr("epd_server.page.ChromiumRenderer", FakeRenderer)
     monkeypatch.setattr(views.page, "HTML_DIR", str(tmp_path / "html"))
@@ -139,17 +140,17 @@ def test_the_install_page_sits_behind_the_sign_in_and_its_files_do_not(project_d
     assert "display|inkplate10-weather-cal|esp32|Display|0x1a86" in client.get("/install-firmware.sh").get_data(as_text=True)
 
 
-def test_the_server_starts_when_google_and_the_weather_provider_are_down(project_dir, monkeypatch):
+def test_the_server_starts_when_the_map_and_the_weather_provider_are_down(project_dir, monkeypatch):
     made = {}
 
-    class GoogleDown(StubGoogle):
-        def get_static_map_local_src(self, map_id, location):
-            raise server_map_error("HTTPError")
+    class MapDown(StubMap):
+        def local_src(self, location):
+            raise MapFetchError("HTTPError")
 
     def provider_down(*_args, **_kwargs):
         raise WeatherFetchError("mock: ConnectionError")
 
-    monkeypatch.setattr(server, "GoogleAPIService", GoogleDown)
+    monkeypatch.setattr(server, "MapCache", MapDown)
     monkeypatch.setattr(server, "_create_weather_service", provider_down)
     monkeypatch.setattr(server, "DisplayServer", fake_server(made))
     server.main()

@@ -69,6 +69,40 @@ def test_missing_google_key_exits_cleanly(caplog):
     assert "google.apikey not in config but is required" in caplog.text
 
 
+def test_the_map_is_from_google_when_no_provider_is_set():
+    cfg = validate_config(base())
+    assert (cfg.map_provider, cfg.google_apikey, cfg.staticmaps_mapid) == ("google", "G", "M")
+    assert cfg.geoapify_apikey is None
+
+
+def test_geoapify_needs_its_key_and_not_googles(caplog):
+    c = base()
+    c["map"] = {"provider": "geoapify"}
+    del c["google"]
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert "geoapify.apikey not in config but is required" in caplog.text
+
+    c["geoapify"] = {"apikey": "GEO"}
+    cfg = validate_config(c)
+    assert (cfg.map_provider, cfg.geoapify_apikey, cfg.google_apikey) == ("geoapify", "GEO", None)
+
+
+def test_openfreemap_needs_no_key():
+    c = base()
+    c["map"] = {"provider": "openfreemap"}
+    del c["google"]
+    assert validate_config(c).map_provider == "openfreemap"
+
+
+def test_an_unknown_map_provider_exits_with_choices(caplog):
+    c = base()
+    c["map"] = {"provider": "bing"}
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert "map.provider 'bing' is not supported (choose from: google, geoapify, openfreemap)" in caplog.text
+
+
 def test_core_block_errors_also_exit(caplog):
     c = base()
     c["server"]["timezone"] = "Mars/Olympus"

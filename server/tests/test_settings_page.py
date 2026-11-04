@@ -76,6 +76,11 @@ def test_every_provider_is_a_choice():
     assert {c for c, _ in sp.FORM.by_key["weather.service"].choices} == set(registered_services())
 
 
+def test_every_map_provider_is_a_choice():
+    from maps import MAP_PROVIDERS
+    assert tuple(c for c, _ in sp.FORM.by_key["map.provider"].choices) == MAP_PROVIDERS
+
+
 def test_the_defaults_are_the_ones_the_server_uses():
     config = {"weather": {"service": "mock"}, "google": {"apikey": "G", "staticmaps_mapid": "M"}, "location": "Cork"}
     cfg = load_settings(config)
@@ -92,6 +97,7 @@ def test_the_defaults_are_the_ones_the_server_uses():
     assert d["logs.path"] == cfg.logs_path and float(d["logs.keep_days"]) == cfg.logs_days
     assert d["weather.num_hourly_forecasts"] == str(cfg.num_hourly_forecasts)
     assert d["weather.metric"] == "true"
+    assert d["map.provider"] == cfg.map_provider
 
 
 def test_the_page_never_shows_a_key_or_a_password(path):

@@ -11,7 +11,7 @@ git clone https://github.com/chrisjtwomey/inkplate10-weather-cal.git
 cd inkplate10-weather-cal
 python3 -m venv server/.venv && source server/.venv/bin/activate
 python3 -m pip install -r server/requirements-dev.txt
-cp server/config.example.yaml server/config.yaml   # then fill in the keys, the map ID and the location
+cp server/config.example.yaml server/config.yaml   # then fill in the providers, their keys and the location
 cd server
 python3 server.py
 ```

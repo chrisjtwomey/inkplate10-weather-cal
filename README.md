@@ -48,8 +48,8 @@ The server renders five pages: today, current, hourly, daily and tomorrow.
 
 The server renders the pages and tells the display when to wake next.
 
-1. Choose a weather provider, and get its API key if it needs one ([doc/weather-apis.md](doc/weather-apis.md)). Get a Google Maps API key and map ID ([doc/google-static-maps.md](doc/google-static-maps.md)).
-2. Make your config, and fill in the keys, the map ID and your location:
+1. Choose a weather provider, and get its API key if it needs one ([doc/weather-apis.md](doc/weather-apis.md)). Choose a map provider, and get its keys if it needs them ([doc/maps.md](doc/maps.md)).
+2. Make your config, and fill in the providers, their keys and your location:
 
    ```sh
    cp server/config.example.yaml server/config.yaml
@@ -167,7 +167,7 @@ At each wake, the display:
 |---|---|
 | Every server setting, Docker, firmware updates, MQTT | [server/README.md](server/README.md) |
 | Weather provider API keys | [doc/weather-apis.md](doc/weather-apis.md) |
-| Google Static Maps | [doc/google-static-maps.md](doc/google-static-maps.md) |
+| Map providers and their keys | [doc/maps.md](doc/maps.md) |
 | Add a weather provider | [server/weather/README.md](server/weather/README.md) |
 | Install firmware from a browser, the Settings page and the sign-in | [server/README.md](server/README.md#the-settings-page-and-sign-in) |
 | Battery life and measurements | [doc/power-consumption.md](doc/power-consumption.md) |

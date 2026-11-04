@@ -2,7 +2,7 @@
 
 ## This repo
 
-- A thin consumer of [epd](https://github.com/chrisjtwomey/epd). Firmware here is `src/app.cpp` (the order of a wake, and its decisions on retries, battery and updates), `src/panel.cpp` (what the panel draws besides the page: battery, banners, the update screen), `src/main.cpp` (board choice) and `src/defaults.cpp` (credentials); the rest is the `EpdClient` and `EpdBoardInkplate` libraries. The server is `server/server.py` (config keys, weather service, five pages, one `DisplayServer(...).run()`), `server/settings_page.py` (every setting's field on epd's settings page, and the sign-in's choices), `server/mod_loader.py` (loads the mods in `server/mods/`), `server/battery_reminder.py` (the charge reminder over MQTT), the weather providers under `server/weather/`, and the views under `server/views/`.
+- A thin consumer of [epd](https://github.com/chrisjtwomey/epd). Firmware here is `src/app.cpp` (the order of a wake, and its decisions on retries, battery and updates), `src/panel.cpp` (what the panel draws besides the page: battery, banners, the update screen), `src/main.cpp` (board choice) and `src/defaults.cpp` (credentials); the rest is the `EpdClient` and `EpdBoardInkplate` libraries. The server is `server/server.py` (config keys, weather service, five pages, one `DisplayServer(...).run()`), `server/settings_page.py` (every setting's field on epd's settings page, and the sign-in's choices), `server/mod_loader.py` (loads the mods in `server/mods/`), `server/battery_reminder.py` (the charge reminder over MQTT), the map providers under `server/maps/`, the weather providers under `server/weather/`, and the views under `server/views/`.
 - epd comes from the PlatformIO registry and PyPI, at one pinned release: `platformio.ini` `[epd]` and `server/requirements.txt` move together. Each `*-dev` environment builds against an epd checkout beside this repo (`symlink://../epd/firmware`). To develop the server against a checkout, `pip install -e ../epd/server` in the server venv, after the requirements.
 - Generic code does not belong here. Code that any product on epd could use, such as rendering or serving pages, goes in epd with its tests, and this repo consumes it. Code about this product's weather, maps, pages and mods stays here.
 - Each view declares the datasets it needs in `Page.requires`; `WeatherService.datasets()` names what it provides. Keep the two in step — `tests/test_regenerate_pipeline.py` checks it.
@@ -20,7 +20,7 @@ Read a doc only when the task needs it.
 | Changes what a user builds, sets up or sees | [README.md](README.md) |
 | Changes the server's config keys, pages or deployment | [server/README.md](server/README.md) |
 | Adds or changes a weather provider | [server/weather/README.md](server/weather/README.md) |
-| Changes the weather API or map API setup | [doc/weather-apis.md](doc/weather-apis.md), [doc/google-static-maps.md](doc/google-static-maps.md) |
+| Changes the weather API or map API setup | [doc/weather-apis.md](doc/weather-apis.md), [doc/maps.md](doc/maps.md) |
 | Changes the board's power use | [doc/power-consumption.md](doc/power-consumption.md) |
 | Changes a key the SD card build reads | [doc/config.yaml](doc/config.yaml) |
 
