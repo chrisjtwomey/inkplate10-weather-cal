@@ -106,13 +106,6 @@
   padding: 0 calc(var(--inner-vw) * 2);
 }
 
-#day-feels-like {
-  font-size: calc(var(--inner-vw) * 3.2);
-  color: var(--color-dark);
-  margin: calc(var(--inner-vh) * 0.4) 0 0 0;
-  line-height: 1;
-}
-
 #day-rain-prob {
   font-size: calc(var(--inner-vw) * 3.4);
   color: var(--color-dark);

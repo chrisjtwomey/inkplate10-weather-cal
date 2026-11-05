@@ -79,6 +79,11 @@ def test_hero_shows_daily_max_temperature(rendered_html, daily_summary):
     assert str(daily_summary["temperature"]["max"]) in temp_main.get_text()
 
 
+def test_shows_only_the_real_temperature(rendered_html, daily_summary):
+    assert daily_summary["temperature"]["feels_like"] is not None
+    assert "Feels like" not in rendered_html
+
+
 def test_phrase_absent_when_daily_summary_has_no_phrase(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
     phrase = soup.find(id="day-phrase")

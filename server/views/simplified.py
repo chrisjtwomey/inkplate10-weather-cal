@@ -17,7 +17,6 @@ class SimplifiedPage(Page):
         temp_unit = forecast["temperature"]["unit"]
         temp_min = forecast["temperature"].get("min")
         temp_max = forecast["temperature"]["max"]
-        feels_like = forecast["temperature"].get("feels_like")
         rain_prob = forecast["rain_probability"]
         day_phrase = forecast.get("day_phrase")
         date_phrase = forecast.get("date_phrase")
@@ -60,8 +59,6 @@ class SimplifiedPage(Page):
                                         if temp_min is not None:
                                             a.span(id="day-temp-lo", _t=f"{temp_min}°")
                                         a.span(id="day-temp-hi", _t=f"{temp_max}{temp_unit}")
-                                    if feels_like is not None:
-                                        a.p(id="day-feels-like", _t=f"Feels like {feels_like}\u00b0")
                                     if day_phrase:
                                         a.p(id="day-phrase", _t=day_phrase)
                                     with a.p(id="day-rain-prob"):

@@ -22,7 +22,6 @@ class TodayPage(SimplifiedPage):
                     "unit": temp["unit"],
                     "min": temp.get("min"),
                     "max": temp["max"],
-                    "feels_like": temp.get("feels_like"),
                 },
                 "rain_probability": ds.get("rain_probability", 0),
                 "day_phrase": ds.get("day_phrase"),

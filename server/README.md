@@ -96,7 +96,7 @@ docker run -d --restart unless-stopped -p 8080:8080 \
 
 | Page | Shows | Suits |
 |---|---|---|
-| `today.png` | Today's icon, high and low, feels-like, chance of rain, and the map | Morning |
+| `today.png` | Today's icon, high and low, chance of rain, and the map | Morning |
 | `current.png` | The weather now, today's summary, and the map | Any time |
 | `hourly.png` | The next hours: icon, temperature, wind and rain | Daytime |
 | `daily.png` | The next 5 days: icon, high and low, wind, rain and sun | Afternoon |

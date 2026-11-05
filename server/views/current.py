@@ -32,7 +32,6 @@ class CurrentPage(SimplifiedPage):
                     "unit": cc["temperature"]["unit"],
                     "min": None,
                     "max": cc["temperature"]["value"],
-                    "feels_like": cc["temperature"].get("feels_like"),
                 },
                 "rain_probability": daily_summary.get("rain_probability", 0) if daily_summary else 0,
                 "day_phrase": cc.get("weather_text"),

@@ -91,6 +91,11 @@ def test_hero_shows_current_temperature(rendered_html, current_conditions):
     assert str(current_conditions["temperature"]["value"]) in temp_main.get_text()
 
 
+def test_shows_only_the_real_temperature(rendered_html, current_conditions):
+    assert current_conditions["temperature"]["feels_like"] is not None
+    assert "Feels like" not in rendered_html
+
+
 def test_hero_does_not_show_daily_minimum_temperature(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
     assert soup.find(id="day-temp-lo") is None
