@@ -1,8 +1,8 @@
 """The photos a person uploads to show in place of the map, kept in one folder.
 
-The folder holds each photo as it was uploaded, named by its content, and
+The folder holds each photo as it was uploaded, named by its content,
 ``manifest.json``: the photos in their set order, whether each is in the set,
-and its framing.
+and its framing, and ``pictures/``: each photo as the pages show it.
 """
 import hashlib
 import io
@@ -60,6 +60,7 @@ class PhotoStore:
     def __init__(self, folder: str, now=time.time):
         self.folder = folder
         self._manifest = os.path.join(folder, "manifest.json")
+        self.pictures_folder = os.path.join(folder, "pictures")
         self._lock = threading.Lock()
         self._now = now
 
@@ -94,7 +95,7 @@ class PhotoStore:
                 raise PhotoError(ALREADY_ADDED)
             photo = Photo(photo_id, f"{photo_id}.{extension}", os.path.basename(name) or "photo", self._now())
             os.makedirs(self.folder, exist_ok=True)
-            _write(os.path.join(self.folder, photo.file), data)
+            write_atomically(os.path.join(self.folder, photo.file), data)
             self._save(photos + [photo])
         return photo
 
@@ -103,10 +104,18 @@ class PhotoStore:
             photos = self.photos()
             photo = self._find(photos, photo_id)
             self._save([p for p in photos if p.id != photo_id])
-            try:
-                os.remove(os.path.join(self.folder, photo.file))
-            except FileNotFoundError:
-                pass
+            _remove(os.path.join(self.folder, photo.file))
+            self.forget_pictures(photo_id)
+
+    def forget_pictures(self, photo_id: str) -> None:
+        """Deletes every kept picture of the photo."""
+        try:
+            names = os.listdir(self.pictures_folder)
+        except FileNotFoundError:
+            return
+        for name in names:
+            if name.startswith(photo_id + "-"):
+                _remove(os.path.join(self.pictures_folder, name))
 
     def reorder(self, ids: list[str]) -> None:
         """Puts the photos in the order of ``ids``, which lists each photo once."""
@@ -137,7 +146,7 @@ class PhotoStore:
 
     def _save(self, photos: list[Photo]) -> None:
         os.makedirs(self.folder, exist_ok=True)
-        _write(self._manifest, json.dumps({"photos": [asdict(p) for p in photos]}, indent=1).encode())
+        write_atomically(self._manifest, json.dumps({"photos": [asdict(p) for p in photos]}, indent=1).encode())
 
 
 def _check(data: bytes) -> str:
@@ -162,7 +171,7 @@ def _check(data: bytes) -> str:
     return FORMATS[fmt]
 
 
-def _write(path: str, data: bytes) -> None:
+def write_atomically(path: str, data: bytes) -> None:
     """Writes ``data`` to ``path`` in one step, so a reader never sees half a file."""
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path))
     try:
@@ -173,6 +182,13 @@ def _write(path: str, data: bytes) -> None:
     except BaseException:
         os.unlink(tmp)
         raise
+
+
+def _remove(path: str) -> None:
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
 
 
 def _give_the_mode_of_a_plain_open(path: str) -> None:
