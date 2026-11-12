@@ -375,7 +375,7 @@ does. It keeps these across updates:
   Without it, every update fetches again.
 - The sign-in's keep file and the HTTPS certificate.
 - A copy of each mod's files, and its pages' HTML and images, in `data/mods`.
-- The uploaded photos, and each one as the pages draw it, in `data/photos`.
+- The uploaded photos, each one as the pages draw it, and which one is today's, in `data/photos`.
 
 ### When the map or the weather provider is down
 
