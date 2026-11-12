@@ -1,0 +1,29 @@
+/* The Photos page's layout, on top of epd's look.css. */
+body { box-sizing: border-box; max-width: 56rem; margin: 0 auto; padding: 28px 24px 48px; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 40px; }
+.links a { color: var(--soft); }
+.about, .help { color: var(--soft); }
+.help { margin: 6px 0 0; font-size: .9rem; }
+h2 { margin: 36px 0 0; font-size: 1.4rem; font-weight: 400; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 10px; }
+.row input[type=file] { flex: 1; min-width: 12rem; }
+.row input[type=range] { flex: 1; min-width: 10rem; }
+#upload { margin-top: 24px; }
+
+#photos { list-style: none; margin: 28px 0 0; padding: 0; border-top: 1px solid var(--faint); }
+#photos li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 12px 0;
+             border-bottom: 1px solid var(--faint); }
+#photos img { width: 96px; height: 72px; object-fit: cover; border-radius: 3px; background: var(--faint); }
+#photos .name { flex: 1; min-width: 10rem; overflow-wrap: anywhere; }
+#photos label { white-space: nowrap; color: var(--soft); }
+
+.windows, .previews { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 16px; }
+.windows figure, .previews figure { flex: 1; min-width: 14rem; max-width: 26rem; margin: 0; }
+figcaption { margin-top: 6px; font-size: .9rem; color: var(--soft); }
+.window { position: relative; overflow: hidden; background: var(--paper); border: 1px solid var(--line);
+          cursor: grab; touch-action: none; user-select: none; }
+.window:active { cursor: grabbing; }
+.window img { position: absolute; max-width: none; filter: grayscale(1); pointer-events: none; }
+.buttons { justify-content: flex-end; }
+.previews img { width: 100%; border: 1px solid var(--line); background: var(--paper); }
+.previews img:not([src]) { visibility: hidden; aspect-ratio: 825 / 1200; }

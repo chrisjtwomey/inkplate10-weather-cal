@@ -2,7 +2,7 @@
 
 ## This repo
 
-- A thin consumer of [epd](https://github.com/chrisjtwomey/epd). Firmware here is `src/app.cpp` (the order of a wake, and its decisions on retries, battery and updates), `src/panel.cpp` (what the panel draws besides the page: battery, banners, the update screen), `src/main.cpp` (board choice) and `src/defaults.cpp` (credentials); the rest is the `EpdClient` and `EpdBoardInkplate` libraries. The server is `server/server.py` (config keys, weather service, five pages, one `DisplayServer(...).run()`), `server/settings_page.py` (every setting's field on epd's settings page, and the sign-in's choices), `server/mod_loader.py` (loads the mods in `server/mods/`), `server/battery_reminder.py` (the charge reminder over MQTT), the map providers under `server/maps/`, the uploaded photos under `server/photos/` (the store, the pencil drawing, and today's photo), the weather providers under `server/weather/`, and the views under `server/views/`.
+- A thin consumer of [epd](https://github.com/chrisjtwomey/epd). Firmware here is `src/app.cpp` (the order of a wake, and its decisions on retries, battery and updates), `src/panel.cpp` (what the panel draws besides the page: battery, banners, the update screen), `src/main.cpp` (board choice) and `src/defaults.cpp` (credentials); the rest is the `EpdClient` and `EpdBoardInkplate` libraries. The server is `server/server.py` (config keys, weather service, five pages, one `DisplayServer(...).run()`), `server/settings_page.py` (every setting's field on epd's settings page, and the sign-in's choices), `server/mod_loader.py` (loads the mods in `server/mods/`), `server/battery_reminder.py` (the charge reminder over MQTT), the map providers under `server/maps/`, the uploaded photos under `server/photos/` (the store, the pencil drawing, today's photo, and the Photos page with its framing editor; `page_previewer` in `server.py` draws its previews), the weather providers under `server/weather/`, and the views under `server/views/`.
 - epd comes from the PlatformIO registry and PyPI, at one pinned release: `platformio.ini` `[epd]` and `server/requirements.txt` move together. Each `*-dev` environment builds against an epd checkout beside this repo (`symlink://../epd/firmware`). To develop the server against a checkout, `pip install -e ../epd/server` in the server venv, after the requirements.
 - Generic code does not belong here. Code that any product on epd could use, such as rendering or serving pages, goes in epd with its tests, and this repo consumes it. Code about this product's weather, maps, pages and mods stays here.
 - Each view declares the datasets it needs in `Page.requires`; the sources name what they provide: `StaticMapSource` (`map_url`), `WeatherService.datasets()` and `PhotoSource` (`photo_url`). A page set to photos adds `photo_url` itself. Keep the two in step — `tests/test_regenerate_pipeline.py` checks it.
@@ -46,6 +46,9 @@ Regenerate the images, check the generated HTML first, then inspect the PNGs.
    (`today.png`, `current.png`, `hourly.png`, `daily.png`, `tomorrow.png`)
    and confirm the change is visible and correct — for example, that an icon
    renders instead of a broken-image box.
+
+   The Photos page's previews are separate files (`server/views/html/preview-<page>.html`,
+   `server/data/photos/previews/`) and never replace these.
 
 This applies to the weather service parsers (icon selection, forecast data),
 the page templates under `server/views/`, and anything else that alters what

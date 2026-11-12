@@ -12,6 +12,7 @@ import os
 import socket
 import sys
 import json
+import threading
 import argparse
 import dataclasses
 import logging.config
@@ -22,7 +23,7 @@ from views.today import TodayPage
 from views.current import CurrentPage
 from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
-from views.page import PICTURES
+from views.page import PICTURES, picture_windows
 from battery_reminder import RemindingLogStore
 from maps import MAP_PROVIDERS, MapCache, StaticMapSource, create_provider
 from photos import PhotoSource, PhotoStore, photos_blueprint
@@ -30,6 +31,8 @@ from epd_server import DisplayServer, InstallBoard, LogsQuery, align_process_tim
 from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_keys, load_core_config,
                                load_yaml, parse_network)
 from epd_server.login import Login, guard
+from epd_server.page import SkipPage
+from epd_server.source import CompositeSource
 from epd_server.settings_page import settings_blueprint
 from mod_loader import ModError, load_mods
 from settings_page import DEFAULT_DISPLAY, NETWORK_KEYS, PASSWORD_ENV, SITE, check_config, form_with_mods
@@ -40,6 +43,33 @@ log = logging.getLogger("server")
 PAGES = {"today": TodayPage, "current": CurrentPage, "hourly": HourlyPage, "daily": DailyPage,
          "tomorrow": TomorrowPage}
 PAGE_NAMES = tuple(PAGES)
+# The pages the Photos page draws to preview each picture shape, in order of choice:
+# the hourly page is not drawn when weather.num_hourly_forecasts is 0.
+PREVIEW_PAGES = {"wide": ("today",), "tall": ("hourly", "daily")}
+
+
+def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None):
+    """A function that draws a page of a picture shape with a given picture, for
+    the Photos page, into its own files so the display's pages stay as they are."""
+    lock = threading.Lock()
+
+    def preview(shape: str, picture_url: str) -> bytes:
+        data = CompositeSource(*sources).datasets()
+        with lock:
+            for name in PREVIEW_PAGES[shape]:
+                page = PAGES[name](**geometry, picture="photos", renderer=renderer)
+                page.name, page.png_dir = f"preview-{name}", preview_dir
+                try:
+                    page.template(**{k: picture_url if k == "photo_url" else data[k]() for k in page.requires})
+                except SkipPage:
+                    continue
+                os.makedirs(preview_dir, exist_ok=True)
+                page.save()
+                with open(page.png_path, "rb") as f:
+                    return f.read()
+        raise LookupError(shape)
+
+    return preview
 
 FIRMWARE_PRODUCT = "inkplate10-weather-cal"
 # The Inkplate 10's USB-to-serial chip is a CH340C.
@@ -295,9 +325,12 @@ def main():
 
     server.app.register_blueprint(settings_blueprint(
         form_with_mods(mods.groups), config_path, lambda text: check_config(text, load_settings, served), login=login,
-        live_keys=NETWORK_KEYS, take_live=take_network, links=(("install", "Install firmware"),),
+        live_keys=NETWORK_KEYS, take_live=take_network, links=(("photos", "Photos"), ("install", "Install firmware")),
         password_env=PASSWORD_ENV))
-    server.app.register_blueprint(photos_blueprint(photo_store))
+    image = cfg.core.image
+    server.app.register_blueprint(photos_blueprint(
+        photo_store, picture_windows(image.inner_width, image.inner_height),
+        page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews"))))
     server.run(once=args.once)
 
 

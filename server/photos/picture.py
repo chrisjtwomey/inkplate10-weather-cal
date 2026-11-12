@@ -44,17 +44,23 @@ def pencil(img: Image.Image) -> Image.Image:
     return sketch.convert("RGB").quantize(palette=palette, dither=Image.Dither.FLOYDSTEINBERG).convert("L")
 
 
+def drawing(store: PhotoStore, photo: Photo, framing: Framing) -> bytes:
+    """``photo`` framed by ``framing`` and drawn in pencil, as PNG."""
+    with Image.open(store.path(photo.id)) as img:
+        out = pencil(framed(img, framing))
+    png = io.BytesIO()
+    out.save(png, format="PNG", optimize=True)
+    return png.getvalue()
+
+
 def picture_path(store: PhotoStore, photo: Photo) -> str:
     """The picture of ``photo`` as the pages show it, made if it is not kept."""
     key = hashlib.sha1(json.dumps([asdict(photo.framing), EFFECT_VERSION]).encode()).hexdigest()[:12]
     path = os.path.join(store.pictures_folder, f"{photo.id}-{key}.png")
     if os.path.exists(path):
         return path
-    with Image.open(store.path(photo.id)) as img:
-        drawing = pencil(framed(img, photo.framing))
+    png = drawing(store, photo, photo.framing)
     os.makedirs(store.pictures_folder, exist_ok=True)
     store.forget_pictures(photo.id)
-    png = io.BytesIO()
-    drawing.save(png, format="PNG", optimize=True)
-    write_atomically(path, png.getvalue())
+    write_atomically(path, png)
     return path

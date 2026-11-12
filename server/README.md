@@ -35,7 +35,7 @@ cp config.example.yaml config.yaml
 | `google.staticmaps_mapid` | – (required for `google`) | The map ID, for the map's style. |
 | `geoapify.apikey` | – (required for `geoapify`) | The Geoapify API key, for the map. |
 | `location` | – (required) | The place to show, such as `Dublin` or `Cork,IE`. |
-| `picture.today`, `.current`, `.hourly`, `.daily`, `.tomorrow` | `map` | What the page shows at the top: `map`, or `photos` for today's photo. A page set to `photos` shows the map until a photo is added. |
+| `picture.today`, `.current`, `.hourly`, `.daily`, `.tomorrow` | `map` | What the page shows at the top: `map`, or `photos` for today's photo. A page set to `photos` shows the map until a photo is added on the [Photos page](#photos). |
 | `image.width`, `image.height` | `825`, `1200` | The page size in pixels: the Inkplate 10's panel, upright. |
 | `image.innerWidth`, `image.innerHeight` | the page size | The area the content fits in. See [Fitting a photo mat](#fitting-a-photo-mat). |
 | `image.innerAlignX`, `image.innerAlignY` | `center` | Where that area sits: `left`, `center` or `right`; `top`, `center` or `bottom`. |
@@ -103,7 +103,7 @@ docker run -d --restart unless-stopped -p 8080:8080 \
 | `daily.png` | The next 5 days: icon, high and low, wind, rain and sun | Afternoon |
 | `tomorrow.png` | Tomorrow, in the layout of `today.png` | Evening |
 
-Each page shows the map at the top, or today's photo when its `picture` setting is `photos`.
+Each page shows the map at the top, or today's photo when its `picture` setting is `photos` ([Photos](#photos)).
 
 `display.schedule` gives a wake time for each pool, in `server.timezone`:
 
@@ -137,6 +137,30 @@ keep wake times after 00:02.
 $ curl -sI http://localhost:8080/today.png | grep -i next-display-refresh
 epd-next-display-refresh-seconds: 17602
 ```
+
+## Photos
+
+A page can show one of your own photos in place of the map. Open **Photos** at
+the top of the Settings page (`/photos`):
+
+- **Upload** adds JPEG, PNG or WebP photos, up to 20 MB and 50 megapixels each.
+- The list is the order the pages show the photos in, one each day. **Up** and
+  **Down** change it. Clear **Include** to leave a photo out without deleting it.
+- **Frame** opens the editor. It shows the photo in the two shapes the pages
+  show it in: the band at the top of the today, current and tomorrow pages, and
+  the taller area of the hourly and daily pages. Drag either one to move the
+  photo, and zoom with the slider or the scroll wheel; one framing serves both.
+  A moment after you stop, the server draws a today page and an hourly page with
+  the photo as the display will show it. **Save framing** keeps the framing.
+
+Then set the pages that show photos to **Photos** on the Settings page, Display
+tab (`picture` in `config.yaml`).
+
+The server draws each photo in a pencil style in the panel's four greys, once
+for each framing. The display shows the same photo all day, and the next one in
+the list the next day. A change to the list does not change today's photo, so
+the day's pages stay alike. A page set to Photos shows the map when there are
+no photos.
 
 ## Fitting a photo mat
 
@@ -321,6 +345,7 @@ file's comments, keeps the old file as `config.yaml.bak`, and restarts the serve
 - A save is refused if a set that a wake time uses has a page that does not exist. The message lists the pages.
 - A key an environment variable sets is locked on the page.
 - A change only to the **Install** tab needs no restart.
+- **Photos**, at the top, opens the [Photos page](#photos).
 
 Set `WEATHER_CAL_PASSWORD` to turn on the sign-in. A server without it logs a
 warning, and anyone on the network can read the Wi-Fi password and change these
@@ -378,7 +403,7 @@ does. It keeps these across updates:
   Without it, every update fetches again.
 - The sign-in's keep file and the HTTPS certificate.
 - A copy of each mod's files, and its pages' HTML and images, in `data/mods`.
-- The uploaded photos, each one as the pages draw it, and which one is today's, in `data/photos`.
+- The uploaded photos, each one as the pages draw it, which one is today's, and the framing previews, in `data/photos`.
 
 ### When the map or the weather provider is down
 
