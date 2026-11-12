@@ -38,7 +38,7 @@ class DetailedPage(Page):
     def template(self, **kwargs):
         self.airium = Airium()
 
-        map_url = kwargs["map_url"]
+        map_url = self.picture_url(kwargs)
         daily_summary = kwargs["daily_summary"]
 
         a = self.airium

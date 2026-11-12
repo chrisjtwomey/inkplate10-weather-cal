@@ -76,6 +76,14 @@ def test_every_provider_is_a_choice():
     assert {c for c, _ in sp.FORM.by_key["weather.service"].choices} == set(registered_services())
 
 
+def test_each_page_has_a_picture_choice_that_defaults_to_the_map():
+    from server import PAGE_NAMES
+    from views.page import PICTURES
+    for page in PAGE_NAMES:
+        field = sp.FORM.by_key[f"picture.{page}"]
+        assert tuple(c for c, _ in field.choices) == PICTURES and field.default == "map"
+
+
 def test_every_map_provider_is_a_choice():
     from maps import MAP_PROVIDERS
     assert tuple(c for c, _ in sp.FORM.by_key["map.provider"].choices) == MAP_PROVIDERS

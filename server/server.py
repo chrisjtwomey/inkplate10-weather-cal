@@ -22,9 +22,10 @@ from views.today import TodayPage
 from views.current import CurrentPage
 from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
+from views.page import PICTURES
 from battery_reminder import RemindingLogStore
 from maps import MAP_PROVIDERS, MapCache, StaticMapSource, create_provider
-from photos import PhotoStore, photos_blueprint
+from photos import PhotoSource, PhotoStore, photos_blueprint
 from epd_server import DisplayServer, InstallBoard, LogsQuery, align_process_timezone
 from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_keys, load_core_config,
                                load_yaml, parse_network)
@@ -35,6 +36,10 @@ from settings_page import DEFAULT_DISPLAY, NETWORK_KEYS, PASSWORD_ENV, SITE, che
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 log = logging.getLogger("server")
+
+PAGES = {"today": TodayPage, "current": CurrentPage, "hourly": HourlyPage, "daily": DailyPage,
+         "tomorrow": TomorrowPage}
+PAGE_NAMES = tuple(PAGES)
 
 FIRMWARE_PRODUCT = "inkplate10-weather-cal"
 # The Inkplate 10's USB-to-serial chip is a CH340C.
@@ -79,6 +84,7 @@ class ServerConfig:
     staticmaps_mapid: str | None
     geoapify_apikey: str | None  # set when map_provider is geoapify
     location: str
+    pictures: dict[str, str]  # page name -> one of PICTURES
     logs_path: str            # the boards' log lines, relative to this folder
     logs_days: float          # how long a line is kept
 
@@ -143,6 +149,16 @@ def load_settings(config: dict) -> ServerConfig:
         raise ConfigError(f"location must be a place name, in quotes if it is a number (got {location!r})")
     location = location.strip()
 
+    # ---- picture: the map or today's photo, for each page ----
+    pictures = get_prop(config, "picture", required=False, default=None) or {}
+    if not isinstance(pictures, dict):
+        raise ConfigError(f"picture must name pages, such as today: photos (got {pictures!r})")
+    for page, picture in pictures.items():
+        if page not in PAGE_NAMES:
+            raise ConfigError(f"picture.{page}: no such page (choose from: {', '.join(PAGE_NAMES)})")
+        if picture not in PICTURES:
+            raise ConfigError(f"picture.{page} must be map or photos (got {picture!r})")
+
     # ---- logs: the boards' log lines, kept on disk ----
     logs_path = str(get_prop_by_keys(config, "logs", "path", default="data/board-logs.db",
                                      required=False))
@@ -161,6 +177,7 @@ def load_settings(config: dict) -> ServerConfig:
         staticmaps_mapid=staticmaps_mapid,
         geoapify_apikey=geoapify_apikey,
         location=location,
+        pictures={page: pictures.get(page, "map") for page in PAGE_NAMES},
         logs_path=logs_path,
         logs_days=float(logs_days),
     )
@@ -224,16 +241,11 @@ def main():
     ))
 
     geometry = cfg.core.image.page_kwargs()
-    pages = [
-        TodayPage(**geometry),
-        CurrentPage(**geometry),
-        HourlyPage(**geometry),
-        DailyPage(**geometry),
-        TomorrowPage(**geometry),
-    ]
-    # Both fetch at the first render, after the server is up. Each page
-    # declares what it needs in Page.requires.
-    sources = [StaticMapSource(map_cache, cfg.location), weather_svc]
+    pages = [page(**geometry, picture=cfg.pictures[name]) for name, page in PAGES.items()]
+    photo_store = PhotoStore(os.path.join(cwd, "data", "photos"))
+    # Each fetches at the first render that needs it, after the server is up.
+    # Each page declares what it needs in Page.requires.
+    sources = [StaticMapSource(map_cache, cfg.location), weather_svc, PhotoSource(photo_store)]
     try:
         mods = load_mods(os.path.join(cwd, "mods"), os.path.join(cwd, "data", "mods"), config, geometry, pages, sources)
     except ModError as exc:
@@ -285,7 +297,7 @@ def main():
         form_with_mods(mods.groups), config_path, lambda text: check_config(text, load_settings, served), login=login,
         live_keys=NETWORK_KEYS, take_live=take_network, links=(("install", "Install firmware"),),
         password_env=PASSWORD_ENV))
-    server.app.register_blueprint(photos_blueprint(PhotoStore(os.path.join(cwd, "data", "photos"))))
+    server.app.register_blueprint(photos_blueprint(photo_store))
     server.run(once=args.once)
 
 

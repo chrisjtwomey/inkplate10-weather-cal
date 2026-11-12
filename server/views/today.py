@@ -14,7 +14,7 @@ class TodayPage(SimplifiedPage):
         temp = ds["temperature"]
 
         super().template(
-            map_url=kwargs["map_url"],
+            map_url=self.picture_url(kwargs),
             forecast={
                 "dt": dt.datetime.now(),
                 "icon": ds["icon"],

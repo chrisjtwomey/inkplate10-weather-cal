@@ -23,7 +23,7 @@ class CurrentPage(SimplifiedPage):
         daily_summary = kwargs.get("daily_summary")
 
         super().template(
-            map_url=kwargs["map_url"],
+            map_url=self.picture_url(kwargs),
             forecast={
                 "dt": now,
                 "date_phrase": self._rounded_hour_phrase(now),

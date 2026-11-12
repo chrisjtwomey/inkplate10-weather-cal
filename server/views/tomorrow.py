@@ -25,4 +25,4 @@ class TomorrowPage(SimplifiedPage):
             forecast = self.pick_tomorrow(kwargs["daily_forecasts"])
         if forecast is None:
             raise SkipPage("no forecast entry for tomorrow in daily_forecasts")
-        super().template(map_url=kwargs["map_url"], forecast=forecast)
+        super().template(map_url=self.picture_url(kwargs), forecast=forecast)

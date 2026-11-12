@@ -35,6 +35,7 @@ cp config.example.yaml config.yaml
 | `google.staticmaps_mapid` | – (required for `google`) | The map ID, for the map's style. |
 | `geoapify.apikey` | – (required for `geoapify`) | The Geoapify API key, for the map. |
 | `location` | – (required) | The place to show, such as `Dublin` or `Cork,IE`. |
+| `picture.today`, `.current`, `.hourly`, `.daily`, `.tomorrow` | `map` | What the page shows at the top: `map`, or `photos` for today's photo. A page set to `photos` shows the map until a photo is added. |
 | `image.width`, `image.height` | `825`, `1200` | The page size in pixels: the Inkplate 10's panel, upright. |
 | `image.innerWidth`, `image.innerHeight` | the page size | The area the content fits in. See [Fitting a photo mat](#fitting-a-photo-mat). |
 | `image.innerAlignX`, `image.innerAlignY` | `center` | Where that area sits: `left`, `center` or `right`; `top`, `center` or `bottom`. |
@@ -101,6 +102,8 @@ docker run -d --restart unless-stopped -p 8080:8080 \
 | `hourly.png` | The next hours: icon, temperature, wind and rain | Daytime |
 | `daily.png` | The next 5 days: icon, high and low, wind, rain and sun | Afternoon |
 | `tomorrow.png` | Tomorrow, in the layout of `today.png` | Evening |
+
+Each page shows the map at the top, or today's photo when its `picture` setting is `photos`.
 
 `display.schedule` gives a wake time for each pool, in `server.timezone`:
 
@@ -218,7 +221,7 @@ To show the page, add `tides.png` to a set in `display.pools`.
 
 - `setup(mod)` gives the mod's pages and its source. Give `None` for the source if the pages read only the server's data.
 - `**mod.page_kwargs` gives a page its size and output folder. The server copies the mod's files to `data/mods/<folder>` and writes the page there, so a link such as `tides.css` works.
-- `requires` can also name the server's data: `map_url`, and the four names in [weather/README.md](weather/README.md#how-a-provider-fits-in).
+- `requires` can also name the server's data: `map_url`, `photo_url` (today's photo, or "" when there is none), and the four names in [weather/README.md](weather/README.md#how-a-provider-fits-in).
 - Keep a mod's Python in `mod.py`. The server does not make its other Python files available to import.
 - A mod can import only what the server image holds, such as `requests` and `airium`. For anything else, build your own image.
 

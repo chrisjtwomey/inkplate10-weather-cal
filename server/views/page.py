@@ -14,7 +14,19 @@ HTML_DIR = os.path.join(_VIEWS_DIR, "html")
 PNG_DIR = _VIEWS_DIR
 
 
+PICTURES = ("map", "photos")
+
+
 class Page(_Page):
-    def __init__(self, name, *geometry, **kwargs):
+    def __init__(self, name, *geometry, picture="map", **kwargs):
         # kwargs lets a caller pass renderer= / quantiser= through unchanged.
         super().__init__(name, *geometry, html_dir=HTML_DIR, png_dir=PNG_DIR, **kwargs)
+        self.picture = picture
+        if picture == "photos":
+            self.requires = (*type(self).requires, "photo_url")
+
+    def picture_url(self, data) -> str:
+        """Today's photo when this page shows photos and one is ready, else the map."""
+        if self.picture == "photos" and data.get("photo_url"):
+            return data["photo_url"]
+        return data["map_url"]

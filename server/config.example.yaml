@@ -46,6 +46,14 @@ google:
   apikey: XXXX
   staticmaps_mapid: XXXX
 location: Dublin
+# What each page shows at the top: map, or photos (today's photo, a new one
+# each day). A page set to photos shows the map until a photo is added.
+picture:
+  today: map
+  current: map
+  hourly: map
+  daily: map
+  tomorrow: map
 image:
   # Final generated PNG width (pixels).
   width: 825

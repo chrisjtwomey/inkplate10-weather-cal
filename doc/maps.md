@@ -1,7 +1,7 @@
 # Maps
 
-The today, current and tomorrow pages show a map of your `location`. Set
-`map.provider` to one of these:
+Each page shows a map of your `location` at the top, unless its `picture`
+setting shows a photo instead. Set `map.provider` to one of these:
 
 | Provider | Cost | Key |
 |---|---|---|

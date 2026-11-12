@@ -150,3 +150,27 @@ def test_a_location_that_is_not_text_is_a_clear_error(value, caplog):
     with pytest.raises(SystemExit):
         validate_config(c)
     assert "location must be a place name" in caplog.text
+
+
+def test_every_page_shows_the_map_unless_set():
+    cfg = validate_config(base())
+    assert cfg.pictures == {"today": "map", "current": "map", "hourly": "map", "daily": "map", "tomorrow": "map"}
+
+
+def test_a_page_can_show_photos():
+    c = base()
+    c["picture"] = {"hourly": "photos"}
+    assert validate_config(c).pictures["hourly"] == "photos"
+
+
+@pytest.mark.parametrize("picture, words", [
+    ({"weekly": "photos"}, "picture.weekly: no such page (choose from: today, current, hourly, daily, tomorrow)"),
+    ({"today": "photo"}, "picture.today must be map or photos (got 'photo')"),
+    (["today"], "picture must name pages, such as today: photos"),
+])
+def test_a_bad_picture_setting_is_a_clear_error(picture, words, caplog):
+    c = base()
+    c["picture"] = picture
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert words in caplog.text
