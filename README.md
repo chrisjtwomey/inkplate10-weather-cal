@@ -5,13 +5,15 @@
 [![Server coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/chrisjtwomey/3c210a371fde90aa65369080ad509e39/raw/weather-cal-server-coverage.json)](CONTRIBUTING.md#coverage)
 [![Firmware coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/chrisjtwomey/3c210a371fde90aa65369080ad509e39/raw/weather-cal-firmware-coverage.json)](CONTRIBUTING.md#coverage)
 
-The weather forecast and a map of your city, on an Inkplate 10 e-paper
-display. The display wakes a few times a day, shows a new page, and sleeps.
-One battery charge lasts one to two years.
+The weather forecast and a map of your city, or your own photos, on an
+Inkplate 10 e-paper display. The display wakes a few times a day, shows a new
+page, and sleeps. One battery charge lasts one to two years.
 
 <img src=https://user-images.githubusercontent.com/5797356/223708925-131d7ecc-5e95-453a-b687-427b75d959dd.jpg width=800 />
 
 The server renders five pages: today, current, hourly, daily and tomorrow.
+Each one shows the map at the top, or one of your own photos drawn in pencil
+([Photos](server/README.md#photos)).
 
 <table align="center">
   <tr>

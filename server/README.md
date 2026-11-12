@@ -5,6 +5,7 @@ and tells the display when to wake next.
 
 - Weather from AccuWeather, Met Éireann, Open-Meteo or OpenWeatherMap: [doc/weather-apis.md](../doc/weather-apis.md). To add a provider, see [weather/README.md](weather/README.md).
 - A map of your area from Google, Geoapify or OpenFreeMap: [doc/maps.md](../doc/maps.md).
+- Or your own photos in place of the map, drawn in pencil: [Photos](#photos).
 - Each page is HTML, rendered to a PNG in Chrome, and served with [Flask](https://flask.palletsprojects.com/). The generic parts come from [epd](https://github.com/chrisjtwomey/epd)'s `epd-server`.
 
 To set up a display, start with the [main README](../README.md). To work on
