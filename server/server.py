@@ -24,6 +24,7 @@ from views.daily import DailyPage
 from views.tomorrow import TomorrowPage
 from battery_reminder import RemindingLogStore
 from maps import MAP_PROVIDERS, MapCache, StaticMapSource, create_provider
+from photos import PhotoStore, photos_blueprint
 from epd_server import DisplayServer, InstallBoard, LogsQuery, align_process_timezone
 from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_keys, load_core_config,
                                load_yaml, parse_network)
@@ -284,6 +285,7 @@ def main():
         form_with_mods(mods.groups), config_path, lambda text: check_config(text, load_settings, served), login=login,
         live_keys=NETWORK_KEYS, take_live=take_network, links=(("install", "Install firmware"),),
         password_env=PASSWORD_ENV))
+    server.app.register_blueprint(photos_blueprint(PhotoStore(os.path.join(cwd, "data", "photos"))))
     server.run(once=args.once)
 
 

@@ -325,7 +325,7 @@ settings.
 
 With a password set:
 
-- `/settings`, `/install`, `/logs` and `/network.bin` need a sign-in. The
+- `/settings`, `/install`, `/logs`, `/network.bin` and `/photos` need a sign-in. The
   display's own routes stay open, and so do the install page's scripts.
 - The sign-in lasts 30 days. Five wrong passwords make that address wait 15 minutes.
 - Other apps send the access token on the Access tab of the Settings page, to read `/logs`
@@ -375,6 +375,7 @@ does. It keeps these across updates:
   Without it, every update fetches again.
 - The sign-in's keep file and the HTTPS certificate.
 - A copy of each mod's files, and its pages' HTML and images, in `data/mods`.
+- The uploaded photos, in `data/photos`.
 
 ### When the map or the weather provider is down
 
