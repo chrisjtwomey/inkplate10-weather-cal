@@ -43,7 +43,8 @@ in place of the map. Choose those pages on the Settings page, Display tab.</p>
 
 <section id="editor" hidden>
 <h2 id="editor-title">Frame</h2>
-<p class="help">Drag a picture to move the photo. Use the slider or the scroll wheel to zoom.</p>
+<p class="help">Drag to move the photo, or use the arrow keys. Pinch, scroll or use the slider to zoom.
+Double-click to centre.</p>
 <div class="windows">
 <figure><div class="window" data-shape="wide"><img alt=""></div><figcaption>Today, current and tomorrow</figcaption></figure>
 <figure><div class="window" data-shape="tall"><img alt=""></div><figcaption>Hourly and daily</figcaption></figure>

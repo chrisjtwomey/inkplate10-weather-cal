@@ -242,6 +242,8 @@
   const same = (a, b) => a.x === b.x && a.y === b.y && a.zoom === b.zoom;
 
   function openEditor(photo) {
+    if (editing && editing.photo.id === photo.id) return;
+    if (unsaved() && !confirm("Open " + photo.name + " without saving this framing?")) return;
     editing = {photo: photo, framing: Object.assign({}, photo.framing), saved: Object.assign({}, photo.framing)};
     $("editor-title").textContent = "Frame " + photo.name;
     zoomInput.min = Math.log(N.minZoom);
@@ -303,44 +305,100 @@
     changed();
   }
 
+  const CENTRE = {x: 0.5, y: 0.5, zoom: 1};
+  const NUDGE = 0.01;             // of the photo's width or height
+  const ZOOM_STEP = 1.1;
+  // Browsers send a trackpad pinch as a wheel with Ctrl held, in small steps.
+  const TRACKPAD_PINCH_RATE = 0.01;
+  const SCROLL_ZOOM_RATE = 0.0015;
+
+  function moveBy(win, dxScreen, dyScreen, framing) {
+    const [l, , r] = N.windows[win.dataset.shape];
+    const k = win.clientWidth / (r - l);
+    const {w, h} = photoSize();
+    const scale = framing.zoom * Math.max(N.size / w, N.size / h);
+    return {x: framing.x - dxScreen / k / (w * scale), y: framing.y - dyScreen / k / (h * scale), zoom: framing.zoom};
+  }
+
   windows.forEach((win) => {
-    let from = null;
+    win.tabIndex = 0;
+    const pointers = new Map();
+    let drag = null;    // one pointer: where it started, and the framing then
+    let pinch = null;   // two pointers: their distance and the zoom when they met
+
+    const spread = () => {
+      const [a, b] = Array.from(pointers.values());
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
     win.addEventListener("pointerdown", (event) => {
       if (!editing) return;
-      from = {x: event.clientX, y: event.clientY, framing: Object.assign({}, editing.framing)};
       win.setPointerCapture(event.pointerId);
+      pointers.set(event.pointerId, {x: event.clientX, y: event.clientY});
+      if (pointers.size === 1) {
+        drag = {x: event.clientX, y: event.clientY, framing: Object.assign({}, editing.framing)};
+      } else if (pointers.size === 2) {
+        drag = null;
+        pinch = {spread: spread(), zoom: editing.framing.zoom};
+      }
     });
     win.addEventListener("pointermove", (event) => {
-      if (!from) return;
-      const [l, , r] = N.windows[win.dataset.shape];
-      const k = win.clientWidth / (r - l);
-      const {w, h} = photoSize();
-      const scale = from.framing.zoom * Math.max(N.size / w, N.size / h);
-      setFraming({
-        x: from.framing.x - (event.clientX - from.x) / k / (w * scale),
-        y: from.framing.y - (event.clientY - from.y) / k / (h * scale),
-        zoom: from.framing.zoom,
-      });
+      if (!pointers.has(event.pointerId)) return;
+      pointers.set(event.pointerId, {x: event.clientX, y: event.clientY});
+      if (pinch && pointers.size === 2) {
+        const f = editing.framing;
+        setFraming({x: f.x, y: f.y, zoom: pinch.zoom * spread() / Math.max(pinch.spread, 1)});
+      } else if (drag) {
+        setFraming(moveBy(win, event.clientX - drag.x, event.clientY - drag.y, drag.framing));
+      }
     });
-    const stop = () => { from = null; };
-    win.addEventListener("pointerup", stop);
-    win.addEventListener("pointercancel", stop);
+    const lift = (event) => {
+      pointers.delete(event.pointerId);
+      if (pointers.size < 2) pinch = null;
+      if (pointers.size === 0) drag = null;
+    };
+    win.addEventListener("pointerup", lift);
+    win.addEventListener("pointercancel", lift);
     win.addEventListener("wheel", (event) => {
       if (!editing) return;
       event.preventDefault();
       const f = editing.framing;
-      setFraming({x: f.x, y: f.y, zoom: f.zoom * Math.exp(-event.deltaY * 0.0015)});
+      const rate = event.ctrlKey ? TRACKPAD_PINCH_RATE : SCROLL_ZOOM_RATE;
+      setFraming({x: f.x, y: f.y, zoom: f.zoom * Math.exp(-event.deltaY * rate)});
     }, {passive: false});
+    win.addEventListener("dblclick", () => { if (editing) setFraming(CENTRE); });
+    win.addEventListener("keydown", (event) => {
+      if (!editing) return;
+      const f = editing.framing;
+      const step = event.shiftKey ? 10 : 1;
+      const {w, h} = photoSize();
+      const across = {ArrowLeft: -1, ArrowRight: 1}[event.key] || 0;
+      const down = {ArrowUp: -1, ArrowDown: 1}[event.key] || 0;
+      if (across || down) {
+        setFraming({x: f.x + across * step * NUDGE, y: f.y + down * step * NUDGE * w / h, zoom: f.zoom});
+      } else if (event.key === "+" || event.key === "=") {
+        setFraming({x: f.x, y: f.y, zoom: f.zoom * ZOOM_STEP});
+      } else if (event.key === "-") {
+        setFraming({x: f.x, y: f.y, zoom: f.zoom / ZOOM_STEP});
+      } else {
+        return;
+      }
+      event.preventDefault();
+    });
+  });
+
+  const unsaved = () => !!editing && !same(editing.framing, editing.saved);
+  window.addEventListener("beforeunload", (event) => {
+    if (unsaved()) event.preventDefault();
   });
 
   zoomInput.addEventListener("input", () => {
     const f = editing.framing;
     setFraming({x: f.x, y: f.y, zoom: Math.exp(Number(zoomInput.value))});
   });
-  $("centre").addEventListener("click", () => setFraming({x: 0.5, y: 0.5, zoom: 1}));
+  $("centre").addEventListener("click", () => setFraming(CENTRE));
   $("undo").addEventListener("click", () => setFraming(editing.saved));
   $("close").addEventListener("click", () => {
-    if (!same(editing.framing, editing.saved) && !confirm("Close without saving the framing?")) return;
+    if (unsaved() && !confirm("Close without saving the framing?")) return;
     closeEditor();
   });
   $("delete").addEventListener("click", () => {

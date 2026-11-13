@@ -243,3 +243,16 @@ def test_the_rows_can_be_moved_with_the_keyboard_as_well_as_dragged():
     script = (Path(__file__).parent.parent / "photos" / "static" / "photos.js").read_text()
     assert "ArrowUp" in script and "ArrowDown" in script and "setPointerCapture" in script
     assert 'button("Up"' not in script and 'button("Down"' not in script
+
+
+def test_the_editor_says_how_to_move_zoom_and_centre(store):
+    text = BeautifulSoup(_client(store).get("/photos").data, "html.parser").get_text(" ")
+    assert "Drag to move the photo, or use the arrow keys." in text
+    assert "Pinch, scroll or use the slider to zoom." in text and "Double-click to centre." in text
+
+
+def test_the_editor_handles_pinch_double_click_keys_and_unsaved_changes():
+    script = (Path(__file__).parent.parent / "photos" / "static" / "photos.js").read_text()
+    for needed in ('"dblclick"', '"keydown"', "ArrowLeft", "event.ctrlKey", '"beforeunload"',
+                   "without saving this framing?", "pointers.size === 2"):
+        assert needed in script, needed

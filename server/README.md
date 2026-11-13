@@ -153,10 +153,12 @@ the top of the Settings page (`/photos`):
 - Select a photo to open its editor. It shows the photo in the two shapes the
   pages show it in: the band at the top of the today, current and tomorrow
   pages, and the taller area of the hourly and daily pages. Drag either one to
-  move the photo, and zoom with the slider or the scroll wheel; one framing
-  serves both. A moment after you stop, the server draws a today page and an
-  hourly page with the photo as the display will show it. **Save framing** keeps
-  the framing. **Delete photo** is here too.
+  move the photo; pinch, scroll or use the slider to zoom; double-click to
+  centre. With a picture selected, the arrow keys move the photo (Shift for
+  bigger steps), and + and − zoom. One framing serves both shapes.
+- A moment after you stop, the server draws a today page and an hourly page with
+  the photo as the display will show it. **Save framing** keeps the framing; the
+  page asks before it drops one that is not saved. **Delete photo** is here too.
 
 Then set the pages that show photos to **Photos** on the Settings page, Display
 tab (`picture` in `config.yaml`).
