@@ -43,59 +43,117 @@
                        body: body === undefined ? undefined : JSON.stringify(body)});
   }
 
+  let marks = {today: null, tomorrow: null};
+
   async function load() {
-    photos = (await (await call("photos/list")).json()).photos;
+    const listing = await (await call("photos/list")).json();
+    photos = listing.photos;
+    marks = {today: listing.today, tomorrow: listing.tomorrow};
     drawList();
   }
 
   // ---- The list ----
 
-  function button(words, onClick, disabled) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = words;
-    b.disabled = !!disabled;
-    b.addEventListener("click", onClick);
-    return b;
-  }
-
   function drawList() {
     const list = $("photos");
-    list.replaceChildren();
+    const focused = document.activeElement && document.activeElement.closest("li");
+    list.replaceChildren(...photos.map(row));
     $("empty").hidden = photos.length > 0;
-    photos.forEach((photo, i) => {
-      const li = document.createElement("li");
-      const thumb = document.createElement("img");
-      const f = photo.framing;
-      thumb.src = "photos/" + photo.id + "/thumb.png?f=" + [f.x, f.y, f.zoom].join(",");
-      thumb.alt = "";
-      thumb.loading = "lazy";
-      const name = document.createElement("span");
-      name.className = "name";
-      name.textContent = photo.name;
-      const inSet = document.createElement("label");
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.checked = photo.in_set;
-      box.addEventListener("change", () => act(() => post("photos/" + photo.id + "/set", {in_set: box.checked})));
-      inSet.append(box, " Include");
+    if (focused && focused.dataset.id) {
+      const again = list.querySelector('li[data-id="' + focused.dataset.id + '"] .grip');
+      if (again) again.focus();
+    }
+  }
+
+  function row(photo) {
+    const li = document.createElement("li");
+    li.dataset.id = photo.id;
+    li.classList.toggle("editing", !!editing && editing.photo.id === photo.id);
+    li.classList.toggle("left-out", !photo.in_set);
+
+    const grip = document.createElement("button");
+    grip.type = "button";
+    grip.className = "grip";
+    grip.textContent = "⠿";
+    grip.setAttribute("aria-label", "Move " + photo.name + " with the up and down arrows");
+    grip.addEventListener("keydown", (event) => {
+      const step = {ArrowUp: -1, ArrowDown: 1}[event.key];
+      if (!step) return;
+      event.preventDefault();
       const ids = photos.map((p) => p.id);
-      const move = (to) => {
-        ids.splice(i, 1);
-        ids.splice(to, 0, photo.id);
-        act(() => post("photos/order", {ids: ids}));
-      };
-      li.append(thumb, name, inSet,
-        button("Up", () => move(i - 1), i === 0),
-        button("Down", () => move(i + 1), i === photos.length - 1),
-        button("Frame", () => openEditor(photo)),
-        button("Delete", () => {
-          if (!confirm("Delete " + photo.name + "? This cannot be undone.")) return;
-          if (editing && editing.photo.id === photo.id) closeEditor();
-          act(() => post("photos/" + photo.id + "/delete"));
-        }));
-      list.append(li);
+      const from = ids.indexOf(photo.id);
+      const to = from + step;
+      if (to < 0 || to >= ids.length) return;
+      ids.splice(to, 0, ids.splice(from, 1)[0]);
+      act(() => post("photos/order", {ids: ids}));
     });
+    dragByGrip(li, grip);
+
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "open";
+    const thumb = document.createElement("img");
+    const f = photo.framing;
+    thumb.src = "photos/" + photo.id + "/thumb.png?f=" + [f.x, f.y, f.zoom].join(",");
+    thumb.alt = "";
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = photo.name;
+    for (const [id, words] of [[marks.today, "Today"], [marks.tomorrow, "Tomorrow"]]) {
+      if (id !== photo.id) continue;
+      const mark = document.createElement("span");
+      mark.className = "mark";
+      mark.textContent = words;
+      name.append(" ", mark);
+    }
+    open.append(thumb, name);
+    open.addEventListener("click", () => openEditor(photo));
+
+    const include = document.createElement("label");
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = photo.in_set;
+    box.addEventListener("change", () => act(() => post("photos/" + photo.id + "/set", {in_set: box.checked})));
+    include.append(box, " Include");
+
+    li.append(grip, open, include);
+    return li;
+  }
+
+  // Moves the other rows past the one being dragged, so the dragged row keeps its pointer capture.
+  function dragByGrip(li, grip) {
+    let startY = 0;
+    grip.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      grip.setPointerCapture(event.pointerId);
+      startY = event.clientY;
+      li.classList.add("dragging");
+    });
+    grip.addEventListener("pointermove", (event) => {
+      if (!li.classList.contains("dragging")) return;
+      let dy = event.clientY - startY;
+      const before = li.previousElementSibling;
+      const after = li.nextElementSibling;
+      if (after && dy > after.offsetHeight / 2) {
+        li.before(after);
+        startY += after.offsetHeight;
+        dy -= after.offsetHeight;
+      } else if (before && dy < -before.offsetHeight / 2) {
+        li.after(before);
+        startY -= before.offsetHeight;
+        dy += before.offsetHeight;
+      }
+      li.style.transform = "translateY(" + dy + "px)";
+    });
+    const drop = () => {
+      if (!li.classList.contains("dragging")) return;
+      li.classList.remove("dragging");
+      li.style.transform = "";
+      const ids = Array.from($("photos").children).map((r) => r.dataset.id);
+      if (ids.join() !== photos.map((p) => p.id).join()) act(() => post("photos/order", {ids: ids}));
+    };
+    grip.addEventListener("pointerup", drop);
+    grip.addEventListener("pointercancel", drop);
   }
 
   async function act(change) {
@@ -108,27 +166,74 @@
     await load().catch((e) => say(e.message));
   }
 
-  $("upload").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const files = Array.from($("files").files);
-    if (!files.length) {
-      say("Choose a photo first.");
-      return;
-    }
-    const problems = [];
-    for (const file of files) {
+  // ---- Adding photos ----
+
+  function sendOne(file, bar, words) {
+    return new Promise((resolve) => {
       const form = new FormData();
       form.append("photo", file, file.name);
-      try {
-        await call("photos/upload", {method: "POST", body: form});
-      } catch (e) {
-        problems.push(file.name + ": " + e.message);
-      }
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "photos/upload");
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) bar.value = event.loaded / event.total;
+      });
+      xhr.addEventListener("load", () => {
+        let body = {};
+        try { body = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
+        if (xhr.status === 201) resolve(null);
+        else if (xhr.status === 401) resolve("Signed out. Reload the page to sign in again.");
+        else resolve(body.problem || "The server refused this (" + xhr.status + ").");
+      });
+      xhr.addEventListener("error", () => resolve("Cannot reach the server. Check that it is running."));
+      xhr.send(form);
+    }).then((problem) => {
+      bar.value = 1;
+      words.textContent = problem || "Added.";
+      words.classList.toggle("problem", !!problem);
+      return !problem;
+    });
+  }
+
+  async function add(files) {
+    const list = $("uploads");
+    say("");
+    for (const file of files) {
+      const item = document.createElement("li");
+      const name = document.createElement("span");
+      name.textContent = file.name;
+      const bar = document.createElement("progress");
+      bar.max = 1;
+      bar.value = 0;
+      const words = document.createElement("span");
+      words.className = "result";
+      item.append(name, bar, words);
+      list.append(item);
+      if (await sendOne(file, bar, words)) setTimeout(() => item.remove(), 3000);
     }
-    $("files").value = "";
-    say(problems.join(" "), "problem");
-    if (!problems.length) say(files.length === 1 ? "Photo added." : files.length + " photos added.", "notice");
     await load().catch((e) => say(e.message));
+  }
+
+  $("files").addEventListener("change", () => {
+    const files = Array.from($("files").files);
+    $("files").value = "";
+    if (files.length) add(files);
+  });
+
+  const dropZone = $("drop");
+  const carriesFiles = (event) => Array.from(event.dataTransfer.types).includes("Files");
+  document.addEventListener("dragover", (event) => {
+    if (!carriesFiles(event)) return;
+    event.preventDefault();
+    dropZone.hidden = false;
+  });
+  document.addEventListener("dragleave", (event) => {
+    if (event.relatedTarget === null) dropZone.hidden = true;
+  });
+  document.addEventListener("drop", (event) => {
+    if (!carriesFiles(event)) return;
+    event.preventDefault();
+    dropZone.hidden = true;
+    add(Array.from(event.dataTransfer.files));
   });
 
   // ---- The framing editor ----
@@ -148,6 +253,7 @@
     });
     editor.hidden = false;
     editor.scrollIntoView({behavior: "smooth"});
+    drawList();
     changed();
   }
 
@@ -155,6 +261,7 @@
     editing = null;
     editor.hidden = true;
     previewRound++;
+    drawList();
   }
 
   // The photo's natural size, upright: browsers apply EXIF orientation as the server does.
@@ -236,6 +343,12 @@
     if (!same(editing.framing, editing.saved) && !confirm("Close without saving the framing?")) return;
     closeEditor();
   });
+  $("delete").addEventListener("click", () => {
+    const photo = editing.photo;
+    if (!confirm("Delete " + photo.name + "? This cannot be undone.")) return;
+    closeEditor();
+    act(() => post("photos/" + photo.id + "/delete"));
+  });
   $("save").addEventListener("click", async () => {
     const f = Object.assign({}, editing.framing);
     try {
@@ -244,6 +357,7 @@
       editing.photo.framing = f;
       layout();
       say("Framing saved.", "notice");
+      await load();
     } catch (e) {
       say(e.message);
     }

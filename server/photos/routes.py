@@ -2,7 +2,7 @@
 
     GET  /photos                    the page
     GET  /photos/assets/<name>      its script and stylesheet
-    GET  /photos/list               every photo, in set order
+    GET  /photos/list               every photo, in set order, and today's and tomorrow's
     POST /photos/upload             form field ``photo``: a new photo, at the end of the set
     GET  /photos/<id>/original      the photo as it was uploaded
     GET  /photos/<id>/thumb.png     the photo as the pages draw it, small
@@ -37,9 +37,11 @@ NO_PREVIEW = "No preview for this page. Check the server's log."
 Preview = Callable[[str, str], bytes]
 
 
-def photos_blueprint(store: PhotoStore, windows: dict | None = None, preview: Preview | None = None) -> Blueprint:
+def photos_blueprint(store: PhotoStore, windows: dict | None = None, preview: Preview | None = None,
+                     today_and_tomorrow: Callable[[], tuple] | None = None) -> Blueprint:
     """The page and its routes. ``windows`` is each picture shape the pages show,
-    as ``(left, top, right, bottom)`` in the picture's square."""
+    as ``(left, top, right, bottom)`` in the picture's square;
+    ``today_and_tomorrow`` gives the ids of the photos the pages show today and tomorrow."""
     bp = Blueprint("photos", __name__, url_prefix="/photos")
 
     def problem(words: str, status: int):
@@ -65,7 +67,8 @@ def photos_blueprint(store: PhotoStore, windows: dict | None = None, preview: Pr
 
     @bp.route("/list", methods=["GET"])
     def listing():
-        return jsonify(photos=[asdict(p) for p in store.photos()])
+        today, tomorrow = today_and_tomorrow() if today_and_tomorrow else (None, None)
+        return jsonify(photos=[asdict(p) for p in store.photos()], today=today, tomorrow=tomorrow)
 
     @bp.route("/upload", methods=["POST"])
     def upload():

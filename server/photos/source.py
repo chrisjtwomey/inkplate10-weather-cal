@@ -48,6 +48,16 @@ class PhotoSource(DataSource):
             self._write(state)
         return the_set[index]
 
+    def today_and_tomorrow(self) -> tuple[str | None, str | None]:
+        """The ids of today's photo and of the one that follows it tomorrow, if
+        the set does not change. Tomorrow's is None when it is today's again."""
+        today = self.todays_photo()
+        if today is None:
+            return None, None
+        ids = [p.id for p in self.store.the_set()]
+        tomorrow = ids[(ids.index(today.id) + 1) % len(ids)]
+        return today.id, tomorrow if tomorrow != today.id else None
+
     def _photo_url(self) -> str:
         photo = self.todays_photo()
         if photo is None:

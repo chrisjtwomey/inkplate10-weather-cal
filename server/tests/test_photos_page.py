@@ -59,7 +59,10 @@ def test_the_page_carries_the_shapes_and_loads_its_files(store):
 
 def test_the_page_words_follow_the_ui_rules(store):
     text = BeautifulSoup(_client(store).get("/photos").data, "html.parser").get_text(" ")
-    assert "No photos yet. Upload one to start." in text and "please" not in text.lower()
+    assert "No photos yet. Add one to start." in text and "please" not in text.lower()
+    soup = BeautifulSoup(_client(store).get("/photos").data, "html.parser")
+    assert soup.find("label", attrs={"for": "files"}).string == "Add photos"
+    assert soup.find(id="drop") and soup.find(id="delete").string == "Delete photo"
 
 
 # ---------- Framing ----------
@@ -222,3 +225,21 @@ def test_a_thumbnail_of_an_unknown_photo_is_404(store):
 def test_the_list_asks_for_thumbnails_with_the_framing_not_originals():
     script = (Path(__file__).parent.parent / "photos" / "static" / "photos.js").read_text()
     assert '"/thumb.png?f="' in script and 'thumb.src = "photos/" + photo.id + "/original"' not in script
+
+
+# ---------- Today's and tomorrow's marks ----------
+
+def test_the_list_names_todays_and_tomorrows_photo(store):
+    a = store.add(_image((1, 1, 1)), "a.jpg")
+    b = store.add(_image((2, 2, 2)), "b.jpg")
+    app = Flask(__name__)
+    app.register_blueprint(photos_blueprint(store, WINDOWS, None, lambda: (b.id, a.id)))
+    listing = app.test_client().get("/photos/list").get_json()
+    assert (listing["today"], listing["tomorrow"]) == (b.id, a.id)
+    assert _client(store).get("/photos/list").get_json()["today"] is None
+
+
+def test_the_rows_can_be_moved_with_the_keyboard_as_well_as_dragged():
+    script = (Path(__file__).parent.parent / "photos" / "static" / "photos.js").read_text()
+    assert "ArrowUp" in script and "ArrowDown" in script and "setPointerCapture" in script
+    assert 'button("Up"' not in script and 'button("Down"' not in script

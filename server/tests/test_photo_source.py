@@ -133,3 +133,22 @@ def test_a_picture_that_cannot_be_made_gives_no_url_and_a_warning(store, clock, 
     monkeypatch.setattr(source_module, "picture_path", lambda *a: (_ for _ in ()).throw(OSError("disk full")))
     assert PhotoSource(store, clock).datasets()["photo_url"]() == ""
     assert "No photo for this render: 1.png: disk full" in caplog.text
+
+
+def test_today_and_tomorrow_follow_the_set(store, clock):
+    a, b, c = _add(store, 1), _add(store, 2), _add(store, 3)
+    source = PhotoSource(store, clock)
+    assert source.today_and_tomorrow() == (a, b)
+    store.include(b, False)
+    assert source.today_and_tomorrow() == (a, c)
+    clock.next_day()
+    assert source.today_and_tomorrow() == (c, a)
+
+
+def test_with_one_photo_tomorrow_is_not_named(store, clock):
+    a = _add(store, 1)
+    assert PhotoSource(store, clock).today_and_tomorrow() == (a, None)
+
+
+def test_with_no_photos_neither_is_named(store, clock):
+    assert PhotoSource(store, clock).today_and_tomorrow() == (None, None)

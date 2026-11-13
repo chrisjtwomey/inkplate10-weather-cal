@@ -30,15 +30,16 @@ in place of the map. Choose those pages on the Settings page, Display tab.</p>
 <noscript><p class="banner problem">This page needs JavaScript.</p></noscript>
 <p class="banner" id="message" role="alert" hidden></p>
 
-<form id="upload">
-<label for="files">Add photos</label>
-<div class="row"><input type="file" id="files" name="photo" accept="image/jpeg,image/png,image/webp" multiple>
-<button type="submit" class="primary">Upload</button></div>
-<p class="help">JPEG, PNG or WebP, up to 20 MB each.</p>
-</form>
+<div class="row add">
+<label class="button primary" for="files">Add photos</label>
+<input type="file" id="files" accept="image/jpeg,image/png,image/webp" multiple hidden>
+<p class="help">Or drop them on this page. JPEG, PNG or WebP, up to 20 MB each.</p>
+</div>
+<ul id="uploads"></ul>
+<div id="drop" hidden><p>Drop photos to add them</p></div>
 
 <ol id="photos"></ol>
-<p id="empty" hidden>No photos yet. Upload one to start.</p>
+<p id="empty" hidden>No photos yet. Add one to start.</p>
 
 <section id="editor" hidden>
 <h2 id="editor-title">Frame</h2>
@@ -49,6 +50,8 @@ in place of the map. Choose those pages on the Settings page, Display tab.</p>
 </div>
 <div class="row"><label for="zoom">Zoom</label><input type="range" id="zoom" step="0.01"></div>
 <div class="row buttons">
+<button type="button" id="delete" class="danger">Delete photo</button>
+<span class="gap"></span>
 <button type="button" id="centre">Centre</button>
 <button type="button" id="undo">Undo changes</button>
 <button type="button" id="close">Close</button>

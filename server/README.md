@@ -144,16 +144,19 @@ epd-next-display-refresh-seconds: 17602
 A page can show one of your own photos in place of the map. Open **Photos** at
 the top of the Settings page (`/photos`):
 
-- **Upload** adds JPEG, PNG or WebP photos, up to 20 MB and 50 megapixels each.
+- **Add photos**, or drop photos on the page, adds JPEG, PNG or WebP photos, up
+  to 20 MB and 50 megapixels each.
 - The list shows each photo as the today page draws it, in the order the pages
-  show them, one each day. **Up** and **Down** change the order. Clear
-  **Include** to leave a photo out without deleting it.
-- **Frame** opens the editor. It shows the photo in the two shapes the pages
-  show it in: the band at the top of the today, current and tomorrow pages, and
-  the taller area of the hourly and daily pages. Drag either one to move the
-  photo, and zoom with the slider or the scroll wheel; one framing serves both.
-  A moment after you stop, the server draws a today page and an hourly page with
-  the photo as the display will show it. **Save framing** keeps the framing.
+  show them, one each day. **Today** and **Tomorrow** mark the photos the pages
+  show next. Drag a photo by its handle (⠿) to move it, or select the handle and
+  use the arrow keys. Clear **Include** to leave a photo out without deleting it.
+- Select a photo to open its editor. It shows the photo in the two shapes the
+  pages show it in: the band at the top of the today, current and tomorrow
+  pages, and the taller area of the hourly and daily pages. Drag either one to
+  move the photo, and zoom with the slider or the scroll wheel; one framing
+  serves both. A moment after you stop, the server draws a today page and an
+  hourly page with the photo as the display will show it. **Save framing** keeps
+  the framing. **Delete photo** is here too.
 
 Then set the pages that show photos to **Photos** on the Settings page, Display
 tab (`picture` in `config.yaml`).

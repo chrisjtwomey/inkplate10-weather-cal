@@ -275,7 +275,8 @@ def main():
     photo_store = PhotoStore(os.path.join(cwd, "data", "photos"))
     # Each fetches at the first render that needs it, after the server is up.
     # Each page declares what it needs in Page.requires.
-    sources = [StaticMapSource(map_cache, cfg.location), weather_svc, PhotoSource(photo_store)]
+    photo_source = PhotoSource(photo_store)
+    sources = [StaticMapSource(map_cache, cfg.location), weather_svc, photo_source]
     try:
         mods = load_mods(os.path.join(cwd, "mods"), os.path.join(cwd, "data", "mods"), config, geometry, pages, sources)
     except ModError as exc:
@@ -330,7 +331,8 @@ def main():
     image = cfg.core.image
     server.app.register_blueprint(photos_blueprint(
         photo_store, picture_windows(image.inner_width, image.inner_height),
-        page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews"))))
+        page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews")),
+        photo_source.today_and_tomorrow))
     server.run(once=args.once)
 
 
