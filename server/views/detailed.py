@@ -83,7 +83,7 @@ class DetailedPage(Page):
                                     with a.div(id="icon-container", klass="numcircle"):
                                         a.img(src=daily_summary["icon"])
 
-                            with a.div(id="map-container"):
+                            with a.div(id="map-container", **{"data-picture": "main"}):
                                 a.img(src=map_url, id="map")
 
                             self._render_body(a, **kwargs)

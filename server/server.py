@@ -18,11 +18,7 @@ import dataclasses
 import logging.config
 
 import yaml
-from views.hourly import HourlyPage
-from views.today import TodayPage
-from views.current import CurrentPage
-from views.daily import DailyPage
-from views.tomorrow import TomorrowPage
+from views.themes import DEFAULT_THEME, PAGE_TYPES, THEMES, page_class
 from views.page import PICTURES, picture_windows
 from battery_reminder import RemindingLogStore
 from maps import MAP_PROVIDERS, MapCache, StaticMapSource, create_provider
@@ -40,15 +36,14 @@ from settings_page import DEFAULT_DISPLAY, NETWORK_KEYS, PASSWORD_ENV, SITE, che
 cwd = os.path.dirname(os.path.realpath(__file__))
 log = logging.getLogger("server")
 
-PAGES = {"today": TodayPage, "current": CurrentPage, "hourly": HourlyPage, "daily": DailyPage,
-         "tomorrow": TomorrowPage}
-PAGE_NAMES = tuple(PAGES)
+PAGE_NAMES = PAGE_TYPES
+PAGES = dict(THEMES[DEFAULT_THEME].pages)
 # The pages the Photos page draws to preview each picture shape, in order of choice:
 # the hourly page is not drawn when weather.num_hourly_forecasts is 0.
 PREVIEW_PAGES = {"wide": ("today",), "tall": ("hourly", "daily")}
 
 
-def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None):
+def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None, page_classes: dict = PAGES):
     """A function that draws a page of a picture shape with a given picture, for
     the Photos page, into its own files so the display's pages stay as they are."""
     lock = threading.Lock()
@@ -57,7 +52,7 @@ def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=Non
         data = CompositeSource(*sources).datasets()
         with lock:
             for name in PREVIEW_PAGES[shape]:
-                page = PAGES[name](**geometry, picture="photos", renderer=renderer)
+                page = page_classes[name](**geometry, picture="photos", renderer=renderer)
                 page.name, page.png_dir = f"preview-{name}", preview_dir
                 try:
                     page.template(**{k: picture_url if k == "photo_url" else data[k]() for k in page.requires})
@@ -115,6 +110,7 @@ class ServerConfig:
     geoapify_apikey: str | None  # set when map_provider is geoapify
     location: str
     pictures: dict[str, str]  # page name -> one of PICTURES
+    page_themes: dict[str, str]  # page type -> a theme in views.themes.THEMES
     logs_path: str            # the boards' log lines, relative to this folder
     logs_days: float          # how long a line is kept
 
@@ -189,6 +185,25 @@ def load_settings(config: dict) -> ServerConfig:
         if picture not in PICTURES:
             raise ConfigError(f"picture.{page} must be map or photos (got {picture!r})")
 
+    # ---- pages: each page type's theme ----
+    pages = get_prop(config, "pages", required=False, default=None) or {}
+    if not isinstance(pages, dict):
+        raise ConfigError(f"pages must name page types, such as today: {{theme: classic}} (got {pages!r})")
+    page_themes = {}
+    for page_type in PAGE_TYPES:
+        block = pages.get(page_type) or {}
+        if not isinstance(block, dict):
+            raise ConfigError(f"pages.{page_type} must hold settings, such as theme: classic (got {block!r})")
+        theme = block.get("theme", DEFAULT_THEME)
+        if theme not in THEMES:
+            raise ConfigError(f"pages.{page_type}.theme {theme!r} does not exist (choose from: {', '.join(THEMES)})")
+        if page_type not in THEMES[theme].pages:
+            raise ConfigError(f"pages.{page_type}.theme {theme!r} has no {page_type} page")
+        page_themes[page_type] = theme
+    unknown = sorted(set(pages) - set(PAGE_TYPES))
+    if unknown:
+        raise ConfigError(f"pages.{unknown[0]}: no such page (choose from: {', '.join(PAGE_TYPES)})")
+
     # ---- logs: the boards' log lines, kept on disk ----
     logs_path = str(get_prop_by_keys(config, "logs", "path", default="data/board-logs.db",
                                      required=False))
@@ -208,6 +223,7 @@ def load_settings(config: dict) -> ServerConfig:
         geoapify_apikey=geoapify_apikey,
         location=location,
         pictures={page: pictures.get(page, "map") for page in PAGE_NAMES},
+        page_themes=page_themes,
         logs_path=logs_path,
         logs_days=float(logs_days),
     )
@@ -271,7 +287,8 @@ def main():
     ))
 
     geometry = cfg.core.image.page_kwargs()
-    pages = [page(**geometry, picture=cfg.pictures[name]) for name, page in PAGES.items()]
+    page_classes = {name: page_class(cfg.page_themes[name], name) for name in PAGE_TYPES}
+    pages = [page_classes[name](**geometry, picture=cfg.pictures[name]) for name in PAGE_TYPES]
     photo_store = PhotoStore(os.path.join(cwd, "data", "photos"))
     # Each fetches at the first render that needs it, after the server is up.
     # Each page declares what it needs in Page.requires.
@@ -331,7 +348,8 @@ def main():
     image = cfg.core.image
     server.app.register_blueprint(photos_blueprint(
         photo_store, picture_windows(image.inner_width, image.inner_height),
-        page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews")),
+        page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews"),
+                       page_classes=page_classes),
         photo_source.today_and_tomorrow))
     server.run(once=args.once)
 

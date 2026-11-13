@@ -174,3 +174,38 @@ def test_a_bad_picture_setting_is_a_clear_error(picture, words, caplog):
     with pytest.raises(SystemExit):
         validate_config(c)
     assert words in caplog.text
+
+
+def test_every_page_uses_the_classic_theme_unless_set():
+    assert set(validate_config(base()).page_themes.values()) == {"classic"}
+    c = base()
+    c["pages"] = {"hourly": {"theme": "classic"}}
+    assert validate_config(c).page_themes["hourly"] == "classic"
+
+
+@pytest.mark.parametrize("pages, words", [
+    ({"today": {"theme": "neon"}}, "pages.today.theme 'neon' does not exist (choose from: classic)"),
+    ({"weekly": {"theme": "classic"}}, "pages.weekly: no such page (choose from: today, current, hourly, daily, tomorrow)"),
+    ({"today": "classic"}, "pages.today must hold settings, such as theme: classic"),
+    (["today"], "pages must name page types"),
+])
+def test_a_bad_page_theme_is_a_clear_error(pages, words, caplog):
+    c = base()
+    c["pages"] = pages
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert words in caplog.text
+
+
+def test_a_theme_without_that_page_type_is_a_clear_error(monkeypatch, caplog):
+    import server
+    from views.themes import THEMES, Theme
+    monkeypatch.setitem(THEMES, "tiny", Theme("tiny", "Tiny", {"today": THEMES["classic"].pages["today"]}))
+    c = base()
+    c["pages"] = {"today": {"theme": "tiny"}}
+    assert validate_config(c).page_themes["today"] == "tiny"
+    c["pages"] = {"hourly": {"theme": "tiny"}}
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert "pages.hourly.theme 'tiny' has no hourly page" in caplog.text
+    assert server.THEMES is THEMES

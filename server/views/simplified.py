@@ -45,7 +45,7 @@ class SimplifiedPage(Page):
                             # ── Map ──────────────────────────────────────────────────
                             with a.div(id="day-map-wrapper"):
                                 a.img(src=forecast["icon"], id="day-icon-bg")
-                                with a.div(id="map-container"):
+                                with a.div(id="map-container", **{"data-picture": "main"}):
                                     a.img(src=map_url, id="map")
 
                             # ── Content section ───────────────────────────────────────
