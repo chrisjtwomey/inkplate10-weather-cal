@@ -145,8 +145,9 @@ A page can show one of your own photos in place of the map. Open **Photos** at
 the top of the Settings page (`/photos`):
 
 - **Upload** adds JPEG, PNG or WebP photos, up to 20 MB and 50 megapixels each.
-- The list is the order the pages show the photos in, one each day. **Up** and
-  **Down** change it. Clear **Include** to leave a photo out without deleting it.
+- The list shows each photo as the today page draws it, in the order the pages
+  show them, one each day. **Up** and **Down** change the order. Clear
+  **Include** to leave a photo out without deleting it.
 - **Frame** opens the editor. It shows the photo in the two shapes the pages
   show it in: the band at the top of the today, current and tomorrow pages, and
   the taller area of the hourly and daily pages. Drag either one to move the
@@ -404,7 +405,7 @@ does. It keeps these across updates:
   Without it, every update fetches again.
 - The sign-in's keep file and the HTTPS certificate.
 - A copy of each mod's files, and its pages' HTML and images, in `data/mods`.
-- The uploaded photos, each one as the pages draw it, which one is today's, and the framing previews, in `data/photos`.
+- The uploaded photos, each one as the pages draw it with a small copy for the list, which one is today's, and the framing previews, in `data/photos`.
 
 ### When the map or the weather provider is down
 

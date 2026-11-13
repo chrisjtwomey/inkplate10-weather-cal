@@ -66,7 +66,8 @@
     photos.forEach((photo, i) => {
       const li = document.createElement("li");
       const thumb = document.createElement("img");
-      thumb.src = "photos/" + photo.id + "/original";
+      const f = photo.framing;
+      thumb.src = "photos/" + photo.id + "/thumb.png?f=" + [f.x, f.y, f.zoom].join(",");
       thumb.alt = "";
       thumb.loading = "lazy";
       const name = document.createElement("span");

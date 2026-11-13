@@ -5,6 +5,7 @@
     GET  /photos/list               every photo, in set order
     POST /photos/upload             form field ``photo``: a new photo, at the end of the set
     GET  /photos/<id>/original      the photo as it was uploaded
+    GET  /photos/<id>/thumb.png     the photo as the pages draw it, small
     POST /photos/<id>/delete
     POST /photos/<id>/set           JSON {"in_set": true|false}
     POST /photos/order              JSON {"ids": [...]}: the new set order
@@ -24,7 +25,7 @@ from pathlib import Path
 from flask import Blueprint, Response, abort, jsonify, request, send_file, send_from_directory
 
 from .page import photos_page
-from .picture import MAX_ZOOM, MIN_ZOOM, drawing
+from .picture import MAX_ZOOM, MIN_ZOOM, drawing, thumbnail_path
 from .store import MAX_BYTES, NO_SUCH_PHOTO, NOT_A_PHOTO, TOO_LARGE, Framing, PhotoError, PhotoStore
 
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "static")
@@ -74,7 +75,20 @@ def photos_blueprint(store: PhotoStore, windows: dict | None = None, preview: Pr
         if sent is None:
             return problem(NOT_A_PHOTO, 400)
         data = sent.stream.read(MAX_BYTES + 1)
-        return jsonify(asdict(store.add(data, sent.filename or ""))), 201
+        photo = store.add(data, sent.filename or "")
+        if "wide" in (windows or {}):
+            thumbnail_path(store, photo, windows["wide"])
+        return jsonify(asdict(photo)), 201
+
+    @bp.route("/<photo_id>/thumb.png", methods=["GET"])
+    def thumbnail(photo_id: str):
+        """The page asks with the framing in the address, so a browser may keep each copy."""
+        if "wide" not in (windows or {}):
+            abort(404)
+        photo = next((p for p in store.photos() if p.id == photo_id), None)
+        if photo is None:
+            raise KeyError(photo_id)
+        return send_file(thumbnail_path(store, photo, windows["wide"]), max_age=86400)
 
     @bp.route("/<photo_id>/original", methods=["GET"])
     def original(photo_id: str):

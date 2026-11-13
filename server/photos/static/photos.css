@@ -13,7 +13,8 @@ h2 { margin: 36px 0 0; font-size: 1.4rem; font-weight: 400; }
 #photos { list-style: none; margin: 28px 0 0; padding: 0; border-top: 1px solid var(--faint); }
 #photos li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 12px 0;
              border-bottom: 1px solid var(--faint); }
-#photos img { width: 96px; height: 72px; object-fit: cover; border-radius: 3px; background: var(--faint); }
+#photos img { width: 120px; aspect-ratio: 825 / 500; object-fit: cover; border-radius: 3px; background: var(--paper);
+              border: 1px solid var(--faint); }
 #photos .name { flex: 1; min-width: 10rem; overflow-wrap: anywhere; }
 #photos label { white-space: nowrap; color: var(--soft); }
 

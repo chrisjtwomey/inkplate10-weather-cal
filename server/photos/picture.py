@@ -53,14 +53,37 @@ def drawing(store: PhotoStore, photo: Photo, framing: Framing) -> bytes:
     return png.getvalue()
 
 
+def _kept(store: PhotoStore, photo: Photo, suffix: str) -> str:
+    """Where a picture of ``photo`` with its framing is kept."""
+    key = hashlib.sha1(json.dumps([asdict(photo.framing), EFFECT_VERSION]).encode()).hexdigest()[:12]
+    return os.path.join(store.pictures_folder, f"{photo.id}-{key}{suffix}.png")
+
+
 def picture_path(store: PhotoStore, photo: Photo) -> str:
     """The picture of ``photo`` as the pages show it, made if it is not kept."""
-    key = hashlib.sha1(json.dumps([asdict(photo.framing), EFFECT_VERSION]).encode()).hexdigest()[:12]
-    path = os.path.join(store.pictures_folder, f"{photo.id}-{key}.png")
+    path = _kept(store, photo, "")
     if os.path.exists(path):
         return path
     png = drawing(store, photo, photo.framing)
     os.makedirs(store.pictures_folder, exist_ok=True)
     store.forget_pictures(photo.id)
     write_atomically(path, png)
+    return path
+
+
+THUMBNAIL_WIDTH = 240
+
+
+def thumbnail_path(store: PhotoStore, photo: Photo, window: tuple) -> str:
+    """``photo`` as the pages show it, cut to ``window`` of the square
+    (left, top, right, bottom) and THUMBNAIL_WIDTH wide, made if it is not kept."""
+    path = _kept(store, photo, "-thumb")
+    if os.path.exists(path):
+        return path
+    with Image.open(picture_path(store, photo)) as picture:
+        cut = picture.crop(tuple(round(v) for v in window))
+    thumb = cut.resize((THUMBNAIL_WIDTH, max(1, round(cut.height * THUMBNAIL_WIDTH / cut.width))), Image.LANCZOS)
+    png = io.BytesIO()
+    thumb.save(png, format="PNG", optimize=True)
+    write_atomically(path, png.getvalue())
     return path

@@ -2,6 +2,7 @@
 routes; the server's page previewer; and the picture shapes against the CSS."""
 import io
 import json
+import os
 import re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -178,3 +179,46 @@ def test_the_shapes_are_the_rows_the_pages_show_at_the_panels_size():
     wide, tall = WINDOWS["wide"], WINDOWS["tall"]
     assert [round(v) for v in wide] == [188, 450, 1012, 950]
     assert [round(v) for v in tall] == [188, 270, 1012, 930]
+
+
+# ---------- Thumbnails ----------
+
+def test_an_upload_makes_its_thumbnail_as_the_pages_draw_it(store):
+    client = _client(store)
+    photo_id = client.post("/photos/upload", data={"photo": (io.BytesIO(_image()), "a.jpg")},
+                           content_type="multipart/form-data").get_json()["id"]
+    kept = [n for n in os.listdir(store.pictures_folder) if n.endswith("-thumb.png")]
+    assert len(kept) == 1 and kept[0].startswith(photo_id + "-")
+    rsp = client.get(f"/photos/{photo_id}/thumb.png?f=0.5,0.5,1")
+    assert rsp.status_code == 200 and rsp.mimetype == "image/png" and "max-age=86400" in rsp.headers["Cache-Control"]
+    with Image.open(io.BytesIO(rsp.data)) as img:
+        left, top, right, bottom = WINDOWS["wide"]
+        assert img.width == 240 and abs(img.height - (bottom - top) * 240 / (right - left)) <= 1
+
+
+def test_a_new_framing_makes_a_new_thumbnail_and_forgets_the_old(store):
+    client = _client(store)
+    photo = store.add(_image(), "a.jpg")
+    client.get(f"/photos/{photo.id}/thumb.png")
+    old = {n for n in os.listdir(store.pictures_folder) if n.endswith("-thumb.png")}
+    client.post(f"/photos/{photo.id}/framing", json={"x": 0.2, "y": 0.2, "zoom": 2})
+    client.get(f"/photos/{photo.id}/thumb.png")
+    new = {n for n in os.listdir(store.pictures_folder) if n.endswith("-thumb.png")}
+    assert len(new) == 1 and new != old
+
+
+def test_deleting_a_photo_deletes_its_thumbnail(store):
+    client = _client(store)
+    photo = store.add(_image(), "a.jpg")
+    client.get(f"/photos/{photo.id}/thumb.png")
+    client.post(f"/photos/{photo.id}/delete")
+    assert not [n for n in os.listdir(store.pictures_folder) if n.startswith(photo.id)]
+
+
+def test_a_thumbnail_of_an_unknown_photo_is_404(store):
+    assert _client(store).get("/photos/nope/thumb.png").status_code == 404
+
+
+def test_the_list_asks_for_thumbnails_with_the_framing_not_originals():
+    script = (Path(__file__).parent.parent / "photos" / "static" / "photos.js").read_text()
+    assert '"/thumb.png?f="' in script and 'thumb.src = "photos/" + photo.id + "/original"' not in script
