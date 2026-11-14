@@ -36,7 +36,7 @@ cp config.example.yaml config.yaml
 | `google.staticmaps_mapid` | – (required for `google`) | The map ID, for the map's style. |
 | `geoapify.apikey` | – (required for `geoapify`) | The Geoapify API key, for the map. |
 | `location` | – (required) | The place to show, such as `Dublin` or `Cork,IE`. |
-| `picture.today`, `.current`, `.hourly`, `.daily`, `.tomorrow` | `map` | What the page shows at the top: `map`, or `photos` for today's photo. A page set to `photos` shows the map until a photo is added on the [Photos page](#photos). |
+| `picture.today`, `.current`, `.hourly`, `.daily`, `.tomorrow` | `map` | What the page shows at the top: `map`, or `photos` for today's photo. A page set to `photos` shows the map until a photo is added on the [Photos page](#photos). The first save of a page's settings (`/pages/settings`) turns this into `pages.<page>.photos` lists and removes it. |
 | `pages.today.theme`, `.current.theme`, `.hourly.theme`, `.daily.theme`, `.tomorrow.theme` | `classic` | The page's layout and its words. `classic` is the only theme for now. |
 | `pages.<page>.photos` | – | The page's own photos, by id, one each day in this order. Without it, a page whose `picture` is `photos` shows the included photos. |
 | `pages.<page>.map` | `classic` | The kind of map the page shows when it has no photos. `classic` is the only kind for now. |
@@ -363,7 +363,7 @@ settings.
 
 With a password set:
 
-- `/settings`, `/install`, `/logs`, `/network.bin` and `/photos` need a sign-in. The
+- `/settings`, `/install`, `/logs`, `/network.bin`, `/photos` and `/pages` need a sign-in. The
   display's own routes stay open, and so do the install page's scripts.
 - The sign-in lasts 30 days. Five wrong passwords make that address wait 15 minutes.
 - Other apps send the access token on the Access tab of the Settings page, to read `/logs`

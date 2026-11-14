@@ -23,6 +23,7 @@ from views.page import PICTURES, picture_windows
 from battery_reminder import RemindingLogStore
 from maps import MAP_PROVIDERS, MapCache, StaticMapSource, create_provider
 from photos import PhotoSource, PhotoStore, photos_blueprint
+from page_settings import LivePages, pages_blueprint
 from epd_server import DisplayServer, InstallBoard, LogsQuery, align_process_timezone
 from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_keys, load_core_config,
                                load_yaml, parse_network)
@@ -302,19 +303,25 @@ def main():
     ))
 
     geometry = cfg.core.image.page_kwargs()
-    page_classes = {name: page_class(cfg.page_themes[name], name) for name in PAGE_TYPES}
-    page_words = {name: THEMES[cfg.page_themes[name]].words for name in PAGE_TYPES}
     photo_pages = {name: cfg.page_photos[name] for name in PAGE_TYPES
                    if cfg.page_photos[name] or (cfg.page_photos[name] is None and cfg.pictures[name] == "photos")}
-    pages = [page_classes[name](**geometry, picture="photos" if name in photo_pages else "map", words=page_words[name])
-             for name in PAGE_TYPES]
+    running = {"cfg": cfg}      # the settings the pages run on; LivePages replaces them on a save
+
+    def make_page(name: str, settings):
+        theme = settings.page_themes[name]
+        return page_class(theme, name)(**geometry, picture="photos" if name in photo_pages else "map",
+                                       words=THEMES[theme].words)
+
+    pages = [make_page(name, cfg) for name in PAGE_TYPES]
+    page_classes = {name: page_class(cfg.page_themes[name], name) for name in PAGE_TYPES}
+    page_words = {name: THEMES[cfg.page_themes[name]].words for name in PAGE_TYPES}
     photo_store = PhotoStore(os.path.join(cwd, "data", "photos"))
     # Each fetches at the first render that needs it, after the server is up.
     # Each page declares what it needs in Page.requires.
     image = cfg.core.image
     photo_source = PhotoSource(
         photo_store, page_sets=lambda: photo_pages,
-        boxes=lambda name: picture_box(cfg.page_themes[name], name, image.inner_width, image.inner_height))
+        boxes=lambda name: picture_box(running["cfg"].page_themes[name], name, image.inner_width, image.inner_height))
     sources = [StaticMapSource(map_cache, cfg.location), weather_svc, photo_source]
     try:
         mods = load_mods(os.path.join(cwd, "mods"), os.path.join(cwd, "data", "mods"), config, geometry, pages, sources)
@@ -367,6 +374,10 @@ def main():
         form_with_mods(mods.groups), config_path, lambda text: check_config(text, load_settings, served), login=login,
         live_keys=NETWORK_KEYS, take_live=take_network, links=(("photos", "Photos"), ("install", "Install firmware")),
         password_env=PASSWORD_ENV))
+    live = LivePages(cfg, config_path, load_settings, lambda text: check_config(text, load_settings, served),
+                     make_page, photo_pages, lambda: [p.id for p in photo_store.the_set()], server=server,
+                     on_change=lambda settings: running.update(cfg=settings))
+    server.app.register_blueprint(pages_blueprint(live))
     server.app.register_blueprint(photos_blueprint(
         photo_store, picture_windows(image.inner_width, image.inner_height),
         page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews"),
