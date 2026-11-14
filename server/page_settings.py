@@ -106,7 +106,12 @@ class LivePages:
             for i, page in enumerate(self.server.pages):
                 if page.name in changed:
                     self.server.pages[i] = self._make_page(page.name, self.cfg)
-        threading.Thread(target=self._redraw, args=(changed,), daemon=True).start()
+        self.redraw(changed)
+
+    def redraw(self, page_types: list[str]) -> None:
+        """Redraws those pages in the background, so the display gets them at its next wake."""
+        if self.server is not None and page_types:
+            threading.Thread(target=self._redraw, args=(list(page_types),), daemon=True).start()
 
     def _redraw(self, changed: list[str]) -> None:
         for page_type in changed:

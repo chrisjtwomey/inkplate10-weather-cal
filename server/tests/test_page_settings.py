@@ -33,8 +33,7 @@ class FakeServer:
 def _text(picture=None):
     text = EXAMPLE.replace("service: accuweather\n  apikey: XXXX", "service: mock")
     if picture:
-        for page in picture:
-            text = text.replace(f"  {page}: map\n", f"  {page}: photos\n", 1)
+        text += "picture:\n" + "".join(f"  {page}: photos\n" for page in picture)
     return text
 
 

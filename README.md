@@ -13,7 +13,7 @@ page, and sleeps. One battery charge lasts one to two years.
 
 The server renders five pages: today, current, hourly, daily and tomorrow.
 Each one shows the map at the top, or one of your own photos drawn in pencil
-([Photos](server/README.md#photos)).
+([Pages](server/README.md#pages)).
 
 <table align="center">
   <tr>
@@ -172,7 +172,7 @@ At each wake, the display:
 | Map providers and their keys | [doc/maps.md](doc/maps.md) |
 | Add a weather provider | [server/weather/README.md](server/weather/README.md) |
 | Install firmware from a browser, the Settings page and the sign-in | [server/README.md](server/README.md#the-settings-page-and-sign-in) |
-| Show your own photos in place of the map | [server/README.md](server/README.md#photos) |
+| Show your own photos in place of the map | [server/README.md](server/README.md#pages) |
 | Battery life and measurements | [doc/power-consumption.md](doc/power-consumption.md) |
 | Build, flash and test the firmware | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Another e-paper display | [epd's custom-board guide](https://github.com/chrisjtwomey/epd/blob/main/docs/custom-board.md) |

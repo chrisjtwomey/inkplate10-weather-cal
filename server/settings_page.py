@@ -20,9 +20,6 @@ PROVIDERS = (("accuweather", "AccuWeather"), ("meteireann", "Met Éireann"),
              ("mock", "Made-up weather"))
 PROVIDERS_WITH_A_KEY = "accuweather|openweathermap"
 MAP_PROVIDERS = (("google", "Google"), ("geoapify", "Geoapify"), ("openfreemap", "OpenFreeMap"))
-PICTURES = (("map", "Map"), ("photos", "Photos"))
-PICTURE_PAGES = (("today", "Today"), ("current", "Current"), ("hourly", "Hourly"), ("daily", "Daily"),
-                 ("tomorrow", "Tomorrow"))
 ALIGN_X = (("left", "Left"), ("center", "Centre"), ("right", "Right"))
 ALIGN_Y = (("top", "Top"), ("center", "Centre"), ("bottom", "Bottom"))
 
@@ -59,9 +56,6 @@ TABS = (
             Field("display.schedule", "Wake times", "When the display wakes, and which set it shows.",
                   "times", DEFAULT_DISPLAY["schedule"], env=False),
         )),
-        Group("Picture", tuple(Field(f"picture.{page}", label, "", "choice", "map", choices=PICTURES)
-                               for page, label in PICTURE_PAGES),
-              about="What each page shows at the top: the map, or today's photo."),
     )),
     Tab("weather", "Weather", (
         Group("Forecast", (

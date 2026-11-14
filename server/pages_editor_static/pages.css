@@ -1,0 +1,64 @@
+/* The Pages editor's layout, on top of epd's look.css. */
+body { box-sizing: border-box; max-width: 72rem; margin: 0 auto; padding: 28px 24px 48px; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 40px; }
+.links a { color: var(--soft); }
+.help { margin: 6px 0 0; font-size: .9rem; color: var(--soft); }
+h2 { margin: 0; font-size: 1.4rem; font-weight: 400; }
+h3 { margin: 28px 0 0; font-size: 1.1rem; font-weight: 400; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 12px; }
+button.danger { color: var(--problem); border-color: currentColor; }
+label.button { display: inline-block; padding: 8px 16px; font-size: .95rem; border: 1px solid var(--line);
+               border-radius: 3px; cursor: pointer; }
+label.button.primary { color: var(--on-ink); background: var(--ink); border-color: var(--ink); }
+label.button:focus-within, label.button:hover { outline: 2px solid var(--mid); outline-offset: 2px; }
+
+/* The bar: ‹ Page ›, theme, map */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 20px; }
+.bar h2 { min-width: 7rem; text-align: center; }
+.bar label { display: flex; align-items: center; gap: 8px; color: var(--soft); }
+.bar select { width: auto; }
+
+/* The preview and its tools */
+.stage { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 16px; align-items: flex-start; }
+.preview { position: relative; flex: 1 1 26rem; max-width: 825px; overflow: hidden;
+           border: 1px solid var(--line); background: #fff; }
+.preview iframe { display: block; width: 825px; height: 1200px; border: 0; transform-origin: 0 0; }
+.preview #panel { position: absolute; left: 0; top: 0; }
+.frame-handle { position: absolute; cursor: grab; touch-action: none; outline-offset: -2px; }
+.frame-handle:active { cursor: grabbing; }
+.side { flex: 0 1 16rem; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.side .switch { display: flex; align-items: center; gap: 8px; }
+#framing-tools { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; margin-top: 8px; }
+#framing-tools[hidden] { display: none; }
+#framing-tools label { display: flex; align-items: center; gap: 8px; width: 100%; }
+#framing-tools input[type=range] { flex: 1; }
+#panel-view[aria-pressed=true] { color: var(--on-ink); background: var(--ink); border-color: var(--ink); }
+
+/* This page's photos */
+#strip { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; margin: 12px 0; padding: 0; min-height: 76px; }
+#strip li { position: relative; background: var(--paper); }
+#strip li.dragging { z-index: 2; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+#strip .open { padding: 0; border: 2px solid transparent; touch-action: none; }
+#strip li.selected .open { border-color: var(--ink); }
+#strip img, #photos img, #choices img { display: block; width: 120px; aspect-ratio: 825 / 500; object-fit: cover;
+                                         border-radius: 3px; background: #fff; }
+#strip .remove { position: absolute; top: 2px; right: 2px; padding: 0 7px; line-height: 1.4; background: var(--paper); }
+
+/* The library */
+#library { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--faint); }
+#uploads { list-style: none; margin: 12px 0 0; padding: 0; }
+#uploads li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 4px 0; }
+#uploads progress { width: 10rem; }
+#uploads .result { color: var(--soft); }
+#photos { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--faint); }
+#photos li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 0;
+             border-bottom: 1px solid var(--faint); }
+#photos .name { flex: 1; min-width: 10rem; overflow-wrap: anywhere; }
+#photos .where { color: var(--soft); font-size: .9rem; }
+#drop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: var(--paper);
+        opacity: .92; border: 3px dashed var(--mid); pointer-events: none; }
+#drop[hidden] { display: none; }
+#drop p { font-size: 1.6rem; }
+dialog { max-width: 32rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+#choices { list-style: none; padding: 0; max-height: 50vh; overflow: auto; }
+#choices label { display: flex; align-items: center; gap: 10px; padding: 6px 0; }

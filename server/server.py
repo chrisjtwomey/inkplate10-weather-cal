@@ -24,6 +24,9 @@ from battery_reminder import RemindingLogStore
 from maps import MAP_PROVIDERS, MapCache, StaticMapSource, create_provider
 from photos import PhotoSource, PhotoStore, photos_blueprint
 from page_settings import LivePages, pages_blueprint
+from pages_editor import Editor, editor_blueprint
+from views.page import HTML_DIR
+from urllib.parse import urlparse
 from epd_server import DisplayServer, InstallBoard, LogsQuery, align_process_timezone
 from epd_server.config import (ConfigError, CoreConfig, get_prop, get_prop_by_keys, load_core_config,
                                load_yaml, parse_network)
@@ -45,18 +48,19 @@ PAGES = dict(THEMES[DEFAULT_THEME].pages)
 PREVIEW_PAGES = {"wide": ("today",), "tall": ("hourly", "daily")}
 
 
-def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None, page_classes: dict = PAGES,
-                   page_words: dict | None = None):
-    """A function that draws a page of a picture shape with a given picture, for
-    the Photos page, into its own files so the display's pages stay as they are."""
+def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None, themes=lambda: {}):
+    """A function that draws a page, by picture shape or by page type, with a given
+    picture, into its own files so the display's pages stay as they are.
+    ``themes()`` gives each page type's theme; a type missing from it is Classic."""
     lock = threading.Lock()
 
     def preview(shape: str, picture_url: str) -> bytes:
         data = CompositeSource(*sources).datasets()
         with lock:
-            for name in PREVIEW_PAGES[shape]:
-                words = {"words": page_words[name]} if page_words else {}
-                page = page_classes[name](**geometry, picture="photos", renderer=renderer, **words)
+            for name in PREVIEW_PAGES.get(shape, (shape,)):
+                theme = themes().get(name, DEFAULT_THEME)
+                page = page_class(theme, name)(**geometry, picture="photos", renderer=renderer,
+                                               words=THEMES[theme].words)
                 page.page_type, page.name, page.png_dir = name, f"preview-{name}", preview_dir
                 try:
                     page.template(**{k: {name: picture_url} if k == "photo_urls" else data[k]() for k in page.requires})
@@ -313,8 +317,6 @@ def main():
                                        words=THEMES[theme].words)
 
     pages = [make_page(name, cfg) for name in PAGE_TYPES]
-    page_classes = {name: page_class(cfg.page_themes[name], name) for name in PAGE_TYPES}
-    page_words = {name: THEMES[cfg.page_themes[name]].words for name in PAGE_TYPES}
     photo_store = PhotoStore(os.path.join(cwd, "data", "photos"))
     # Each fetches at the first render that needs it, after the server is up.
     # Each page declares what it needs in Page.requires.
@@ -372,17 +374,51 @@ def main():
 
     server.app.register_blueprint(settings_blueprint(
         form_with_mods(mods.groups), config_path, lambda text: check_config(text, load_settings, served), login=login,
-        live_keys=NETWORK_KEYS, take_live=take_network, links=(("photos", "Photos"), ("install", "Install firmware")),
+        live_keys=NETWORK_KEYS, take_live=take_network, links=(("pages", "Pages"), ("install", "Install firmware")),
         password_env=PASSWORD_ENV))
+    previewer = page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews"),
+                               themes=lambda: running["cfg"].page_themes)
     live = LivePages(cfg, config_path, load_settings, lambda text: check_config(text, load_settings, served),
                      make_page, photo_pages, lambda: [p.id for p in photo_store.the_set()], server=server,
                      on_change=lambda settings: running.update(cfg=settings))
     server.app.register_blueprint(pages_blueprint(live))
     server.app.register_blueprint(photos_blueprint(
         photo_store, picture_windows(image.inner_width, image.inner_height),
-        page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews"),
-                       page_classes=page_classes, page_words=page_words),
+        previewer,
         photo_source.today_and_tomorrow))
+
+    def box(name: str):
+        return picture_box(running["cfg"].page_themes[name], name, image.inner_width, image.inner_height)
+
+    def page_html(name: str, sample: bool) -> str:
+        """The page's HTML for the editor, with the editor's addresses for its pictures."""
+        settings = running["cfg"]
+        theme = settings.page_themes[name]
+        page = page_class(theme, name)(**geometry, picture="photos", words=THEMES[theme].words)
+        if sample:
+            data = _create_weather_service("mock", location=settings.location,
+                                           num_hours=settings.num_hourly_forecasts or 6,
+                                           metric=settings.weather_metric).datasets()
+        else:
+            data = CompositeSource(*sources).datasets()
+        try:
+            page.template(**{k: "map.png" if k == "map_url" else {name: f"photo-{name}.png"} if k == "photo_urls"
+                             else data[k]() for k in page.requires})
+        except SkipPage as exc:
+            raise LookupError(f"The {name} page is not drawn now: {exc}") from None
+        return str(page.airium)
+
+    def map_file() -> str | None:
+        url = map_cache.local_src(cfg.location) if map_cache else ""
+        return urlparse(url).path if url else None
+
+    def photo_file(name: str) -> str | None:
+        url = photo_source.datasets()["photo_urls"]().get(name)
+        return urlparse(url).path if url else None
+
+    server.app.register_blueprint(editor_blueprint(Editor(
+        live, photo_store, HTML_DIR, page_html, map_file, photo_file, previewer, box,
+        themes=THEMES, page_types=PAGE_TYPES, map_kinds=MAP_KINDS)))
     server.run(once=args.once)
 
 

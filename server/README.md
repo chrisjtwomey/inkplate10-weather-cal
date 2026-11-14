@@ -5,7 +5,7 @@ and tells the display when to wake next.
 
 - Weather from AccuWeather, Met Éireann, Open-Meteo or OpenWeatherMap: [doc/weather-apis.md](../doc/weather-apis.md). To add a provider, see [weather/README.md](weather/README.md).
 - A map of your area from Google, Geoapify or OpenFreeMap: [doc/maps.md](../doc/maps.md).
-- Or your own photos in place of the map, drawn in pencil: [Photos](#photos).
+- Or your own photos in place of the map, drawn in pencil, set in the [Pages](#pages) editor.
 - Each page is HTML, rendered to a PNG in Chrome, and served with [Flask](https://flask.palletsprojects.com/). The generic parts come from [epd](https://github.com/chrisjtwomey/epd)'s `epd-server`.
 
 To set up a display, start with the [main README](../README.md). To work on
@@ -36,9 +36,8 @@ cp config.example.yaml config.yaml
 | `google.staticmaps_mapid` | – (required for `google`) | The map ID, for the map's style. |
 | `geoapify.apikey` | – (required for `geoapify`) | The Geoapify API key, for the map. |
 | `location` | – (required) | The place to show, such as `Dublin` or `Cork,IE`. |
-| `picture.today`, `.current`, `.hourly`, `.daily`, `.tomorrow` | `map` | What the page shows at the top: `map`, or `photos` for today's photo. A page set to `photos` shows the map until a photo is added on the [Photos page](#photos). The first save of a page's settings (`/pages/settings`) turns this into `pages.<page>.photos` lists and removes it. |
-| `pages.today.theme`, `.current.theme`, `.hourly.theme`, `.daily.theme`, `.tomorrow.theme` | `classic` | The page's layout and its words. `classic` is the only theme for now. |
-| `pages.<page>.photos` | – | The page's own photos, by id, one each day in this order. Without it, a page whose `picture` is `photos` shows the included photos. |
+| `pages.today.theme`, `.current.theme`, `.hourly.theme`, `.daily.theme`, `.tomorrow.theme` | `classic` | The page's layout and its words. `classic` is the only theme for now. Set in the [Pages](#pages) editor. |
+| `pages.<page>.photos` | – | The page's own photos, by id, one each day in this order. Without it, the page shows its map. Set in the [Pages](#pages) editor. |
 | `pages.<page>.map` | `classic` | The kind of map the page shows when it has no photos. `classic` is the only kind for now. |
 | `image.width`, `image.height` | `825`, `1200` | The page size in pixels: the Inkplate 10's panel, upright. |
 | `image.innerWidth`, `image.innerHeight` | the page size | The area the content fits in. See [Fitting a photo mat](#fitting-a-photo-mat). |
@@ -107,7 +106,7 @@ docker run -d --restart unless-stopped -p 8080:8080 \
 | `daily.png` | The next 5 days: icon, high and low, wind, rain and sun | Afternoon |
 | `tomorrow.png` | Tomorrow, in the layout of `today.png` | Evening |
 
-Each page shows the map at the top, or today's photo when its `picture` setting is `photos` ([Photos](#photos)).
+Each page shows the map at the top, or today's photo when it has photos ([Pages](#pages)).
 
 `display.schedule` gives a wake time for each pool, in `server.timezone`:
 
@@ -142,35 +141,44 @@ $ curl -sI http://localhost:8080/today.png | grep -i next-display-refresh
 epd-next-display-refresh-seconds: 17602
 ```
 
-## Photos
+## Pages
 
-A page can show one of your own photos in place of the map. Open **Photos** at
-the top of the Settings page (`/photos`):
+Open **Pages** at the top of the Settings page (`/pages`) to set what each page
+shows. The editor shows one page at a time, in its own HTML, as the display
+lays it out.
 
-- **Add photos**, or drop photos on the page, adds JPEG, PNG or WebP photos, up
-  to 20 MB and 50 megapixels each.
-- The list shows each photo as the today page draws it, in the order the pages
-  show them, one each day. **Today** and **Tomorrow** mark the photos the pages
-  show next. Drag a photo by its handle (⠿) to move it, or select the handle and
-  use the arrow keys. Clear **Include** to leave a photo out without deleting it.
-- Select a photo to open its editor. It shows the photo in the two shapes the
-  pages show it in: the band at the top of the today, current and tomorrow
-  pages, and the taller area of the hourly and daily pages. Drag either one to
-  move the photo; pinch, scroll or use the slider to zoom; double-click to
-  centre. With a picture selected, the arrow keys move the photo (Shift for
-  bigger steps), and + and − zoom. One framing serves both shapes.
-- A moment after you stop, the server draws a today page and an hourly page with
-  the photo as the display will show it. **Save framing** keeps the framing; the
-  page asks before it drops one that is not saved. **Delete photo** is here too.
+- **‹** and **›** step through the five pages.
+- **Theme** sets the page's layout and words. **Use this theme on every page**
+  sets it on each page the theme draws.
+- **Map** sets the kind of map the page shows when it has no photos.
+- **Sample weather** fills the page with made-up weather, for a page that is not
+  drawn now. **1:1** shows the page at the panel's size.
+- **Panel view** shows the page as the server draws it for the display, in its
+  four greys. The editor's own view draws the pencil effect in the browser, so it
+  can follow each drag at once.
 
-Then set the pages that show photos to **Photos** on the Settings page, Display
-tab (`picture` in `config.yaml`).
+Under the page, **This page's photos** is the page's own list. With no photos
+the page shows its map; with one, it shows that photo each day; with more, it
+shows the next one each day, in this order. **+ Add** picks photos from the
+library. Drag a photo to move it in the list, and **×** takes it off the page.
+Each change is saved and the page redrawn at once, with no restart.
 
-The server draws each photo in a pencil style in the panel's four greys, once
-for each page and framing. Each page shows the same photo all day, and the next
-one in its list the next day: its own list in `pages.<page>.photos`, or else the
-included photos. A change to a list does not change today's photo. A page shows
-its map when it has no photos.
+Select a photo in the list to frame it on this page. Drag it to move it, or use
+the arrow keys (Shift for bigger steps). Pinch, scroll, use the slider or + and
+− to zoom. Double-click or **Centre** to centre it. **Save framing** keeps it for
+this page; **Use this framing on every page** copies it to the others. The
+editor asks before it drops a framing that is not saved.
+
+Under **Photo library**, **Upload photos**, or drop photos on the page, adds
+JPEG, PNG or WebP photos, up to 20 MB and 50 megapixels each. **Delete** takes a
+photo off every page and deletes it.
+
+The editor writes `pages.<page>.theme`, `.photos` and `.map` in `config.yaml`,
+keeps the old file as `config.yaml.bak`, and redraws the pages that changed. The
+server draws each photo in a pencil style in the panel's four greys, once for
+each page and framing. A change to a list does not change today's photo.
+
+`/photos` forwards to `/pages`.
 
 ## Fitting a photo mat
 
@@ -355,7 +363,7 @@ file's comments, keeps the old file as `config.yaml.bak`, and restarts the serve
 - A save is refused if a set that a wake time uses has a page that does not exist. The message lists the pages.
 - A key an environment variable sets is locked on the page.
 - A change only to the **Install** tab needs no restart.
-- **Photos**, at the top, opens the [Photos page](#photos).
+- **Pages**, at the top, opens the [Pages](#pages) editor.
 
 Set `WEATHER_CAL_PASSWORD` to turn on the sign-in. A server without it logs a
 warning, and anyone on the network can read the Wi-Fi password and change these
@@ -363,7 +371,7 @@ settings.
 
 With a password set:
 
-- `/settings`, `/install`, `/logs`, `/network.bin`, `/photos` and `/pages` need a sign-in. The
+- `/settings`, `/install`, `/logs`, `/network.bin`, `/pages` and `/photos` need a sign-in. The
   display's own routes stay open, and so do the install page's scripts.
 - The sign-in lasts 30 days. Five wrong passwords make that address wait 15 minutes.
 - Other apps send the access token on the Access tab of the Settings page, to read `/logs`
@@ -413,7 +421,7 @@ does. It keeps these across updates:
   Without it, every update fetches again.
 - The sign-in's keep file and the HTTPS certificate.
 - A copy of each mod's files, and its pages' HTML and images, in `data/mods`.
-- The uploaded photos, each one as each page draws it with a small copy for the list, which one each page shows today, and the framing previews, in `data/photos`.
+- The uploaded photos, each one as each page draws it with a small copy for the list, which one each page shows today, the editor's working copies and the framing previews, in `data/photos`.
 
 ### When the map or the weather provider is down
 

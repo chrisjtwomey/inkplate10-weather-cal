@@ -1,7 +1,6 @@
-"""The Photos page, and the photo store over HTTP for its script.
+"""The photo store over HTTP, for the Pages editor.
 
-    GET  /photos                    the page
-    GET  /photos/assets/<name>      its script and stylesheet
+    GET  /photos                    forwards to the Pages editor, which uses the routes below
     GET  /photos/list               every photo, in set order, and today's and tomorrow's
     POST /photos/upload             form field ``photo``: a new photo, at the end of the set
     GET  /photos/<id>/original      the photo as it was uploaded
@@ -22,14 +21,11 @@ from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 
-from flask import Blueprint, Response, abort, jsonify, request, send_file, send_from_directory
+from flask import Blueprint, Response, abort, jsonify, redirect, request, send_file
 
-from .page import photos_page
 from .picture import MAX_ZOOM, MIN_ZOOM, drawing, thumbnail_path
 from .store import MAX_BYTES, NO_SUCH_PHOTO, NOT_A_PHOTO, TOO_LARGE, Framing, PhotoError, PhotoStore
 
-_ASSETS_DIR = os.path.join(os.path.dirname(__file__), "static")
-_ASSETS = ("photos.js", "photos.css")
 NO_PREVIEW = "No preview for this page. Check the server's log."
 
 # A page of a shape, with a picture at a file:// address, as PNG. Raises LookupError
@@ -57,13 +53,7 @@ def photos_blueprint(store: PhotoStore, windows: dict | None = None, preview: Pr
 
     @bp.route("", methods=["GET"])
     def page():
-        return Response(photos_page(windows or {}), headers={"Cache-Control": "no-store"})
-
-    @bp.route("/assets/<name>", methods=["GET"])
-    def asset(name: str):
-        if name not in _ASSETS:
-            abort(404)
-        return send_from_directory(_ASSETS_DIR, name, max_age=0)
+        return redirect("pages", 301)
 
     @bp.route("/list", methods=["GET"])
     def listing():

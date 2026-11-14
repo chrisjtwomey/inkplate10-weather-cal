@@ -1,7 +1,7 @@
 # Maps
 
-Each page shows a map of your `location` at the top, unless its `picture`
-setting shows a photo instead. Set `map.provider` to one of these:
+Each page shows a map of your `location` at the top, unless it has photos
+([Pages](../server/README.md#pages)). Set `map.provider` to one of these:
 
 | Provider | Cost | Key |
 |---|---|---|

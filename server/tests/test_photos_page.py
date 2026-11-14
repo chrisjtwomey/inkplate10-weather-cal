@@ -42,28 +42,6 @@ def _client(store, preview=None):
 
 # ---------- The page ----------
 
-def test_the_page_carries_the_shapes_and_loads_its_files(store):
-    client = _client(store)
-    rsp = client.get("/photos")
-    assert rsp.status_code == 200 and rsp.headers["Cache-Control"] == "no-store"
-    soup = BeautifulSoup(rsp.data, "html.parser")
-    numbers = soup.find(id="numbers").string
-    assert '"wide": [187.5' in numbers and '"tall": [187.5, 270.0, 1012.5, 930.0]' in numbers
-    assert soup.find("script", src="photos/assets/photos.js")
-    assert soup.find("link", href="static/look/look.css") and soup.find("link", href="photos/assets/photos.css")
-    assert soup.find("a", href="settings").string == "Settings"
-    for name in ("photos.js", "photos.css"):
-        assert client.get(f"/photos/assets/{name}").status_code == 200
-    assert client.get("/photos/assets/secrets.txt").status_code == 404
-
-
-def test_the_page_words_follow_the_ui_rules(store):
-    text = BeautifulSoup(_client(store).get("/photos").data, "html.parser").get_text(" ")
-    assert "No photos yet. Add one to start." in text and "please" not in text.lower()
-    soup = BeautifulSoup(_client(store).get("/photos").data, "html.parser")
-    assert soup.find("label", attrs={"for": "files"}).string == "Add photos"
-    assert soup.find(id="drop") and soup.find(id="delete").string == "Delete photo"
-
 
 # ---------- Framing ----------
 
@@ -222,11 +200,6 @@ def test_a_thumbnail_of_an_unknown_photo_is_404(store):
     assert _client(store).get("/photos/nope/thumb.png").status_code == 404
 
 
-def test_the_list_asks_for_thumbnails_with_the_framing_not_originals():
-    script = (Path(__file__).parent.parent / "photos" / "static" / "photos.js").read_text()
-    assert '"/thumb.png?f="' in script and 'thumb.src = "photos/" + photo.id + "/original"' not in script
-
-
 # ---------- Today's and tomorrow's marks ----------
 
 def test_the_list_names_todays_and_tomorrows_photo(store):
@@ -239,20 +212,6 @@ def test_the_list_names_todays_and_tomorrows_photo(store):
     assert _client(store).get("/photos/list").get_json()["today"] is None
 
 
-def test_the_rows_can_be_moved_with_the_keyboard_as_well_as_dragged():
-    script = (Path(__file__).parent.parent / "photos" / "static" / "photos.js").read_text()
-    assert "ArrowUp" in script and "ArrowDown" in script and "setPointerCapture" in script
-    assert 'button("Up"' not in script and 'button("Down"' not in script
-
-
-def test_the_editor_says_how_to_move_zoom_and_centre(store):
-    text = BeautifulSoup(_client(store).get("/photos").data, "html.parser").get_text(" ")
-    assert "Drag to move the photo, or use the arrow keys." in text
-    assert "Pinch, scroll or use the slider to zoom." in text and "Double-click to centre." in text
-
-
-def test_the_editor_handles_pinch_double_click_keys_and_unsaved_changes():
-    script = (Path(__file__).parent.parent / "photos" / "static" / "photos.js").read_text()
-    for needed in ('"dblclick"', '"keydown"', "ArrowLeft", "event.ctrlKey", '"beforeunload"',
-                   "without saving this framing?", "pointers.size === 2"):
-        assert needed in script, needed
+def test_the_old_photos_page_forwards_to_the_pages_editor(store):
+    rsp = _client(store).get("/photos")
+    assert rsp.status_code == 301 and rsp.headers["Location"].endswith("pages")
