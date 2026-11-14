@@ -42,10 +42,11 @@ class Page(_Page):
         self.picture = picture
         self.words = words
         if picture == "photos":
-            self.requires = (*type(self).requires, "photo_url")
+            self.requires = (*type(self).requires, "photo_urls")
 
     def picture_url(self, data) -> str:
         """Today's photo when this page shows photos and one is ready, else the map."""
-        if self.picture == "photos" and data.get("photo_url"):
-            return data["photo_url"]
+        page_type = getattr(self, "page_type", self.name)
+        if self.picture == "photos" and data.get("photo_urls", {}).get(page_type):
+            return data["photo_urls"][page_type]
         return data["map_url"]

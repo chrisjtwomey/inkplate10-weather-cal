@@ -38,6 +38,8 @@ cp config.example.yaml config.yaml
 | `location` | – (required) | The place to show, such as `Dublin` or `Cork,IE`. |
 | `picture.today`, `.current`, `.hourly`, `.daily`, `.tomorrow` | `map` | What the page shows at the top: `map`, or `photos` for today's photo. A page set to `photos` shows the map until a photo is added on the [Photos page](#photos). |
 | `pages.today.theme`, `.current.theme`, `.hourly.theme`, `.daily.theme`, `.tomorrow.theme` | `classic` | The page's layout and its words. `classic` is the only theme for now. |
+| `pages.<page>.photos` | – | The page's own photos, by id, one each day in this order. Without it, a page whose `picture` is `photos` shows the included photos. |
+| `pages.<page>.map` | `classic` | The kind of map the page shows when it has no photos. `classic` is the only kind for now. |
 | `image.width`, `image.height` | `825`, `1200` | The page size in pixels: the Inkplate 10's panel, upright. |
 | `image.innerWidth`, `image.innerHeight` | the page size | The area the content fits in. See [Fitting a photo mat](#fitting-a-photo-mat). |
 | `image.innerAlignX`, `image.innerAlignY` | `center` | Where that area sits: `left`, `center` or `right`; `top`, `center` or `bottom`. |
@@ -165,10 +167,10 @@ Then set the pages that show photos to **Photos** on the Settings page, Display
 tab (`picture` in `config.yaml`).
 
 The server draws each photo in a pencil style in the panel's four greys, once
-for each framing. The display shows the same photo all day, and the next one in
-the list the next day. A change to the list does not change today's photo, so
-the day's pages stay alike. A page set to Photos shows the map when there are
-no photos.
+for each page and framing. Each page shows the same photo all day, and the next
+one in its list the next day: its own list in `pages.<page>.photos`, or else the
+included photos. A change to a list does not change today's photo. A page shows
+its map when it has no photos.
 
 ## Fitting a photo mat
 
@@ -253,7 +255,7 @@ To show the page, add `tides.png` to a set in `display.pools`.
 
 - `setup(mod)` gives the mod's pages and its source. Give `None` for the source if the pages read only the server's data.
 - `**mod.page_kwargs` gives a page its size and output folder. The server copies the mod's files to `data/mods/<folder>` and writes the page there, so a link such as `tides.css` works.
-- `requires` can also name the server's data: `map_url`, `photo_url` (today's photo, or "" when there is none), and the four names in [weather/README.md](weather/README.md#how-a-provider-fits-in).
+- `requires` can also name the server's data: `map_url`, `photo_urls` (each page type's photo today, for the pages that have one), and the four names in [weather/README.md](weather/README.md#how-a-provider-fits-in).
 - Keep a mod's Python in `mod.py`. The server does not make its other Python files available to import.
 - A mod can import only what the server image holds, such as `requests` and `airium`. For anything else, build your own image.
 
@@ -411,7 +413,7 @@ does. It keeps these across updates:
   Without it, every update fetches again.
 - The sign-in's keep file and the HTTPS certificate.
 - A copy of each mod's files, and its pages' HTML and images, in `data/mods`.
-- The uploaded photos, each one as the pages draw it with a small copy for the list, which one is today's, and the framing previews, in `data/photos`.
+- The uploaded photos, each one as each page draws it with a small copy for the list, which one each page shows today, and the framing previews, in `data/photos`.
 
 ### When the map or the weather provider is down
 

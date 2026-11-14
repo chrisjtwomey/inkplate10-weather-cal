@@ -49,11 +49,15 @@ class Photo:
     name: str
     added: float
     in_set: bool = True
+    # Relative to the picture square; used by a page with no framing of its own.
     framing: Framing = field(default_factory=Framing)
+    # Page type -> a framing relative to that page's picture area.
+    framings: dict = field(default_factory=dict)
 
     @classmethod
     def from_json(cls, d: dict) -> "Photo":
-        return cls(**{**d, "framing": Framing(**d.get("framing", {}))})
+        return cls(**{**d, "framing": Framing(**d.get("framing", {})),
+                      "framings": {t: Framing(**f) for t, f in d.get("framings", {}).items()}})
 
 
 class PhotoStore:
@@ -132,9 +136,18 @@ class PhotoStore:
             self._save(photos)
 
     def frame(self, photo_id: str, framing: Framing) -> None:
+        """One framing, relative to the picture square, for every page."""
         with self._lock:
             photos = self.photos()
-            self._find(photos, photo_id).framing = framing
+            photo = self._find(photos, photo_id)
+            photo.framing, photo.framings = framing, {}
+            self._save(photos)
+
+    def frame_page(self, photo_id: str, page_type: str, framing: Framing) -> None:
+        """A framing relative to ``page_type``'s picture area, for that page only."""
+        with self._lock:
+            photos = self.photos()
+            self._find(photos, photo_id).framings[page_type] = framing
             self._save(photos)
 
     @staticmethod

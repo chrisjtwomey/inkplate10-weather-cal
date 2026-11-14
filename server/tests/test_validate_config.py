@@ -209,3 +209,25 @@ def test_a_theme_without_that_page_type_is_a_clear_error(monkeypatch, caplog):
         validate_config(c)
     assert "pages.hourly.theme 'tiny' has no hourly page" in caplog.text
     assert server.THEMES is THEMES
+
+
+def test_a_pages_photos_and_map_kind():
+    cfg = validate_config(base())
+    assert set(cfg.page_photos.values()) == {None} and set(cfg.page_maps.values()) == {"classic"}
+    c = base()
+    c["pages"] = {"today": {"photos": ["abc", "def"], "map": "classic"}}
+    cfg = validate_config(c)
+    assert cfg.page_photos["today"] == ["abc", "def"] and cfg.page_photos["hourly"] is None
+
+
+@pytest.mark.parametrize("block, words", [
+    ({"photos": "abc"}, "pages.today.photos must be a list of photo ids"),
+    ({"photos": [1, 2]}, "pages.today.photos must be a list of photo ids"),
+    ({"map": "relief"}, "pages.today.map 'relief' does not exist (choose from: classic)"),
+])
+def test_a_bad_pages_photos_or_map_is_a_clear_error(block, words, caplog):
+    c = base()
+    c["pages"] = {"today": block}
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert words in caplog.text

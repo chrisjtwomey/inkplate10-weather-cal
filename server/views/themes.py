@@ -11,6 +11,7 @@ from .daily import DailyPage
 from .hourly import HourlyPage
 from .today import TodayPage
 from .tomorrow import TomorrowPage
+from .page import picture_windows
 from .words import CLASSIC, Words
 
 PAGE_TYPES = ("today", "current", "hourly", "daily", "tomorrow")
@@ -23,6 +24,7 @@ class Theme:
     label: str
     pages: dict = field(default_factory=dict)   # page type -> Page class
     words: Words = CLASSIC
+    shapes: dict = field(default_factory=dict)  # page type -> its picture area's shape
 
 
 THEMES = {
@@ -32,7 +34,7 @@ THEMES = {
         "hourly": HourlyPage,
         "daily": DailyPage,
         "tomorrow": TomorrowPage,
-    }),
+    }, shapes={"today": "wide", "current": "wide", "tomorrow": "wide", "hourly": "tall", "daily": "tall"}),
 }
 
 
@@ -40,3 +42,10 @@ def page_class(theme: str, page_type: str):
     """The class that draws ``page_type`` in ``theme``. Raises KeyError when the
     theme does not exist or has no layout for that type."""
     return THEMES[theme].pages[page_type]
+
+
+def picture_box(theme: str, page_type: str, inner_width: int, inner_height: int) -> tuple | None:
+    """Where ``page_type``'s picture area sits on the picture square in ``theme``,
+    as (left, top, right, bottom), or None when the page has no picture area."""
+    shape = THEMES[theme].shapes.get(page_type)
+    return picture_windows(inner_width, inner_height)[shape] if shape else None

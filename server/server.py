@@ -18,7 +18,7 @@ import dataclasses
 import logging.config
 
 import yaml
-from views.themes import DEFAULT_THEME, PAGE_TYPES, THEMES, page_class
+from views.themes import DEFAULT_THEME, PAGE_TYPES, THEMES, page_class, picture_box
 from views.page import PICTURES, picture_windows
 from battery_reminder import RemindingLogStore
 from maps import MAP_PROVIDERS, MapCache, StaticMapSource, create_provider
@@ -37,6 +37,7 @@ cwd = os.path.dirname(os.path.realpath(__file__))
 log = logging.getLogger("server")
 
 PAGE_NAMES = PAGE_TYPES
+MAP_KINDS = ("classic",)
 PAGES = dict(THEMES[DEFAULT_THEME].pages)
 # The pages the Photos page draws to preview each picture shape, in order of choice:
 # the hourly page is not drawn when weather.num_hourly_forecasts is 0.
@@ -55,9 +56,9 @@ def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=Non
             for name in PREVIEW_PAGES[shape]:
                 words = {"words": page_words[name]} if page_words else {}
                 page = page_classes[name](**geometry, picture="photos", renderer=renderer, **words)
-                page.name, page.png_dir = f"preview-{name}", preview_dir
+                page.page_type, page.name, page.png_dir = name, f"preview-{name}", preview_dir
                 try:
-                    page.template(**{k: picture_url if k == "photo_url" else data[k]() for k in page.requires})
+                    page.template(**{k: {name: picture_url} if k == "photo_urls" else data[k]() for k in page.requires})
                 except SkipPage:
                     continue
                 os.makedirs(preview_dir, exist_ok=True)
@@ -113,6 +114,8 @@ class ServerConfig:
     location: str
     pictures: dict[str, str]  # page name -> one of PICTURES
     page_themes: dict[str, str]  # page type -> a theme in views.themes.THEMES
+    page_photos: dict  # page type -> its photo ids in order, or None when not set
+    page_maps: dict[str, str]  # page type -> one of MAP_KINDS
     logs_path: str            # the boards' log lines, relative to this folder
     logs_days: float          # how long a line is kept
 
@@ -191,7 +194,7 @@ def load_settings(config: dict) -> ServerConfig:
     pages = get_prop(config, "pages", required=False, default=None) or {}
     if not isinstance(pages, dict):
         raise ConfigError(f"pages must name page types, such as today: {{theme: classic}} (got {pages!r})")
-    page_themes = {}
+    page_themes, page_photos, page_maps = {}, {}, {}
     for page_type in PAGE_TYPES:
         block = pages.get(page_type) or {}
         if not isinstance(block, dict):
@@ -202,6 +205,14 @@ def load_settings(config: dict) -> ServerConfig:
         if page_type not in THEMES[theme].pages:
             raise ConfigError(f"pages.{page_type}.theme {theme!r} has no {page_type} page")
         page_themes[page_type] = theme
+        photos = block.get("photos")
+        if photos is not None and not (isinstance(photos, list) and all(isinstance(i, str) for i in photos)):
+            raise ConfigError(f"pages.{page_type}.photos must be a list of photo ids (got {photos!r})")
+        page_photos[page_type] = photos
+        map_kind = block.get("map", "classic")
+        if map_kind not in MAP_KINDS:
+            raise ConfigError(f"pages.{page_type}.map {map_kind!r} does not exist (choose from: {', '.join(MAP_KINDS)})")
+        page_maps[page_type] = map_kind
     unknown = sorted(set(pages) - set(PAGE_TYPES))
     if unknown:
         raise ConfigError(f"pages.{unknown[0]}: no such page (choose from: {', '.join(PAGE_TYPES)})")
@@ -226,6 +237,8 @@ def load_settings(config: dict) -> ServerConfig:
         location=location,
         pictures={page: pictures.get(page, "map") for page in PAGE_NAMES},
         page_themes=page_themes,
+        page_photos=page_photos,
+        page_maps=page_maps,
         logs_path=logs_path,
         logs_days=float(logs_days),
     )
@@ -291,11 +304,17 @@ def main():
     geometry = cfg.core.image.page_kwargs()
     page_classes = {name: page_class(cfg.page_themes[name], name) for name in PAGE_TYPES}
     page_words = {name: THEMES[cfg.page_themes[name]].words for name in PAGE_TYPES}
-    pages = [page_classes[name](**geometry, picture=cfg.pictures[name], words=page_words[name]) for name in PAGE_TYPES]
+    photo_pages = {name: cfg.page_photos[name] for name in PAGE_TYPES
+                   if cfg.page_photos[name] or (cfg.page_photos[name] is None and cfg.pictures[name] == "photos")}
+    pages = [page_classes[name](**geometry, picture="photos" if name in photo_pages else "map", words=page_words[name])
+             for name in PAGE_TYPES]
     photo_store = PhotoStore(os.path.join(cwd, "data", "photos"))
     # Each fetches at the first render that needs it, after the server is up.
     # Each page declares what it needs in Page.requires.
-    photo_source = PhotoSource(photo_store)
+    image = cfg.core.image
+    photo_source = PhotoSource(
+        photo_store, page_sets=lambda: photo_pages,
+        boxes=lambda name: picture_box(cfg.page_themes[name], name, image.inner_width, image.inner_height))
     sources = [StaticMapSource(map_cache, cfg.location), weather_svc, photo_source]
     try:
         mods = load_mods(os.path.join(cwd, "mods"), os.path.join(cwd, "data", "mods"), config, geometry, pages, sources)
@@ -348,7 +367,6 @@ def main():
         form_with_mods(mods.groups), config_path, lambda text: check_config(text, load_settings, served), login=login,
         live_keys=NETWORK_KEYS, take_live=take_network, links=(("photos", "Photos"), ("install", "Install firmware")),
         password_env=PASSWORD_ENV))
-    image = cfg.core.image
     server.app.register_blueprint(photos_blueprint(
         photo_store, picture_windows(image.inner_width, image.inner_height),
         page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews"),

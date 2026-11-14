@@ -47,7 +47,7 @@ def _names(source, clock, days):
 
 def test_no_photos_gives_no_photo_url(store, clock):
     source = PhotoSource(store, clock)
-    assert source.todays_photo() is None and source.datasets()["photo_url"]() == ""
+    assert source.todays_photo() is None and source.datasets()["photo_urls"]() == {}
 
 
 def test_the_set_moves_one_photo_each_day_and_wraps(store, clock):
@@ -120,19 +120,23 @@ def test_a_broken_state_file_starts_from_the_first_photo(store, clock):
     assert PhotoSource(store, clock).todays_photo().name == "1.png"
 
 
-def test_photo_url_is_todays_picture(store, clock):
+def test_each_page_gets_its_own_picture_of_todays_photo(store, clock):
     _add(store, 1)
-    url = PhotoSource(store, clock).datasets()["photo_url"]()
-    assert url.startswith("file://") and "/pictures/" in url
-    with Image.open(urlparse(url).path) as img:
-        assert img.size == (1200, 1200)
+    source = PhotoSource(store, clock, page_sets=lambda: {"today": None, "hourly": None},
+                         boxes={"today": (188, 450, 1012, 950), "hourly": (188, 270, 1012, 930)}.get)
+    urls = source.datasets()["photo_urls"]()
+    assert set(urls) == {"today", "hourly"} and urls["today"] != urls["hourly"]
+    for url in urls.values():
+        assert url.startswith("file://") and "/pictures/" in url
+        with Image.open(urlparse(url).path) as img:
+            assert img.size == (1200, 1200)
 
 
-def test_a_picture_that_cannot_be_made_gives_no_url_and_a_warning(store, clock, monkeypatch, caplog):
+def test_a_picture_that_cannot_be_made_leaves_that_page_on_its_map(store, clock, monkeypatch, caplog):
     _add(store, 1)
     monkeypatch.setattr(source_module, "picture_path", lambda *a: (_ for _ in ()).throw(OSError("disk full")))
-    assert PhotoSource(store, clock).datasets()["photo_url"]() == ""
-    assert "No photo for this render: 1.png: disk full" in caplog.text
+    assert PhotoSource(store, clock, page_sets=lambda: {"today": None}).datasets()["photo_urls"]() == {}
+    assert "No photo on the today page for this render: 1.png: disk full" in caplog.text
 
 
 def test_today_and_tomorrow_follow_the_set(store, clock):

@@ -4,7 +4,8 @@ import hashlib
 import io
 import json
 import os
-from dataclasses import asdict
+import re
+from dataclasses import asdict, dataclass
 
 import numpy as np
 from PIL import Image, ImageFilter, ImageOps
@@ -19,17 +20,65 @@ GREYS = (0, 85, 170, 255)
 EFFECT_VERSION = 1
 
 
+@dataclass(frozen=True)
+class Placement:
+    """Where a photo sits on the square: its point (x, y), as fractions of its
+    width and height, at the square's centre, and its scale in square pixels
+    per photo pixel."""
+    x: float
+    y: float
+    scale: float
+
+
+def _clamped(framing: Framing) -> Framing:
+    return Framing(min(max(framing.x, 0.0), 1.0), min(max(framing.y, 0.0), 1.0),
+                   min(max(framing.zoom, MIN_ZOOM), MAX_ZOOM))
+
+
+def square_placement(framing: Framing, size: tuple) -> Placement:
+    """A framing relative to the square: zoom 1 just covers the square."""
+    f = _clamped(framing)
+    return Placement(f.x, f.y, f.zoom * max(SIZE / size[0], SIZE / size[1]))
+
+
+def area_placement(framing: Framing, size: tuple, box: tuple) -> Placement:
+    """A framing relative to a picture area ``box`` (left, top, right, bottom)
+    of the square: zoom 1 just covers the area, and the point sits at its centre."""
+    f = _clamped(framing)
+    left, top, right, bottom = box
+    scale = f.zoom * max((right - left) / size[0], (bottom - top) / size[1])
+    return Placement(f.x + (SIZE / 2 - (left + right) / 2) / (size[0] * scale),
+                     f.y + (SIZE / 2 - (top + bottom) / 2) / (size[1] * scale), scale)
+
+
+def area_framing(framing: Framing, size: tuple, box: tuple) -> Framing:
+    """The framing relative to ``box`` that shows what ``framing``, relative to
+    the square, shows there."""
+    p = square_placement(framing, size)
+    left, top, right, bottom = box
+    return Framing(p.x + ((left + right) / 2 - SIZE / 2) / (size[0] * p.scale),
+                   p.y + ((top + bottom) / 2 - SIZE / 2) / (size[1] * p.scale),
+                   p.scale / max((right - left) / size[0], (bottom - top) / size[1]))
+
+
+def upright(img: Image.Image) -> Image.Image:
+    return ImageOps.exif_transpose(img).convert("L")
+
+
+def placed(img: Image.Image, placement: Placement) -> Image.Image:
+    """An upright grey ``img`` on a white SIZE square, as ``placement`` says."""
+    w, h = max(1, round(img.width * placement.scale)), max(1, round(img.height * placement.scale))
+    out = Image.new("L", (SIZE, SIZE), 255)
+    out.paste(img.resize((w, h), Image.LANCZOS),
+              (round(SIZE / 2 - placement.x * w), round(SIZE / 2 - placement.y * h)))
+    return out
+
+
 def framed(img: Image.Image, framing: Framing) -> Image.Image:
     """``img`` upright and in grey, on a white SIZE square: the photo's point
     (x, y) at the centre, scaled so zoom 1 just covers the square."""
-    img = ImageOps.exif_transpose(img).convert("L")
-    zoom = min(max(framing.zoom, MIN_ZOOM), MAX_ZOOM)
-    x, y = min(max(framing.x, 0.0), 1.0), min(max(framing.y, 0.0), 1.0)
-    scale = zoom * max(SIZE / img.width, SIZE / img.height)
-    w, h = max(1, round(img.width * scale)), max(1, round(img.height * scale))
-    out = Image.new("L", (SIZE, SIZE), 255)
-    out.paste(img.resize((w, h), Image.LANCZOS), (round(SIZE / 2 - x * w), round(SIZE / 2 - y * h)))
-    return out
+    img = upright(img)
+    return placed(img, square_placement(framing, img.size))
 
 
 def pencil(img: Image.Image) -> Image.Image:
@@ -44,19 +93,47 @@ def pencil(img: Image.Image) -> Image.Image:
     return sketch.convert("RGB").quantize(palette=palette, dither=Image.Dither.FLOYDSTEINBERG).convert("L")
 
 
-def drawing(store: PhotoStore, photo: Photo, framing: Framing) -> bytes:
-    """``photo`` framed by ``framing`` and drawn in pencil, as PNG."""
-    with Image.open(store.path(photo.id)) as img:
-        out = pencil(framed(img, framing))
+def _png(img: Image.Image) -> bytes:
     png = io.BytesIO()
-    out.save(png, format="PNG", optimize=True)
+    img.save(png, format="PNG", optimize=True)
     return png.getvalue()
 
 
-def _kept(store: PhotoStore, photo: Photo, suffix: str) -> str:
+def drawing(store: PhotoStore, photo: Photo, framing: Framing) -> bytes:
+    """``photo`` framed by ``framing``, relative to the square, in pencil, as PNG."""
+    with Image.open(store.path(photo.id)) as img:
+        return _png(pencil(framed(img, framing)))
+
+
+def page_drawing(store: PhotoStore, photo: Photo, page_type: str, box: tuple) -> bytes:
+    """``photo`` as ``page_type`` shows it in its picture area ``box``, in pencil,
+    as PNG: by the page's own framing, else by the photo's framing for every page."""
+    with Image.open(store.path(photo.id)) as img:
+        img = upright(img)
+        own = photo.framings.get(page_type)
+        placement = area_placement(own, img.size, box) if own else square_placement(photo.framing, img.size)
+        return _png(pencil(placed(img, placement)))
+
+
+def _kept(store: PhotoStore, photo: Photo, suffix: str, *more) -> str:
     """Where a picture of ``photo`` with its framing is kept."""
-    key = hashlib.sha1(json.dumps([asdict(photo.framing), EFFECT_VERSION]).encode()).hexdigest()[:12]
+    key = hashlib.sha1(json.dumps([asdict(photo.framing), EFFECT_VERSION, *more]).encode()).hexdigest()[:12]
     return os.path.join(store.pictures_folder, f"{photo.id}-{key}{suffix}.png")
+
+
+def page_picture_path(store: PhotoStore, photo: Photo, page_type: str, box: tuple) -> str:
+    """The picture of ``photo`` for ``page_type``, made if it is not kept. Other
+    pages' pictures of the photo stay kept."""
+    own = photo.framings.get(page_type)
+    tag = f"-{page_type}"
+    path = _kept(store, photo, tag, page_type, asdict(own) if own else None, [round(v, 2) for v in box])
+    if os.path.exists(path):
+        return path
+    png = page_drawing(store, photo, page_type, box)
+    os.makedirs(store.pictures_folder, exist_ok=True)
+    _forget_matching(store, re.compile(re.escape(photo.id) + r"-[0-9a-f]{12}" + re.escape(tag) + r"\.png"))
+    write_atomically(path, png)
+    return path
 
 
 def picture_path(store: PhotoStore, photo: Photo) -> str:
@@ -66,9 +143,15 @@ def picture_path(store: PhotoStore, photo: Photo) -> str:
         return path
     png = drawing(store, photo, photo.framing)
     os.makedirs(store.pictures_folder, exist_ok=True)
-    store.forget_pictures(photo.id)
+    _forget_matching(store, re.compile(re.escape(photo.id) + r"-[0-9a-f]{12}\.png"))
     write_atomically(path, png)
     return path
+
+
+def _forget_matching(store: PhotoStore, pattern) -> None:
+    for name in os.listdir(store.pictures_folder):
+        if pattern.fullmatch(name):
+            os.remove(os.path.join(store.pictures_folder, name))
 
 
 THUMBNAIL_WIDTH = 240
@@ -85,5 +168,6 @@ def thumbnail_path(store: PhotoStore, photo: Photo, window: tuple) -> str:
     thumb = cut.resize((THUMBNAIL_WIDTH, max(1, round(cut.height * THUMBNAIL_WIDTH / cut.width))), Image.LANCZOS)
     png = io.BytesIO()
     thumb.save(png, format="PNG", optimize=True)
+    _forget_matching(store, re.compile(re.escape(photo.id) + r"-[0-9a-f]{12}-thumb\.png"))
     write_atomically(path, png.getvalue())
     return path
