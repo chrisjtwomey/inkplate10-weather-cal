@@ -9,6 +9,8 @@ import os
 
 from epd_server.page import Page as _Page
 
+from .words import CLASSIC, Words
+
 _VIEWS_DIR = os.path.dirname(os.path.realpath(__file__))
 HTML_DIR = os.path.join(_VIEWS_DIR, "html")
 PNG_DIR = _VIEWS_DIR
@@ -34,10 +36,11 @@ def picture_windows(inner_width: int, inner_height: int, size: int = 1200) -> di
 
 
 class Page(_Page):
-    def __init__(self, name, *geometry, picture="map", **kwargs):
+    def __init__(self, name, *geometry, picture="map", words: Words = CLASSIC, **kwargs):
         # kwargs lets a caller pass renderer= / quantiser= through unchanged.
         super().__init__(name, *geometry, html_dir=HTML_DIR, png_dir=PNG_DIR, **kwargs)
         self.picture = picture
+        self.words = words
         if picture == "photos":
             self.requires = (*type(self).requires, "photo_url")
 

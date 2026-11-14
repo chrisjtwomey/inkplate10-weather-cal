@@ -3,8 +3,8 @@ from airium import Airium
 from .page import Page
 
 
-def wind_unit_words(wind: dict) -> str:
-    return "kph" if wind["unit"] == "kmh" else "mph"
+def wind_unit_words(wind: dict, words) -> str:
+    return words["kmh"] if wind["unit"] == "kmh" else words["mph"]
 
 
 def wind_arrow(a, wind: dict) -> None:
@@ -23,7 +23,7 @@ class DetailedPage(Page):
         super().__init__("detailed", *geometry, **kwargs)
 
     def _title(self) -> str:
-        return "Detailed"
+        return self.words["title_detailed"]
 
     def _css_links(self, a):
         a.link(rel="stylesheet", href="styles.css")
@@ -70,7 +70,7 @@ class DetailedPage(Page):
                                         a.h3(
                                             id="month",
                                             klass="month text-center text-uppercase",
-                                            _t=now_date.strftime("%B"),
+                                            _t=self.words.month(now_date),
                                         )
 
                                     a.h4(

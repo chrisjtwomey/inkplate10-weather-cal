@@ -24,17 +24,14 @@ class SimplifiedPage(Page):
         self.log.info("Rendering %s page for %s", self.name, forecast_dt.date())
 
         if date_phrase is None:
-            try:
-                date_phrase = forecast_dt.strftime("%A, %B %-d")
-            except ValueError:
-                date_phrase = forecast_dt.strftime("%A, %B %d").replace(" 0", " ")
+            date_phrase = self.words.date_long(forecast_dt)
 
         a("<!DOCTYPE html>")
         with a.html(lang="en"):
             with a.head():
                 a.meta(charset="utf-8")
                 a.meta(name="viewport", content="width=device-width, initial-scale=1")
-                a.title(_t="Day Forecast")
+                a.title(_t=self.words["title_today"])
                 a.link(rel="stylesheet", href="styles.css")
                 a.link(rel="stylesheet", href="simplified.css")
 
@@ -63,7 +60,7 @@ class SimplifiedPage(Page):
                                         a.p(id="day-phrase", _t=day_phrase)
                                     with a.p(id="day-rain-prob"):
                                         a.img(src="icon/raindrops.png", klass="day-rain-prob-icon")
-                                        a.span(_t=f"{rain_prob}% rain")
+                                        a.span(_t=self.words.rain(rain_prob))
 
 
 

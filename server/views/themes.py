@@ -11,6 +11,7 @@ from .daily import DailyPage
 from .hourly import HourlyPage
 from .today import TodayPage
 from .tomorrow import TomorrowPage
+from .words import CLASSIC, Words
 
 PAGE_TYPES = ("today", "current", "hourly", "daily", "tomorrow")
 DEFAULT_THEME = "classic"
@@ -21,6 +22,7 @@ class Theme:
     name: str
     label: str
     pages: dict = field(default_factory=dict)   # page type -> Page class
+    words: Words = CLASSIC
 
 
 THEMES = {

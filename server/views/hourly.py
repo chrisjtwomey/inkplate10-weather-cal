@@ -16,14 +16,6 @@ def _every_column_fits(forecasts):
     return len(forecasts) <= 6
 
 
-def _hour_words(when):
-    try:
-        hour = when.strftime("%-I")
-    except ValueError:
-        hour = when.strftime("%I")
-    return hour + when.strftime("%p").lower()
-
-
 def _icon_row(a, forecasts):
     with a.tr():
         with a.td(klass="legend-cell"):
@@ -34,13 +26,13 @@ def _icon_row(a, forecasts):
                     a.img(src=forecast["icon"])
 
 
-def _hour_row(a, forecasts):
+def _hour_row(a, forecasts, words):
     with a.tr():
         _legend(a, "icon/wall-clock.png")
         for i, forecast in enumerate(forecasts):
             with a.td(klass="forecast-cell"):
                 with a.div(klass="forecast-hour"):
-                    a(_hour_words(forecast["dt"]) if _every_column_fits(forecasts) or i % 2 == 0 else "")
+                    a(words.hour(forecast["dt"]) if _every_column_fits(forecasts) or i % 2 == 0 else "")
 
 
 def _temperature_row(a, forecasts):
@@ -56,11 +48,11 @@ def _temperature_row(a, forecasts):
             previous = value
 
 
-def _wind_row(a, forecasts):
+def _wind_row(a, forecasts, words):
     """Each wind's arrow and speed, the speed blank where it repeats the one before."""
     previous = None
     with a.tr():
-        _legend(a, "icon/wind.png", wind_unit_words(forecasts[0]["wind"]))
+        _legend(a, "icon/wind.png", wind_unit_words(forecasts[0]["wind"], words))
         for forecast in forecasts:
             speed = str(round(forecast["wind"]["value"]))
             with a.td(klass="forecast-cell"):
@@ -70,7 +62,7 @@ def _wind_row(a, forecasts):
             previous = speed
 
 
-def _rain_row(a, forecasts):
+def _rain_row(a, forecasts, words):
     """Each chance of rain as a bar, labelled unless the label repeats the one before."""
     previous = None
     with a.tr(klass="precip-row"):
@@ -81,7 +73,7 @@ def _rain_row(a, forecasts):
             with a.td(klass="forecast-cell"):
                 a.canvas(
                     klass="precip-canvas",
-                    **{"data-precip": str(chance)},
+                    **{"data-precip": str(chance), "data-label": words.percent(chance)},
                     data_show_label="true" if show_label else "false",
                 )
             previous = chance
@@ -95,7 +87,7 @@ class HourlyPage(DetailedPage):
         self.name = "hourly"
 
     def _title(self) -> str:
-        return "Hourly"
+        return self.words["title_hourly"]
 
     def _css_links(self, a):
         super()._css_links(a)
@@ -111,10 +103,10 @@ class HourlyPage(DetailedPage):
         with a.div(id="bottom-banner", klass="container"):
             with a.table(id="forecast-table", style=f"--hourly-columns:{len(forecasts)};"):
                 _icon_row(a, forecasts)
-                _hour_row(a, forecasts)
+                _hour_row(a, forecasts, self.words)
                 _temperature_row(a, forecasts)
-                _wind_row(a, forecasts)
-                _rain_row(a, forecasts)
+                _wind_row(a, forecasts, self.words)
+                _rain_row(a, forecasts, self.words)
         self._bars_script(a)
 
     def _bars_script(self, a):
@@ -153,7 +145,7 @@ class HourlyPage(DetailedPage):
 
                         // Above the bar, or inside it on white when the top of the canvas would cut it off.
                         var showLabel = canvas.getAttribute('data_show_label') !== 'false';
-                        var label  = pct + '%';
+                        var label  = canvas.getAttribute('data-label');
                         if (showLabel) {
                             var labelY = h - barH - 6;
                             if (labelY - fontSize < 0) {

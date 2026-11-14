@@ -43,7 +43,8 @@ PAGES = dict(THEMES[DEFAULT_THEME].pages)
 PREVIEW_PAGES = {"wide": ("today",), "tall": ("hourly", "daily")}
 
 
-def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None, page_classes: dict = PAGES):
+def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None, page_classes: dict = PAGES,
+                   page_words: dict | None = None):
     """A function that draws a page of a picture shape with a given picture, for
     the Photos page, into its own files so the display's pages stay as they are."""
     lock = threading.Lock()
@@ -52,7 +53,8 @@ def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=Non
         data = CompositeSource(*sources).datasets()
         with lock:
             for name in PREVIEW_PAGES[shape]:
-                page = page_classes[name](**geometry, picture="photos", renderer=renderer)
+                words = {"words": page_words[name]} if page_words else {}
+                page = page_classes[name](**geometry, picture="photos", renderer=renderer, **words)
                 page.name, page.png_dir = f"preview-{name}", preview_dir
                 try:
                     page.template(**{k: picture_url if k == "photo_url" else data[k]() for k in page.requires})
@@ -288,7 +290,8 @@ def main():
 
     geometry = cfg.core.image.page_kwargs()
     page_classes = {name: page_class(cfg.page_themes[name], name) for name in PAGE_TYPES}
-    pages = [page_classes[name](**geometry, picture=cfg.pictures[name]) for name in PAGE_TYPES]
+    page_words = {name: THEMES[cfg.page_themes[name]].words for name in PAGE_TYPES}
+    pages = [page_classes[name](**geometry, picture=cfg.pictures[name], words=page_words[name]) for name in PAGE_TYPES]
     photo_store = PhotoStore(os.path.join(cwd, "data", "photos"))
     # Each fetches at the first render that needs it, after the server is up.
     # Each page declares what it needs in Page.requires.
@@ -349,7 +352,7 @@ def main():
     server.app.register_blueprint(photos_blueprint(
         photo_store, picture_windows(image.inner_width, image.inner_height),
         page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews"),
-                       page_classes=page_classes),
+                       page_classes=page_classes, page_words=page_words),
         photo_source.today_and_tomorrow))
     server.run(once=args.once)
 

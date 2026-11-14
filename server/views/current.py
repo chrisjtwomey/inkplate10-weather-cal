@@ -9,13 +9,8 @@ class CurrentPage(SimplifiedPage):
         super().__init__(*geometry, **kwargs)
         self.name = "current"
 
-    @staticmethod
-    def _rounded_hour_phrase(now: dt.datetime) -> str:
-        rounded = (now + dt.timedelta(minutes=30)).replace(minute=0, second=0, microsecond=0)
-        hour_24 = rounded.hour
-        hour_12 = hour_24 % 12 or 12
-        suffix = "am" if hour_24 < 12 else "pm"
-        return f"{hour_12}{suffix}"
+    def _rounded_hour_phrase(self, now: dt.datetime) -> str:
+        return self.words.hour((now + dt.timedelta(minutes=30)).replace(minute=0, second=0, microsecond=0))
 
     def template(self, **kwargs):
         now = dt.datetime.now()

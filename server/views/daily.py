@@ -5,15 +5,11 @@ from epd_server.page import SkipPage
 from .detailed import DetailedPage, wind_arrow, wind_unit_words
 
 
-def _day_name_cell(a, forecast):
+def _day_name_cell(a, forecast, words):
     day = forecast["dt"]
-    try:
-        date = day.strftime("%-d %b")
-    except ValueError:
-        date = day.strftime("%d %b").lstrip("0")
     with a.td(klass="day-name-cell"):
-        a.div(klass="day-name", _t=day.strftime("%a").upper())
-        a.div(klass="day-date", _t=date)
+        a.div(klass="day-name", _t=words.weekday_short(day).upper())
+        a.div(klass="day-date", _t=words.date_short(day))
 
 
 def _temperature_cell(a, temperature, week_min, week_span):
@@ -29,28 +25,28 @@ def _temperature_cell(a, temperature, week_min, week_span):
             a.span(klass="temp-high", _t=str(high) + unit)
 
 
-def _rain_cell(a, forecast):
+def _rain_cell(a, forecast, words):
     with a.td(klass="day-precip-cell"):
         with a.div(klass="day-precip"):
             a.img(src="icon/raindrops.png", klass="precip-icon")
-            a.span(klass="precip-value", _t=f"{forecast['rain_probability']}%")
+            a.span(klass="precip-value", _t=words.percent(forecast["rain_probability"]))
 
 
-def _wind_cell(a, wind):
+def _wind_cell(a, wind, words):
     with a.td(klass="day-wind-cell"):
         with a.div(klass="day-wind"):
             wind_arrow(a, wind)
             a.span(klass="wind-speed", _t=str(round(wind["value"])))
-            a.span(klass="wind-unit", _t=wind_unit_words(wind))
+            a.span(klass="wind-unit", _t=wind_unit_words(wind, words))
 
 
-def _sun_hours_cell(a, forecast):
+def _sun_hours_cell(a, forecast, words):
     with a.td(klass="day-sun-hours-cell"):
         if forecast["hours_of_sun"] is not None:
             with a.div(klass="sun-hours"):
                 a.img(src="icon/sun.png", klass="sun-icon")
                 a.span(klass="sun-hours-value", _t=f"{forecast['hours_of_sun']:.1f}")
-                a.span(klass="sun-hours-unit", _t="hours")
+                a.span(klass="sun-hours-unit", _t=words["hours"])
 
 
 def _sun_row(a, icon, klass, text):
@@ -59,11 +55,11 @@ def _sun_row(a, icon, klass, text):
         a.span(klass=klass, _t=text)
 
 
-def _uv_words(uv):
-    return "Low" if uv <= 2 else "Med" if uv <= 5 else "High"
+def _uv_words(uv, words):
+    return words["uv_low"] if uv <= 2 else words["uv_medium"] if uv <= 5 else words["uv_high"]
 
 
-def _sun_cell(a, forecast):
+def _sun_cell(a, forecast, words):
     with a.td(klass="day-sun-cell"):
         with a.div(klass="sun-info"):
             if forecast["sunrise"] and forecast["sunset"]:
@@ -71,7 +67,7 @@ def _sun_cell(a, forecast):
                     _sun_row(a, "icon/sunrise.png", "sun-rise", forecast["sunrise"])
                     _sun_row(a, "icon/sunset.png", "sun-set", forecast["sunset"])
                     if forecast["uv_index"] is not None:
-                        _sun_row(a, "icon/uv.png", "sun-set", _uv_words(forecast["uv_index"]))
+                        _sun_row(a, "icon/uv.png", "sun-set", _uv_words(forecast["uv_index"], words))
 
 
 class DailyPage(DetailedPage):
@@ -82,7 +78,7 @@ class DailyPage(DetailedPage):
         self.name = "daily"
 
     def _title(self):
-        return "Daily Forecast"
+        return self.words["title_daily"]
 
     def _css_links(self, a):
         super()._css_links(a)
@@ -165,14 +161,14 @@ window.addEventListener('load', function () {
             with a.table(id="daily-table", style=f"--daily-row-count:{max(len(forecasts), 1)};"):
                 for forecast in forecasts:
                     with a.tr(klass="day-row"):
-                        _day_name_cell(a, forecast)
+                        _day_name_cell(a, forecast, self.words)
                         with a.td(klass="day-icon-cell"):
                             with a.div(klass="day-icon-wrap"):
                                 a.img(src=forecast["icon"], klass="day-icon")
                         _temperature_cell(a, forecast["temperature"], week_min, week_span)
-                        _rain_cell(a, forecast)
-                        _wind_cell(a, forecast["wind"])
+                        _rain_cell(a, forecast, self.words)
+                        _wind_cell(a, forecast["wind"], self.words)
                         if has_sun_hours:
-                            _sun_hours_cell(a, forecast)
+                            _sun_hours_cell(a, forecast, self.words)
                         if has_sun:
-                            _sun_cell(a, forecast)
+                            _sun_cell(a, forecast, self.words)
