@@ -152,7 +152,8 @@ lays it out.
   sets it on each page the theme draws.
 - **Map** sets the kind of map the page shows when it has no photos.
 - **Sample weather** fills the page with made-up weather, for a page that is not
-  drawn now. **1:1** shows the page at the panel's size.
+  drawn now. The page is drawn as large as fits the window; **1:1** shows it
+  at the panel's size.
 - **Panel view** shows the page as the server draws it for the display, in its
   four greys. The editor's own view draws the pencil effect in the browser, so it
   can follow each drag at once.

@@ -14,6 +14,7 @@
   // Browsers send a trackpad pinch as a wheel with Ctrl held, in small steps.
   const TRACKPAD_PINCH_RATE = 0.01, SCROLL_ZOOM_RATE = 0.0015;
   const CENTRE = {x: 0.5, y: 0.5, zoom: 1};
+  const MARGIN = 16, MIN_SCALE = 0.4;
   const NAMES = {today: "Today", current: "Current", hourly: "Hourly", daily: "Daily", tomorrow: "Tomorrow"};
 
   let settings = {};      // page type -> {theme, photos, map}
@@ -117,9 +118,22 @@
 
   const frame = $("page");
 
+  // The page's scale on screen: 1:1, or as large as fits the column and the window below the bar.
+  function viewScale() {
+    const box = $("preview");
+    if ($("actual-size").checked) {
+      box.style.maxWidth = "";
+      return 1;
+    }
+    const below = window.innerHeight - (box.getBoundingClientRect().top + window.scrollY) - MARGIN;
+    const byHeight = Math.max(MIN_SCALE, Math.min(1, below / PAGE_HEIGHT));
+    box.style.maxWidth = PAGE_WIDTH * byHeight + "px";
+    return Math.min(byHeight, box.clientWidth / PAGE_WIDTH);
+  }
+
   function fit() {
     const box = $("preview");
-    const scale = $("actual-size").checked ? 1 : Math.min(1, box.clientWidth / PAGE_WIDTH);
+    const scale = viewScale();
     frame.style.transform = "scale(" + scale + ")";
     box.style.height = PAGE_HEIGHT * scale + "px";
     $("panel").style.width = PAGE_WIDTH * scale + "px";
@@ -257,7 +271,7 @@
   function placeHandle() {
     const parts = pictureParts();
     if (!parts || !selected || panelOn) { handle.hidden = true; return; }
-    const scale = $("actual-size").checked ? 1 : Math.min(1, $("preview").clientWidth / PAGE_WIDTH);
+    const scale = viewScale();
     const a = parts.area.getBoundingClientRect();
     Object.assign(handle.style, {left: a.left * scale + "px", top: a.top * scale + "px",
                                  width: a.width * scale + "px", height: a.height * scale + "px"});
@@ -277,7 +291,7 @@
     const canvas = parts.doc.getElementById("map");
     const box = areaBox({...parts, square: canvas});
     const p = placement(from, selected.w, selected.h, box);
-    const k = SIZE / canvas.getBoundingClientRect().width / ($("actual-size").checked ? 1 : Math.min(1, $("preview").clientWidth / PAGE_WIDTH));
+    const k = SIZE / canvas.getBoundingClientRect().width / viewScale();
     return {x: from.x - dx * k / (selected.w * p.scale), y: from.y - dy * k / (selected.h * p.scale), zoom: from.zoom};
   }
 
