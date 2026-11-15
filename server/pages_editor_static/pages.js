@@ -66,7 +66,7 @@
     library = (await (await call("photos/list")).json()).photos;
   }
 
-  // ---- The bar: page, theme, map ----
+  // ---- The page: its name, theme and map ----
 
   function drawBar() {
     const type = pageType();
@@ -413,7 +413,7 @@
   }
   $("panel-view").addEventListener("click", () => panel(!panelOn));
 
-  // ---- This page's photos ----
+  // ---- The page's photo list ----
 
   function thumb(photo) {
     const img = document.createElement("img");

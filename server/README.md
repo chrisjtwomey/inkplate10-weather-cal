@@ -148,9 +148,13 @@ shows. The editor shows one page at a time, in its own HTML, as the display
 lays it out.
 
 - **‹** and **›** step through the five pages.
-- **Theme** sets the page's layout and words. **Use this theme on every page**
-  sets it on each page the theme draws.
-- **Map** sets the kind of map the page shows when it has no photos.
+- **Theme**, beside the page, sets the page's layout and words. **Use on every
+  page** sets it on each page the theme draws.
+- **Picture** holds the page's **Map**, the kind of map it shows when it has no
+  photos, and the page's own photo list. With one photo, the page shows that
+  photo each day; with more, it shows the next one each day, in this order.
+  **+ Add photos** picks photos from the library. Drag a photo to move it in the
+  list, and **×** takes it off the page.
 - **Sample weather** fills the page with made-up weather, for a page that is not
   drawn now. The page is drawn as large as fits the window; **1:1** shows it
   at the panel's size.
@@ -158,11 +162,8 @@ lays it out.
   four greys. The editor's own view draws the pencil effect in the browser, so it
   can follow each drag at once.
 
-Under the page, **This page's photos** is the page's own list. With no photos
-the page shows its map; with one, it shows that photo each day; with more, it
-shows the next one each day, in this order. **+ Add** picks photos from the
-library. Drag a photo to move it in the list, and **×** takes it off the page.
-Each change is saved and the page redrawn at once, with no restart.
+Each change to the theme, the map or the list is saved and the page redrawn at
+once, with no restart.
 
 Select a photo in the list to frame it on this page. Drag it to move it, or use
 the arrow keys (Shift for bigger steps). Pinch, scroll, use the slider or + and

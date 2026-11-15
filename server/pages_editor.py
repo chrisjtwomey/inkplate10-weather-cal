@@ -202,9 +202,6 @@ def _page(numbers: str) -> str:
     <button type="button" id="prev" aria-label="Previous page">‹</button>
     <h2 id="page-name">Today</h2>
     <button type="button" id="next" aria-label="Next page">›</button>
-    <label>Theme <select id="theme"></select></label>
-    <button type="button" id="theme-everywhere">Use this theme on every page</button>
-    <label>Map <select id="map"></select></label>
   </div>
 
   <div class="stage">
@@ -214,10 +211,16 @@ def _page(numbers: str) -> str:
       <img id="panel" alt="The page as the display draws it" hidden>
     </div>
     <div class="side">
-      <label class="switch"><input type="checkbox" id="sample"> Sample weather</label>
-      <label class="switch"><input type="checkbox" id="actual-size"> 1:1</label>
-      <button type="button" id="panel-view">Panel view</button>
-      <p class="help" id="status" aria-live="polite"></p>
+      <section class="page-theme">
+        <label class="field">Theme <select id="theme"></select></label>
+        <button type="button" class="link" id="theme-everywhere">Use on every page</button>
+      </section>
+      <section class="page-picture">
+        <div class="heading"><h3>Picture</h3><button type="button" id="add">+ Add photos</button></div>
+        <label class="field">Map <select id="map"></select></label>
+        <p class="help">The page shows its map when it has no photos. One photo stays; more change each day, in this order.</p>
+        <ol id="strip"></ol>
+      </section>
       <div id="framing-tools" hidden>
         <p class="help">Drag the photo to move it, or use the arrow keys. Pinch, scroll or use the slider to zoom.
         Double-click to centre.</p>
@@ -226,13 +229,14 @@ def _page(numbers: str) -> str:
         <button type="button" id="framing-everywhere">Use this framing on every page</button>
         <button type="button" class="primary" id="save-framing">Save framing</button>
       </div>
+      <div class="view">
+        <label class="switch"><input type="checkbox" id="sample"> Sample weather</label>
+        <label class="switch"><input type="checkbox" id="actual-size"> 1:1</label>
+        <button type="button" id="panel-view">Panel view</button>
+        <p class="help" id="status" aria-live="polite"></p>
+      </div>
     </div>
   </div>
-
-  <h3>This page's photos</h3>
-  <p class="help">None means the page shows its map. One photo stays; more change each day, in this order.</p>
-  <ol id="strip"></ol>
-  <button type="button" id="add">+ Add</button>
 </div>
 
 <section id="library">
