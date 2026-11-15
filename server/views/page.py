@@ -17,24 +17,6 @@ PNG_DIR = _VIEWS_DIR
 
 
 PICTURES = ("map", "photos")
-# The picture area on each kind of page, as simplified.css and styles.css set it:
-# the box's height, and where in it the square's centre sits.
-WIDE_HEIGHT_OF_WIDTH, WIDE_CENTRE = 0.606061, 0.30     # today, current, tomorrow
-TALL_HEIGHT_OF_HEIGHT, TALL_CENTRE = 0.55, 0.50        # hourly, daily
-
-
-def picture_windows(inner_width: int, inner_height: int, size: int = 1200) -> dict:
-    """The part of the picture's square that each kind of page shows, as
-    ``(left, top, right, bottom)`` in the square's pixels."""
-    left, right = size / 2 - inner_width / 2, size / 2 + inner_width / 2
-    wide = WIDE_HEIGHT_OF_WIDTH * inner_width
-    tall = TALL_HEIGHT_OF_HEIGHT * inner_height
-    return {
-        "wide": (left, size / 2 - WIDE_CENTRE * wide, right, size / 2 + (1 - WIDE_CENTRE) * wide),
-        "tall": (left, size / 2 - TALL_CENTRE * tall, right, size / 2 + (1 - TALL_CENTRE) * tall),
-    }
-
-
 class Page(_Page):
     def __init__(self, name, *geometry, picture="map", words: Words = CLASSIC, **kwargs):
         # kwargs lets a caller pass renderer= / quantiser= through unchanged.

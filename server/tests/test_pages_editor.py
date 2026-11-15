@@ -10,10 +10,11 @@ from PIL import Image
 
 from pages_editor import WORKING_SIZE, Editor, editor_blueprint
 from photos import Framing, PhotoStore
-from views.page import HTML_DIR, picture_windows
+from views.page import HTML_DIR
+from views.themes import picture_box
 from views.themes import PAGE_TYPES, THEMES
 
-BOX = picture_windows(825, 1200)["wide"]
+BOX = picture_box("classic", "today", 825, 1200)
 
 
 class FakeLive:

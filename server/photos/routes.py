@@ -9,35 +9,23 @@
     POST /photos/<id>/set           JSON {"in_set": true|false}
     POST /photos/order              JSON {"ids": [...]}: the new set order
     POST /photos/<id>/framing       JSON {"x", "y", "zoom"}
-    GET  /photos/<id>/preview/<shape>.png?x=&y=&zoom=
-                                    a page of that shape with the photo so framed
 
 The server's sign-in covers these routes, and its Origin check covers each change.
 """
 import math
-import os
-import tempfile
 from collections.abc import Callable
 from dataclasses import asdict
-from pathlib import Path
 
-from flask import Blueprint, Response, abort, jsonify, redirect, request, send_file
+from flask import Blueprint, abort, jsonify, redirect, request, send_file
 
-from .picture import MAX_ZOOM, MIN_ZOOM, drawing, thumbnail_path
+from .picture import MAX_ZOOM, MIN_ZOOM, thumbnail_path
 from .store import MAX_BYTES, NO_SUCH_PHOTO, NOT_A_PHOTO, TOO_LARGE, Framing, PhotoError, PhotoStore
 
-NO_PREVIEW = "No preview for this page. Check the server's log."
-
-# A page of a shape, with a picture at a file:// address, as PNG. Raises LookupError
-# when no page of that shape can be drawn now.
-Preview = Callable[[str, str], bytes]
-
-
-def photos_blueprint(store: PhotoStore, windows: dict | None = None, preview: Preview | None = None,
+def photos_blueprint(store: PhotoStore, thumb_window: tuple | None = None,
                      today_and_tomorrow: Callable[[], tuple] | None = None) -> Blueprint:
-    """The page and its routes. ``windows`` is each picture shape the pages show,
-    as ``(left, top, right, bottom)`` in the picture's square;
-    ``today_and_tomorrow`` gives the ids of the photos the pages show today and tomorrow."""
+    """The routes. ``thumb_window`` is the part of the picture's square a thumbnail
+    shows, as (left, top, right, bottom); ``today_and_tomorrow`` gives the ids of
+    the photos the pages show today and tomorrow."""
     bp = Blueprint("photos", __name__, url_prefix="/photos")
 
     def problem(words: str, status: int):
@@ -69,19 +57,19 @@ def photos_blueprint(store: PhotoStore, windows: dict | None = None, preview: Pr
             return problem(NOT_A_PHOTO, 400)
         data = sent.stream.read(MAX_BYTES + 1)
         photo = store.add(data, sent.filename or "")
-        if "wide" in (windows or {}):
-            thumbnail_path(store, photo, windows["wide"])
+        if thumb_window:
+            thumbnail_path(store, photo, thumb_window)
         return jsonify(asdict(photo)), 201
 
     @bp.route("/<photo_id>/thumb.png", methods=["GET"])
     def thumbnail(photo_id: str):
         """The page asks with the framing in the address, so a browser may keep each copy."""
-        if "wide" not in (windows or {}):
+        if not thumb_window:
             abort(404)
         photo = next((p for p in store.photos() if p.id == photo_id), None)
         if photo is None:
             raise KeyError(photo_id)
-        return send_file(thumbnail_path(store, photo, windows["wide"]), max_age=86400)
+        return send_file(thumbnail_path(store, photo, thumb_window), max_age=86400)
 
     @bp.route("/<photo_id>/original", methods=["GET"])
     def original(photo_id: str):
@@ -113,23 +101,6 @@ def photos_blueprint(store: PhotoStore, windows: dict | None = None, preview: Pr
     def framing(photo_id: str):
         store.frame(photo_id, _framing(request.get_json(silent=True)))
         return "", 204
-
-    @bp.route("/<photo_id>/preview/<shape>.png", methods=["GET"])
-    def preview_page(photo_id: str, shape: str):
-        if preview is None or shape not in (windows or {}):
-            abort(404)
-        photo = next((p for p in store.photos() if p.id == photo_id), None)
-        if photo is None:
-            raise KeyError(photo_id)
-        with tempfile.TemporaryDirectory() as folder:
-            picture = os.path.join(folder, "picture.png")
-            with open(picture, "wb") as f:
-                f.write(drawing(store, photo, _framing(request.args)))
-            try:
-                png = preview(shape, Path(picture).resolve().as_uri())
-            except LookupError:
-                return problem(NO_PREVIEW, 503)
-        return Response(png, mimetype="image/png", headers={"Cache-Control": "no-store"})
 
     return bp
 

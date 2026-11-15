@@ -11,10 +11,9 @@ from PIL import Image
 
 from photos import Framing, PhotoSource, PhotoStore
 from photos import picture as pic
-from views.page import picture_windows
+from views.themes import picture_box
 
-BOXES = picture_windows(825, 1200)
-WIDE, TALL = BOXES["wide"], BOXES["tall"]
+WIDE, TALL = picture_box("classic", "today", 825, 1200), picture_box("classic", "hourly", 825, 1200)
 
 
 def _photo_bytes(size=(400, 300), seed=0) -> bytes:

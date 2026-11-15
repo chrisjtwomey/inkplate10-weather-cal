@@ -19,7 +19,7 @@ import logging.config
 
 import yaml
 from views.themes import DEFAULT_THEME, PAGE_TYPES, THEMES, page_class, picture_box
-from views.page import PICTURES, picture_windows
+from views.page import PICTURES
 from battery_reminder import RemindingLogStore
 from maps import MAP_PROVIDERS, MapCache, StaticMapSource, create_provider
 from photos import PhotoSource, PhotoStore, photos_blueprint
@@ -43,34 +43,28 @@ log = logging.getLogger("server")
 PAGE_NAMES = PAGE_TYPES
 MAP_KINDS = ("classic",)
 PAGES = dict(THEMES[DEFAULT_THEME].pages)
-# The pages the Photos page draws to preview each picture shape, in order of choice:
-# the hourly page is not drawn when weather.num_hourly_forecasts is 0.
-PREVIEW_PAGES = {"wide": ("today",), "tall": ("hourly", "daily")}
-
-
 def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None, themes=lambda: {}):
-    """A function that draws a page, by picture shape or by page type, with a given
-    picture, into its own files so the display's pages stay as they are.
-    ``themes()`` gives each page type's theme; a type missing from it is Classic."""
+    """A function that draws a page type with a given picture, into its own files so
+    the display's pages stay as they are. It raises LookupError when the page is
+    not drawn now. ``themes()`` gives each page type's theme; a type missing from
+    it is Classic."""
     lock = threading.Lock()
 
-    def preview(shape: str, picture_url: str) -> bytes:
+    def preview(name: str, picture_url: str) -> bytes:
         data = CompositeSource(*sources).datasets()
         with lock:
-            for name in PREVIEW_PAGES.get(shape, (shape,)):
-                theme = themes().get(name, DEFAULT_THEME)
-                page = page_class(theme, name)(**geometry, picture="photos", renderer=renderer,
-                                               words=THEMES[theme].words)
-                page.page_type, page.name, page.png_dir = name, f"preview-{name}", preview_dir
-                try:
-                    page.template(**{k: {name: picture_url} if k == "photo_urls" else data[k]() for k in page.requires})
-                except SkipPage:
-                    continue
-                os.makedirs(preview_dir, exist_ok=True)
-                page.save()
-                with open(page.png_path, "rb") as f:
-                    return f.read()
-        raise LookupError(shape)
+            theme = themes().get(name, DEFAULT_THEME)
+            page = page_class(theme, name)(**geometry, picture="photos", renderer=renderer,
+                                           words=THEMES[theme].words)
+            page.page_type, page.name, page.png_dir = name, f"preview-{name}", preview_dir
+            try:
+                page.template(**{k: {name: picture_url} if k == "photo_urls" else data[k]() for k in page.requires})
+            except SkipPage:
+                raise LookupError(name) from None
+            os.makedirs(preview_dir, exist_ok=True)
+            page.save()
+            with open(page.png_path, "rb") as f:
+                return f.read()
 
     return preview
 
@@ -383,8 +377,7 @@ def main():
                      on_change=lambda settings: running.update(cfg=settings))
     server.app.register_blueprint(pages_blueprint(live))
     server.app.register_blueprint(photos_blueprint(
-        photo_store, picture_windows(image.inner_width, image.inner_height),
-        previewer,
+        photo_store, picture_box(DEFAULT_THEME, "today", image.inner_width, image.inner_height),
         photo_source.today_and_tomorrow))
 
     def box(name: str):
