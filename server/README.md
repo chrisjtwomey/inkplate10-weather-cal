@@ -147,7 +147,8 @@ Open **Pages** at the top of the Settings page (`/pages`) to set what each page
 shows. The editor shows one page at a time, in its own HTML, as the display
 lays it out.
 
-- **‹** and **›** step through the five pages.
+- A tab opens each of the five pages; ← and → move between them. A dot marks a
+  page that shows photos.
 - **Theme**, beside the page, sets the page's layout and words. **Use on every
   page** sets it on each page the theme draws.
 - **Picture** holds the page's **Map**, the kind of map it shows when it has no

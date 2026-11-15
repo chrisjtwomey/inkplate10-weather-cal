@@ -74,7 +74,7 @@
   function drawBar() {
     const type = pageType();
     const s = settings[type];
-    $("page-name").textContent = NAMES[type] || type;
+    drawTabs();
     const theme = $("theme");
     theme.replaceChildren(...Object.entries(N.themes).filter(([, t]) => t.pages.includes(type)).map(([name, t]) => {
       const o = new Option(t.label, name);
@@ -108,14 +108,42 @@
     }
   }
 
-  async function step(by) {
-    await saveFraming();
-    at = (at + by + N.pageTypes.length) % N.pageTypes.length;
-    selected = null;
-    showPage();
+  function drawTabs() {
+    $("tabs").replaceChildren(...N.pageTypes.map((type, i) => {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-controls", "preview");
+      tab.setAttribute("aria-selected", i === at ? "true" : "false");
+      tab.tabIndex = i === at ? 0 : -1;
+      tab.textContent = NAMES[type] || type;
+      if (settings[type].photos.length) {
+        const mark = document.createElement("span");
+        mark.className = "mark";
+        mark.setAttribute("aria-hidden", "true");
+        tab.append(mark);
+        tab.title = "Shows photos";
+        tab.setAttribute("aria-label", tab.firstChild.textContent + ", shows photos");
+      }
+      tab.addEventListener("click", () => openPage(i));
+      return tab;
+    }));
   }
-  $("prev").addEventListener("click", () => step(-1));
-  $("next").addEventListener("click", () => step(1));
+
+  async function openPage(i) {
+    if (i === at) return;
+    await saveFraming();
+    at = i;
+    selected = null;
+    await showPage();
+    $("tabs").children[at].focus();
+  }
+  $("tabs").addEventListener("keydown", (event) => {
+    const by = {ArrowLeft: -1, ArrowRight: 1}[event.key];
+    if (!by) return;
+    event.preventDefault();
+    openPage((at + by + N.pageTypes.length) % N.pageTypes.length);
+  });
 
   // ---- The preview ----
 

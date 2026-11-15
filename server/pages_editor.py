@@ -199,9 +199,7 @@ def _page(numbers: str) -> str:
 
 <div class="editor">
   <div class="bar">
-    <button type="button" id="prev" aria-label="Previous page">‹</button>
-    <h2 id="page-name">Today</h2>
-    <button type="button" id="next" aria-label="Next page">›</button>
+    <div class="tabs" id="tabs" role="tablist" aria-label="Pages"></div>
   </div>
 
   <div class="stage">

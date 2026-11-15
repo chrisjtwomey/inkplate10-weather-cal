@@ -12,9 +12,12 @@ label.button { display: inline-block; padding: 8px 16px; font-size: .95rem; bord
 label.button.primary { color: var(--on-ink); background: var(--ink); border-color: var(--ink); }
 label.button:focus-within, label.button:hover { outline: 2px solid var(--mid); outline-offset: 2px; }
 
-/* The bar: ‹ Page › */
+/* The bar: a tab for each page */
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 20px; }
-.bar h2 { min-width: 7rem; text-align: center; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs [role=tab] { display: inline-flex; align-items: center; gap: 8px; }
+.tabs [aria-selected=true] { color: var(--on-ink); background: var(--ink); border-color: var(--ink); }
+.tabs .mark { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .7; }
 .field { display: flex; align-items: center; gap: 8px; color: var(--soft); }
 .field select { width: auto; }
 button.link { padding: 0; border: 0; background: none; color: var(--soft); text-decoration: underline; font-size: .9rem; }
