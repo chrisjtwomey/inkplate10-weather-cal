@@ -75,17 +75,22 @@
     const type = pageType();
     const s = settings[type];
     drawTabs();
-    const theme = $("theme");
-    theme.replaceChildren(...Object.entries(N.themes).filter(([, t]) => t.pages.includes(type)).map(([name, t]) => {
-      const o = new Option(t.label, name);
-      o.selected = name === s.theme;
+    const themes = Object.entries(N.themes).filter(([, t]) => t.pages.includes(type));
+    fillChoice("theme", themes.map(([name, t]) => [name, t.label]), s.theme);
+    fillChoice("map", N.maps.map((name) => [name, name === "classic" ? "Classic" : name]), s.map);
+    $("theme-everywhere").hidden = N.themes[s.theme].pages.every((t) => settings[t].theme === s.theme);
+  }
+
+  // A choice with one option shows as text; the drop-down appears when there is a second.
+  function fillChoice(id, options, current) {
+    const select = $(id);
+    select.replaceChildren(...options.map(([value, label]) => {
+      const o = new Option(label, value);
+      o.selected = value === current;
       return o;
     }));
-    $("map").replaceChildren(...N.maps.map((name) => {
-      const o = new Option(name === "classic" ? "Classic" : name, name);
-      o.selected = name === s.map;
-      return o;
-    }));
+    select.hidden = options.length < 2;
+    $(id + "-only").textContent = options.length < 2 && options.length ? options[0][1] : "";
   }
 
   $("theme").addEventListener("change", () => change({[pageType()]: {theme: $("theme").value}}));
@@ -149,7 +154,7 @@
 
   const frame = $("page");
 
-  // The page's scale on screen: 1:1, or as large as fits the column and the window below the bar.
+  // The page's scale on screen: actual size, or as large as fits the column and the window below the bar.
   function viewScale() {
     const box = $("preview");
     if ($("actual-size").checked) {

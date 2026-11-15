@@ -150,15 +150,16 @@ lays it out.
 - A tab opens each of the five pages; ← and → move between them. A dot marks a
   page that shows photos.
 - **Theme**, beside the page, sets the page's layout and words. **Use on every
-  page** sets it on each page the theme draws.
+  page** sets it on each page the theme draws, and shows while one of them uses
+  another theme. Theme and Map show as plain text while they have one choice.
 - **Picture** holds the page's **Map**, the kind of map it shows when it has no
   photos, and the page's own photo list. With one photo, the page shows that
   photo each day; with more, it shows the next one each day, in this order.
   **+ Add photos** picks photos from the library. Drag a photo to move it in the
   list, and **×** takes it off the page.
 - **Sample weather** fills the page with made-up weather, for a page that is not
-  drawn now. The page is drawn as large as fits the window; **1:1** shows it
-  at the panel's size.
+  drawn now. The page is drawn as large as fits the window; **Actual size**
+  shows it at the panel's size.
 - **Panel view** shows the page as the server draws it for the display, in its
   four greys. The editor's own view draws the pencil effect in the browser, so it
   can follow each drag at once.

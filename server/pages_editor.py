@@ -210,12 +210,12 @@ def _page(numbers: str) -> str:
     </div>
     <div class="side">
       <section class="page-theme">
-        <label class="field">Theme <select id="theme"></select></label>
+        <label class="field">Theme <select id="theme"></select><span class="only" id="theme-only"></span></label>
         <button type="button" class="link" id="theme-everywhere">Use on every page</button>
       </section>
       <section class="page-picture">
         <div class="heading"><h3>Picture</h3><button type="button" id="add">+ Add photos</button></div>
-        <label class="field">Map <select id="map"></select></label>
+        <label class="field">Map <select id="map"></select><span class="only" id="map-only"></span></label>
         <p class="help">The page shows its map when it has no photos. One photo stays; more change each day, in this order.</p>
         <ol id="strip"></ol>
       </section>
@@ -225,12 +225,12 @@ def _page(numbers: str) -> str:
         <label>Zoom <input type="range" id="zoom" step="0.01"></label>
         <div class="row"><button type="button" id="centre">Centre</button>
         <button type="button" id="undo-framing">Undo</button></div>
-        <button type="button" id="framing-everywhere">Use this framing on every page</button>
+        <button type="button" class="link" id="framing-everywhere">Use this framing on every page</button>
         <p class="help" id="framing-status" aria-live="polite"></p>
       </div>
       <div class="view">
         <label class="switch"><input type="checkbox" id="sample"> Sample weather</label>
-        <label class="switch"><input type="checkbox" id="actual-size"> 1:1</label>
+        <label class="switch"><input type="checkbox" id="actual-size"> Actual size</label>
         <button type="button" id="panel-view">Panel view</button>
         <p class="help" id="status" aria-live="polite"></p>
       </div>

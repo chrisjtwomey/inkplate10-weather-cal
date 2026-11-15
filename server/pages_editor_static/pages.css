@@ -20,6 +20,9 @@ label.button:focus-within, label.button:hover { outline: 2px solid var(--mid); o
 .tabs .mark { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .7; }
 .field { display: flex; align-items: center; gap: 8px; color: var(--soft); }
 .field select { width: auto; }
+.field select[hidden] { display: none; }
+.field .only { color: var(--ink); }
+button.link[hidden] { display: none; }
 button.link { padding: 0; border: 0; background: none; color: var(--soft); text-decoration: underline; font-size: .9rem; }
 
 /* The preview and its tools */
