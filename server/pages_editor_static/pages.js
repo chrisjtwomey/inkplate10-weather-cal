@@ -318,6 +318,7 @@
     selected.framing = {x: clamp(f.x, 0, 1), y: clamp(f.y, 0, 1), zoom: clamp(f.zoom, N.minZoom, N.maxZoom)};
     $("zoom").value = Math.log(selected.framing.zoom);
     $("undo-framing").disabled = same(selected.framing, selected.original);
+    if (!same(selected.framing, selected.original)) $("hint").hidden = true;
     drawPhoto();
     clearTimeout(saveTimer);
     if (unsaved()) saveTimer = setTimeout(saveFraming, SAVE_DELAY);
@@ -430,6 +431,7 @@
     const framing = {...CENTRE, ...(photo.framings[pageType()] || {})};
     selected = {id, framing, saved: {...framing}, original: {...framing}, img: null};
     framingStatus("");
+    $("hint").hidden = false;
     drawStrip();
     status("Opening the photo…");
     const img = new Image();

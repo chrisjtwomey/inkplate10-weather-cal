@@ -167,7 +167,8 @@ lays it out.
 Each change to the theme, the map or the list is saved and the page redrawn at
 once, with no restart.
 
-Select a photo in the list to frame it on this page. Drag it to move it, or use
+Select a photo in the list to frame it on this page. A dashed blue outline marks
+the picture area while you frame it. Drag the photo to move it, or use
 the arrow keys (Shift for bigger steps). Pinch, scroll, use the slider or + and
 − to zoom. Double-click or **Centre** to centre it. The framing saves by itself
 a second after you stop, and the page is redrawn; **Undo** puts back the framing

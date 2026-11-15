@@ -205,7 +205,9 @@ def _page(numbers: str) -> str:
   <div class="stage">
     <div class="preview" id="preview">
       <iframe id="page" title="The page" scrolling="no"></iframe>
-      <div class="frame-handle" id="handle" tabindex="0" hidden></div>
+      <div class="frame-handle" id="handle" tabindex="0" aria-label="The photo's framing" hidden>
+        <span class="hint" id="hint">Drag to move · Scroll to zoom</span>
+      </div>
       <img id="panel" alt="The page as the display draws it" hidden>
     </div>
     <div class="side">
@@ -220,8 +222,7 @@ def _page(numbers: str) -> str:
         <ol id="strip"></ol>
       </section>
       <div id="framing-tools" hidden>
-        <p class="help">Drag the photo to move it, or use the arrow keys. Pinch, scroll or use the slider to zoom.
-        Double-click to centre.</p>
+        <p class="help">Arrow keys move; + and − zoom; double-click centres.</p>
         <label>Zoom <input type="range" id="zoom" step="0.01"></label>
         <div class="row"><button type="button" id="centre">Centre</button>
         <button type="button" id="undo-framing">Undo</button></div>

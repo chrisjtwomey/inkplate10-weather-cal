@@ -31,7 +31,14 @@ button.link { padding: 0; border: 0; background: none; color: var(--soft); text-
            border: 1px solid var(--line); background: #fff; }
 .preview iframe { display: block; width: 825px; height: 1200px; border: 0; transform-origin: 0 0; }
 .preview #panel { position: absolute; left: 0; top: 0; }
-.frame-handle { position: absolute; cursor: grab; touch-action: none; outline-offset: -2px; }
+/* The outline sits on the page, which is white in either colour scheme, so one blue serves both. */
+:root { --frame: #1f5fcf; }
+.frame-handle { position: absolute; cursor: grab; touch-action: none;
+                outline: 2px dashed var(--frame); outline-offset: -2px; }
+.frame-handle:focus-visible { outline: 2px solid var(--frame); outline-offset: -2px; }
+.frame-handle .hint { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 3px;
+                      font-size: .85rem; color: #fff; background: var(--frame); pointer-events: none; }
+.frame-handle .hint[hidden] { display: none; }
 .frame-handle:active { cursor: grabbing; }
 .side { flex: 1 1 18rem; max-width: 34rem; display: flex; flex-direction: column; gap: 24px; }
 .side h3 { margin: 0; }
