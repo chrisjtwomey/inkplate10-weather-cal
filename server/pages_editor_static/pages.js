@@ -14,14 +14,16 @@
   // Browsers send a trackpad pinch as a wheel with Ctrl held, in small steps.
   const TRACKPAD_PINCH_RATE = 0.01, SCROLL_ZOOM_RATE = 0.0015;
   const CENTRE = {x: 0.5, y: 0.5, zoom: 1};
+  const SAVE_DELAY = 1000;
   const MARGIN = 16, MIN_SCALE = 0.4;
   const NAMES = {today: "Today", current: "Current", hourly: "Hourly", daily: "Daily", tomorrow: "Tomorrow"};
 
   let settings = {};      // page type -> {theme, photos, map}
   let library = [];       // every photo
   let at = 0;             // which page type
-  let selected = null;    // {id, framing, saved, img, w, h}
+  let selected = null;    // {id, framing, saved, original, img, w, h}
   let panelOn = false;
+  let saveTimer = 0;
 
   const pageType = () => N.pageTypes[at];
   const byId = (id) => library.find((p) => p.id === id);
@@ -36,6 +38,7 @@
     m.hidden = !words;
   }
   const status = (words) => { $("status").textContent = words || ""; };
+  const framingStatus = (words) => { $("framing-status").textContent = words || ""; };
 
   async function call(path, options) {
     let rsp;
@@ -105,8 +108,8 @@
     }
   }
 
-  function step(by) {
-    if (unsaved() && !confirm("Leave this page without saving the framing?")) return;
+  async function step(by) {
+    await saveFraming();
     at = (at + by + N.pageTypes.length) % N.pageTypes.length;
     selected = null;
     showPage();
@@ -281,9 +284,35 @@
   function setFraming(f) {
     selected.framing = {x: clamp(f.x, 0, 1), y: clamp(f.y, 0, 1), zoom: clamp(f.zoom, N.minZoom, N.maxZoom)};
     $("zoom").value = Math.log(selected.framing.zoom);
-    $("save-framing").disabled = same(selected.framing, selected.saved);
+    $("undo-framing").disabled = same(selected.framing, selected.original);
     drawPhoto();
+    clearTimeout(saveTimer);
+    if (unsaved()) saveTimer = setTimeout(saveFraming, SAVE_DELAY);
   }
+
+  // Saves the selected photo's framing on this page, if it changed.
+  async function saveFraming() {
+    clearTimeout(saveTimer);
+    if (!unsaved()) return;
+    const {id} = selected, page = pageType(), framing = {...selected.framing};
+    framingStatus("Saving…");
+    try {
+      await post("pages/photo/" + id + "/framing/" + page, framing);
+      byId(id).framings[page] = framing;
+      if (selected && selected.id === id) selected.saved = framing;
+      framingStatus("Saved. The display gets it at its next wake.");
+      say("");
+    } catch (e) {
+      framingStatus("");
+      say("Framing not saved. " + e.message);
+    }
+  }
+
+  window.addEventListener("pagehide", () => {
+    if (!unsaved()) return;
+    navigator.sendBeacon("pages/photo/" + selected.id + "/framing/" + pageType(),
+                         new Blob([JSON.stringify(selected.framing)], {type: "application/json"}));
+  });
 
   // Screen pixels moved -> the framing that moves the photo with the pointer.
   function moved(dx, dy, from) {
@@ -348,36 +377,26 @@
   $("zoom").addEventListener("input", () => setFraming({...selected.framing, zoom: Math.exp(Number($("zoom").value))}));
   $("centre").addEventListener("click", () => setFraming(CENTRE));
 
-  $("save-framing").addEventListener("click", async () => {
-    try {
-      await post("pages/photo/" + selected.id + "/framing/" + pageType(), selected.framing);
-      selected.saved = {...selected.framing};
-      byId(selected.id).framings[pageType()] = {...selected.framing};
-      $("save-framing").disabled = true;
-      say("Framing saved. The display gets it at its next wake.", "notice");
-      library = (await (await call("photos/list")).json()).photos;
-      drawStrip();
-    } catch (e) { say(e.message); }
-  });
+  $("undo-framing").addEventListener("click", () => setFraming(selected.original));
   $("framing-everywhere").addEventListener("click", async () => {
+    clearTimeout(saveTimer);
     try {
       for (const type of N.pageTypes) {
         await post("pages/photo/" + selected.id + "/framing/" + type, selected.framing);
         byId(selected.id).framings[type] = {...selected.framing};
       }
       selected.saved = {...selected.framing};
-      $("save-framing").disabled = true;
-      say("This framing is now on every page.", "notice");
+      framingStatus("This framing is now on every page.");
     } catch (e) { say(e.message); }
   });
-  window.addEventListener("beforeunload", (event) => { if (unsaved()) event.preventDefault(); });
 
   async function select(id) {
     if (selected && selected.id === id) return;
-    if (unsaved() && !confirm("Open another photo without saving this framing?")) return;
+    await saveFraming();
     const photo = byId(id);
     const framing = {...CENTRE, ...(photo.framings[pageType()] || {})};
-    selected = {id, framing, saved: {...framing}, img: null};
+    selected = {id, framing, saved: {...framing}, original: {...framing}, img: null};
+    framingStatus("");
     drawStrip();
     status("Opening the photo…");
     const img = new Image();

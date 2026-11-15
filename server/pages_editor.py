@@ -225,9 +225,10 @@ def _page(numbers: str) -> str:
         <p class="help">Drag the photo to move it, or use the arrow keys. Pinch, scroll or use the slider to zoom.
         Double-click to centre.</p>
         <label>Zoom <input type="range" id="zoom" step="0.01"></label>
-        <button type="button" id="centre">Centre</button>
+        <div class="row"><button type="button" id="centre">Centre</button>
+        <button type="button" id="undo-framing">Undo</button></div>
         <button type="button" id="framing-everywhere">Use this framing on every page</button>
-        <button type="button" class="primary" id="save-framing">Save framing</button>
+        <p class="help" id="framing-status" aria-live="polite"></p>
       </div>
       <div class="view">
         <label class="switch"><input type="checkbox" id="sample"> Sample weather</label>

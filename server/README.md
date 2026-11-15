@@ -167,9 +167,11 @@ once, with no restart.
 
 Select a photo in the list to frame it on this page. Drag it to move it, or use
 the arrow keys (Shift for bigger steps). Pinch, scroll, use the slider or + and
-− to zoom. Double-click or **Centre** to centre it. **Save framing** keeps it for
-this page; **Use this framing on every page** copies it to the others. The
-editor asks before it drops a framing that is not saved.
+− to zoom. Double-click or **Centre** to centre it. The framing saves by itself
+a second after you stop, and the page is redrawn; **Undo** puts back the framing
+the photo had when you selected it. **Use this framing on every page** copies it
+to the others. While a page is being redrawn, further changes wait and are drawn
+together when it ends.
 
 Under **Photo library**, **Upload photos**, or drop photos on the page, adds
 JPEG, PNG or WebP photos, up to 20 MB and 50 megapixels each. **Delete** takes a

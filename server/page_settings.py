@@ -39,6 +39,8 @@ class LivePages:
         self.server = server
         self._on_change = on_change
         self._lock = threading.Lock()
+        self._redraw_lock = threading.Lock()
+        self._redrawing = {}
 
     def current(self) -> dict:
         return {t: {"theme": self.cfg.page_themes[t], "photos": self.photo_list(self.cfg, t),
@@ -109,16 +111,36 @@ class LivePages:
         self.redraw(changed)
 
     def redraw(self, page_types: list[str]) -> None:
-        """Redraws those pages in the background, so the display gets them at its next wake."""
-        if self.server is not None and page_types:
-            threading.Thread(target=self._redraw, args=(list(page_types),), daemon=True).start()
+        """Redraws those pages in the background, so the display gets them at its next wake.
 
-    def _redraw(self, changed: list[str]) -> None:
-        for page_type in changed:
-            try:
-                self.server.regenerate(only=f"{page_type}.png")
-            except Exception:
-                log.exception("Could not redraw the %s page", page_type)
+        A page has at most one redraw running. Requests that arrive during it make
+        one more redraw when it ends, so a run of small changes costs two redraws.
+        """
+        if self.server is None:
+            return
+        start = []
+        with self._redraw_lock:
+            for page_type in dict.fromkeys(page_types):
+                if page_type in self._redrawing:
+                    self._redrawing[page_type] = True
+                else:
+                    self._redrawing[page_type] = False
+                    start.append(page_type)
+        if start:
+            threading.Thread(target=self._redraw, args=(start,), daemon=True).start()
+
+    def _redraw(self, page_types: list[str]) -> None:
+        for page_type in page_types:
+            again = True
+            while again:
+                try:
+                    self.server.regenerate(only=f"{page_type}.png")
+                except Exception:
+                    log.exception("Could not redraw the %s page", page_type)
+                with self._redraw_lock:
+                    again = self._redrawing.pop(page_type)
+                    if again:
+                        self._redrawing[page_type] = False
 
 
 def pages_blueprint(live: LivePages) -> Blueprint:

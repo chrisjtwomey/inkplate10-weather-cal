@@ -80,6 +80,29 @@ def test_only_the_changed_pages_are_swapped_and_redrawn(setup):
     assert [p.name for p in server.pages][-1] == "tides"
 
 
+def test_changes_during_a_redraw_make_one_more_redraw_not_one_each(setup):
+    live, server, *_ = setup()
+    release = threading.Event()
+    drawing = threading.Event()
+    calls = []
+
+    def slow_regenerate(only=None):
+        calls.append(only)
+        drawing.set()
+        release.wait(5)
+    server.regenerate = slow_regenerate
+    live.redraw(["today"])
+    assert drawing.wait(5)
+    for _ in range(5):
+        live.redraw(["today"])
+    release.set()
+    for _ in range(100):
+        if not live._redrawing:
+            break
+        time.sleep(0.02)
+    assert calls == ["today.png", "today.png"] and not live._redrawing
+
+
 def test_the_first_save_turns_the_old_picture_block_into_photo_lists(setup):
     live, server, photo_pages, path, _ = setup(picture=("today", "hourly"))
     assert live.current()["today"]["photos"] == ["a1", "b2"]
