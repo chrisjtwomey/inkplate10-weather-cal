@@ -28,7 +28,7 @@ from pathlib import Path
 from flask import Blueprint, Response, abort, jsonify, request, send_file, send_from_directory
 from PIL import Image
 
-from photos.picture import MAX_ZOOM, MIN_ZOOM, page_drawing, upright
+from photos.picture import AREA_MIN_ZOOM, MAX_ZOOM, MIN_ZOOM, page_drawing, upright
 from photos.store import Framing, PhotoStore, write_atomically
 
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "pages_editor_static")
@@ -64,7 +64,7 @@ def _framing(given) -> Framing:
         abort(400)
     if not all(math.isfinite(v) for v in (x, y, zoom)) or zoom <= 0:
         abort(400)
-    return Framing(min(max(x, 0.0), 1.0), min(max(y, 0.0), 1.0), min(max(zoom, MIN_ZOOM), MAX_ZOOM))
+    return Framing(min(max(x, 0.0), 1.0), min(max(y, 0.0), 1.0), min(max(zoom, AREA_MIN_ZOOM), MAX_ZOOM))
 
 
 def editor_blueprint(ed: Editor) -> Blueprint:
@@ -87,7 +87,7 @@ def editor_blueprint(ed: Editor) -> Blueprint:
             "pageTypes": list(ed.page_types),
             "themes": {n: {"label": t.label, "pages": list(t.pages)} for n, t in ed.themes.items()},
             "maps": list(ed.map_kinds),
-            "minZoom": MIN_ZOOM, "maxZoom": MAX_ZOOM,
+            "minZoom": AREA_MIN_ZOOM, "maxZoom": MAX_ZOOM, "squareMinZoom": MIN_ZOOM,
         }
         return Response(_page(json.dumps(numbers)), headers={"Cache-Control": "no-store"})
 

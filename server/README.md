@@ -170,7 +170,9 @@ once, with no restart.
 Select a photo in the list to frame it on this page. A dashed blue outline marks
 the picture area while you frame it. Drag the photo to move it, or use
 the arrow keys (Shift for bigger steps). Pinch, scroll, use the slider or + and
-− to zoom. Double-click or **Centre** to centre it. The framing saves by itself
+− to zoom. Double-click or **Centre** to centre it. The photo always covers the
+picture area: it does not zoom out further, or move so that an edge shows. A
+framing that showed an edge is drawn covering the area. The framing saves by itself
 a second after you stop, and the page is redrawn; **Undo** puts back the framing
 the photo had when you selected it. **Use this framing on every page** copies it
 to the others. While a page is being redrawn, further changes wait and are drawn

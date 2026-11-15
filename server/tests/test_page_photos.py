@@ -32,7 +32,7 @@ def store(tmp_path):
 
 # ---------- The maths ----------
 
-@pytest.mark.parametrize("framing", [Framing(), Framing(0.3, 0.6, 1.7), Framing(0.8, 0.2, 0.6)])
+@pytest.mark.parametrize("framing", [Framing(), Framing(0.3, 0.6, 1.7), Framing(0.55, 0.45, 2.0)])
 @pytest.mark.parametrize("box", [WIDE, TALL])
 def test_an_old_framing_converted_for_a_page_places_the_photo_the_same(framing, box):
     size = (4000, 3000)
@@ -49,6 +49,24 @@ def test_area_zoom_1_just_covers_the_area_with_the_point_at_its_centre():
     assert p.scale == pytest.approx(max(width / 400, height / 300))
     centre_x = 600 + (0.5 - p.x) * 400 * p.scale
     assert centre_x == pytest.approx((WIDE[0] + WIDE[2]) / 2)
+
+
+@pytest.mark.parametrize("box", [WIDE, TALL])
+@pytest.mark.parametrize("framing", [Framing(0.5, 0.5, 0.6), Framing(0.9, 0.5, 1.0), Framing(0.0, 1.0, 1.4),
+                                     Framing(1.0, 0.0, 8.0)])
+def test_a_page_framing_always_covers_the_picture_area(framing, box):
+    size = (400, 300)
+    p = pic.area_placement(framing, size, box)
+    left = pic.SIZE / 2 - p.x * size[0] * p.scale
+    top = pic.SIZE / 2 - p.y * size[1] * p.scale
+    right, bottom = left + size[0] * p.scale, top + size[1] * p.scale
+    assert left <= box[0] + 1e-6 and top <= box[1] + 1e-6
+    assert right >= box[2] - 1e-6 and bottom >= box[3] - 1e-6
+
+
+def test_a_framing_that_covers_the_area_is_kept_as_it_is():
+    f = Framing(0.45, 0.55, 1.5)
+    assert pic.covering(f, (400, 300), WIDE) == f
 
 
 # ---------- Pictures per page ----------

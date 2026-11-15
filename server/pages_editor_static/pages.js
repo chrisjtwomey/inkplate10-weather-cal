@@ -217,6 +217,29 @@
     return {x: f.x + (SIZE / 2 - (l + r) / 2) / (w * scale), y: f.y + (SIZE / 2 - (t + b) / 2) / (h * scale), scale};
   }
 
+  // As photos/picture.py covering: zoomed and moved only as far as keeps the area covered.
+  function covering(f, w, h, box) {
+    if (!box) return {x: clamp(f.x, 0, 1), y: clamp(f.y, 0, 1), zoom: clamp(f.zoom, N.minZoom, N.maxZoom)};
+    const [l, t, r, b] = box;
+    const zoom = clamp(f.zoom, N.minZoom, N.maxZoom);
+    const scale = zoom * Math.max((r - l) / w, (b - t) / h);
+    const mx = (r - l) / (2 * w * scale), my = (b - t) / (2 * h * scale);
+    return {x: clamp(f.x, mx, 1 - mx), y: clamp(f.y, my, 1 - my), zoom};
+  }
+
+  // As photos/picture.py area_framing: a framing relative to the square, made relative to the area.
+  function areaFraming(f, w, h, box) {
+    const [l, t, r, b] = box;
+    const scale = clamp(f.zoom, N.squareMinZoom, N.maxZoom) * Math.max(SIZE / w, SIZE / h);
+    return {x: f.x + ((l + r) / 2 - SIZE / 2) / (w * scale), y: f.y + ((t + b) / 2 - SIZE / 2) / (h * scale),
+            zoom: scale / Math.max((r - l) / w, (b - t) / h)};
+  }
+
+  const currentBox = () => {
+    const parts = pictureParts();
+    return parts && areaBox(parts);
+  };
+
   let drawing = false, again = false;
   function drawPhoto() {
     if (drawing) { again = true; return; }
@@ -315,7 +338,8 @@
   }
 
   function setFraming(f) {
-    selected.framing = {x: clamp(f.x, 0, 1), y: clamp(f.y, 0, 1), zoom: clamp(f.zoom, N.minZoom, N.maxZoom)};
+    if (!selected.img) return;
+    selected.framing = covering(f, selected.w, selected.h, currentBox());
     $("zoom").value = Math.log(selected.framing.zoom);
     $("undo-framing").disabled = same(selected.framing, selected.original);
     if (!same(selected.framing, selected.original)) $("hint").hidden = true;
@@ -428,8 +452,7 @@
     if (selected && selected.id === id) return;
     await saveFraming();
     const photo = byId(id);
-    const framing = {...CENTRE, ...(photo.framings[pageType()] || {})};
-    selected = {id, framing, saved: {...framing}, original: {...framing}, img: null};
+    selected = {id, framing: CENTRE, saved: CENTRE, original: CENTRE, img: null};
     framingStatus("");
     $("hint").hidden = false;
     drawStrip();
@@ -438,7 +461,10 @@
     img.src = "pages/photo/" + id + ".jpg";
     await img.decode();
     if (!selected || selected.id !== id) return;
-    Object.assign(selected, {img, w: img.naturalWidth, h: img.naturalHeight});
+    const w = img.naturalWidth, h = img.naturalHeight, box = currentBox();
+    const own = photo.framings[pageType()];
+    const framing = covering(own || areaFraming(photo.framing, w, h, box), w, h, box);
+    Object.assign(selected, {img, w, h, framing, saved: framing, original: framing});
     status("");
     $("framing-tools").hidden = false;
     setFraming(framing);

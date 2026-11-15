@@ -1,5 +1,6 @@
-"""A photo as the pages show it: framed onto the map image's square, in our
-pencil effect, and kept until its framing changes."""
+"""A photo as the pages show it: framed into each page's picture area on the
+map image's square, always covering the area, in our pencil effect, and kept
+until its framing changes."""
 import hashlib
 import io
 import json
@@ -15,9 +16,11 @@ from .store import Framing, Photo, PhotoStore, write_atomically
 # The pages show the photo where they show the map image: a 1200 x 1200 square.
 SIZE = 1200
 MIN_ZOOM, MAX_ZOOM = 0.5, 8.0
+# A page's framing never zooms out past just covering its picture area.
+AREA_MIN_ZOOM = 1.0
 GREYS = (0, 85, 170, 255)
 # Raise when the effect changes, so every kept picture is made again.
-EFFECT_VERSION = 1
+EFFECT_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -41,10 +44,21 @@ def square_placement(framing: Framing, size: tuple) -> Placement:
     return Placement(f.x, f.y, f.zoom * max(SIZE / size[0], SIZE / size[1]))
 
 
+def covering(framing: Framing, size: tuple, box: tuple) -> Framing:
+    """``framing``, relative to the area ``box``, zoomed and moved only as far as
+    keeps the photo covering the area, so no white edge shows."""
+    left, top, right, bottom = box
+    zoom = min(max(framing.zoom, AREA_MIN_ZOOM), MAX_ZOOM)
+    scale = zoom * max((right - left) / size[0], (bottom - top) / size[1])
+    margin_x, margin_y = (right - left) / (2 * size[0] * scale), (bottom - top) / (2 * size[1] * scale)
+    return Framing(min(max(framing.x, margin_x), 1 - margin_x), min(max(framing.y, margin_y), 1 - margin_y), zoom)
+
+
 def area_placement(framing: Framing, size: tuple, box: tuple) -> Placement:
     """A framing relative to a picture area ``box`` (left, top, right, bottom)
-    of the square: zoom 1 just covers the area, and the point sits at its centre."""
-    f = _clamped(framing)
+    of the square: zoom 1 just covers the area, and the point sits at its centre.
+    The photo always covers the area (``covering``)."""
+    f = covering(framing, size, box)
     left, top, right, bottom = box
     scale = f.zoom * max((right - left) / size[0], (bottom - top) / size[1])
     return Placement(f.x + (SIZE / 2 - (left + right) / 2) / (size[0] * scale),
@@ -105,13 +119,17 @@ def drawing(store: PhotoStore, photo: Photo, framing: Framing) -> bytes:
         return _png(pencil(framed(img, framing)))
 
 
+def page_framing(photo: Photo, page_type: str, size: tuple, box: tuple) -> Framing:
+    """The photo's framing on ``page_type``, relative to its area ``box``: the
+    page's own, else the photo's framing for every page, converted."""
+    return photo.framings.get(page_type) or area_framing(photo.framing, size, box)
+
+
 def page_drawing(store: PhotoStore, photo: Photo, page_type: str, box: tuple) -> bytes:
-    """``photo`` as ``page_type`` shows it in its picture area ``box``, in pencil,
-    as PNG: by the page's own framing, else by the photo's framing for every page."""
+    """``photo`` as ``page_type`` shows it in its picture area ``box``, in pencil, as PNG."""
     with Image.open(store.path(photo.id)) as img:
         img = upright(img)
-        own = photo.framings.get(page_type)
-        placement = area_placement(own, img.size, box) if own else square_placement(photo.framing, img.size)
+        placement = area_placement(page_framing(photo, page_type, img.size, box), img.size, box)
         return _png(pencil(placed(img, placement)))
 
 
