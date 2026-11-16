@@ -231,3 +231,27 @@ def test_a_bad_pages_photos_or_map_is_a_clear_error(block, words, caplog):
     with pytest.raises(SystemExit):
         validate_config(c)
     assert words in caplog.text
+
+
+def test_a_picture_size_belongs_to_a_theme_and_a_page():
+    assert validate_config(base()).picture_sizes == {}
+    c = base()
+    c["themes"] = {"classic": {"today": {"picture_size": 55}, "hourly": {}}}
+    assert validate_config(c).picture_sizes == {"classic": {"today": 55}}
+
+
+@pytest.mark.parametrize("themes, words", [
+    ({"neon": {"today": {"picture_size": 50}}}, "themes.neon: no such theme (choose from: classic)"),
+    ({"classic": {"weekly": {"picture_size": 50}}}, "themes.classic.weekly: the theme has no such page"),
+    ({"classic": {"today": 50}}, "themes.classic.today must hold settings, such as picture_size: 50"),
+    ({"classic": {"today": {"picture_size": 0}}}, "themes.classic.today.picture_size must be a percent"),
+    ({"classic": {"today": {"picture_size": True}}}, "themes.classic.today.picture_size must be a percent"),
+    ({"classic": ["today"]}, "themes.classic must name pages"),
+    (["classic"], "themes must name themes"),
+])
+def test_a_bad_picture_size_is_a_clear_error(themes, words, caplog):
+    c = base()
+    c["themes"] = themes
+    with pytest.raises(SystemExit):
+        validate_config(c)
+    assert words in caplog.text

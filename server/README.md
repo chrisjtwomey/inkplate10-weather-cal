@@ -39,6 +39,7 @@ cp config.example.yaml config.yaml
 | `pages.today.theme`, `.current.theme`, `.hourly.theme`, `.daily.theme`, `.tomorrow.theme` | `classic` | The page's layout and its words. `classic` is the only theme for now. Set in the [Pages](#pages) editor. |
 | `pages.<page>.photos` | – | The page's own photos, by id, one each day in this order. Without it, the page shows its map. Set in the [Pages](#pages) editor. |
 | `pages.<page>.map` | `classic` | The kind of map the page shows when it has no photos. `classic` is the only kind for now. |
+| `themes.<theme>.<page>.picture_size` | the theme's own | How tall the page's picture is in that theme, as a percent of `image.innerHeight`. Each theme keeps its own size for each page, and holds it inside the range the theme allows. Classic's today, current and tomorrow pages take from 34% to 54% on a bare panel (42% by default): the picture stops where the page's footer starts, above the faint weather icon. The picture's fade keeps its height, and the text moves down with it, so the text keeps its contrast; the text may run into the footer. Classic's hourly and daily pages keep a fixed size. |
 | `image.width`, `image.height` | `825`, `1200` | The page size in pixels: the Inkplate 10's panel, upright. |
 | `image.innerWidth`, `image.innerHeight` | the page size | The area the content fits in. See [Fitting a photo mat](#fitting-a-photo-mat). |
 | `image.innerAlignX`, `image.innerAlignY` | `center` | Where that area sits: `left`, `center` or `right`; `top`, `center` or `bottom`. |

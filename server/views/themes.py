@@ -38,10 +38,16 @@ class PictureArea:
     largest: float
     centre: float
 
-    def box(self, inner_width: int, inner_height: int, height: float | None = None) -> tuple:
+    def pixels(self, inner_width: int, inner_height: int, percent: float | None = None) -> float:
+        """The area's height in pixels: ``percent`` of the inner height, held inside
+        the range, or the default when it is None."""
+        across = inner_width if self.of == "width" else inner_height
+        share = self.height if percent is None else percent / 100 * inner_height / across
+        return min(max(share, self.smallest), self.largest) * across
+
+    def box(self, inner_width: int, inner_height: int, percent: float | None = None) -> tuple:
         """The part of the picture square the area shows, as (left, top, right, bottom)."""
-        share = min(max(self.height if height is None else height, self.smallest), self.largest)
-        tall = share * (inner_width if self.of == "width" else inner_height)
+        tall = self.pixels(inner_width, inner_height, percent)
         left, right = SQUARE / 2 - inner_width / 2, SQUARE / 2 + inner_width / 2
         return left, SQUARE / 2 - self.centre * tall, right, SQUARE / 2 + (1 - self.centre) * tall
 
@@ -56,7 +62,9 @@ class Theme:
 
 
 # Classic: simplified.css sets the picture pages' area, styles.css the detail pages'.
-CLASSIC_PICTURE = PictureArea(PICTURE, "width", 0.606061, 0.5, 1.0, 0.30)
+# A picture page's footer starts 650 px down at 825 px wide; the picture stops there.
+CLASSIC_FOOTER = 0.787879
+CLASSIC_PICTURE = PictureArea(PICTURE, "width", 0.606061, 0.5, CLASSIC_FOOTER, 0.30)
 CLASSIC_DETAIL = PictureArea(DETAIL, "height", 0.55, 0.55, 0.55, 0.50)
 
 
@@ -78,8 +86,10 @@ def page_class(theme: str, page_type: str):
     return THEMES[theme].pages[page_type]
 
 
-def picture_box(theme: str, page_type: str, inner_width: int, inner_height: int) -> tuple | None:
+def picture_box(theme: str, page_type: str, inner_width: int, inner_height: int,
+                percent: float | None = None) -> tuple | None:
     """Where ``page_type``'s picture area sits on the picture square in ``theme``,
-    as (left, top, right, bottom), or None when the page has no picture area."""
+    as (left, top, right, bottom), at ``percent`` of the inner height or the
+    theme's default; None when the page has no picture area."""
     area = THEMES[theme].areas.get(page_type)
-    return area.box(inner_width, inner_height) if area else None
+    return area.box(inner_width, inner_height, percent) if area else None

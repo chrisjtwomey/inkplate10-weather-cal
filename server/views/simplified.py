@@ -35,7 +35,7 @@ class SimplifiedPage(Page):
                 a.link(rel="stylesheet", href="styles.css")
                 a.link(rel="stylesheet", href="simplified.css")
 
-            with a.body(style=self.layout_css_variables()):
+            with a.body(style=self.layout_css_variables() + self.picture_css_variables()):
                 with a.div(klass="inner-canvas-outer"):
                     with a.div(klass="inner-canvas"):
                         with a.div(klass="inner-canvas-content"):

@@ -17,14 +17,26 @@ PNG_DIR = _VIEWS_DIR
 
 
 PICTURES = ("map", "photos")
+
+
 class Page(_Page):
-    def __init__(self, name, *geometry, picture="map", words: Words = CLASSIC, **kwargs):
+    def __init__(self, name, *geometry, picture="map", words: Words = CLASSIC,
+                 picture_height: float | None = None, default_picture_height: float | None = None, **kwargs):
         # kwargs lets a caller pass renderer= / quantiser= through unchanged.
         super().__init__(name, *geometry, html_dir=HTML_DIR, png_dir=PNG_DIR, **kwargs)
         self.picture = picture
         self.words = words
+        self.picture_height, self.default_picture_height = picture_height, default_picture_height
         if picture == "photos":
             self.requires = (*type(self).requires, "photo_urls")
+
+    def picture_css_variables(self) -> str:
+        """The picture area's height in pixels, and how far it grew past the theme's
+        default, as CSS custom properties; empty at the default height."""
+        if self.picture_height is None or self.picture_height == self.default_picture_height:
+            return ""
+        grow = self.picture_height - (self.default_picture_height or self.picture_height)
+        return f"--picture-height:{self.picture_height:.2f}px;--picture-grow:{grow:.2f}px;"
 
     def picture_url(self, data) -> str:
         """Today's photo when this page shows photos and one is ready, else the map."""

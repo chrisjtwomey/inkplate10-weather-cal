@@ -71,6 +71,16 @@ def test_a_save_writes_only_the_pages_block_and_keeps_the_rest(setup):
     assert photo_pages == {"hourly": ["a1"]} and seen and seen[-1].page_photos["hourly"] == ["a1"]
 
 
+def test_a_picture_size_is_saved_under_the_pages_theme_and_redraws_it(setup):
+    live, server, *_ = setup()
+    changed = live.save({"today": {"picture_size": 60}})
+    _wait(server, 1)
+    saved = yaml.safe_load(open(live.config_path).read())
+    assert saved["themes"] == {"classic": {"today": {"picture_size": 60}}} and "today" not in saved.get("pages", {})
+    assert changed == ["today"] and server.redrawn == ["today.png"]
+    assert live.current()["today"]["picture_size"] == 60 and live.current()["current"]["picture_size"] is None
+
+
 def test_only_the_changed_pages_are_swapped_and_redrawn(setup):
     live, server, *_ = setup()
     live.save({"today": {"photos": ["b2"]}, "daily": {"theme": "classic"}})
@@ -121,6 +131,8 @@ def test_the_first_save_turns_the_old_picture_block_into_photo_lists(setup):
     ({"today": {"photos": "a1"}}, "pages.today.photos must be a list of photo ids"),
     ({"weekly": {"theme": "classic"}}, "weekly: no such page"),
     ({"today": "classic"}, "today: the settings must be a mapping"),
+    ({"today": {"picture_size": 150}}, "themes.classic.today.picture_size must be a percent"),
+    ({"today": {"picture_size": "big"}}, "themes.classic.today.picture_size must be a percent"),
 ])
 def test_a_bad_change_is_refused_and_nothing_is_written(setup, change, words):
     live, server, photo_pages, path, _ = setup()
@@ -144,7 +156,8 @@ def test_the_routes_read_and_save(setup):
     app = Flask(__name__)
     app.register_blueprint(pages_blueprint(live))
     client = app.test_client()
-    assert client.get("/pages/settings").get_json()["pages"]["today"] == {"theme": "classic", "photos": [], "map": "classic"}
+    assert client.get("/pages/settings").get_json()["pages"]["today"] == {"theme": "classic", "photos": [], "map": "classic",
+                                                                         "picture_size": None}
     rsp = client.post("/pages/settings", json={"current": {"photos": ["b2"]}})
     assert rsp.status_code == 200 and rsp.get_json()["changed"] == ["current"]
     assert rsp.get_json()["pages"]["current"]["photos"] == ["b2"]

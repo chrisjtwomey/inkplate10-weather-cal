@@ -19,9 +19,10 @@
   z-index: 0;
 }
 
-/* Taller map that bleeds further into the content area */
+/* Taller map that bleeds further into the content area. --picture-height is the
+   size set for the page; the content below moves down by --picture-grow. */
 #map-container {
-  height: calc(var(--inner-vw) * 60.6061);
+  height: var(--picture-height, calc(var(--inner-vw) * 60.6061));
   z-index: 0; /* reset the -1 from styles.css so fade/header stack correctly */
 }
 
@@ -29,14 +30,15 @@
   top: 30%;
 }
 
-/* Fade-to-white at the bottom of the map */
+/* Fade-to-white at the bottom of the map: a fixed height, so the text below keeps
+   its place on the fade whatever the picture's height */
 #map-container::after {
   content: '';
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60%;
+  height: calc(var(--inner-vw) * 36.3636);
   background: linear-gradient(to bottom, transparent 0%, var(--color-paper) 100%);
   pointer-events: none;
   z-index: 1;
@@ -45,7 +47,7 @@
 /* ── Content section ── */
 #day-body {
   position: absolute;
-  top: 13%;
+  top: calc(13% + var(--picture-grow, 0px));
   left: 0;
   right: 0;
   padding: 0 calc(var(--inner-vw) * 3);

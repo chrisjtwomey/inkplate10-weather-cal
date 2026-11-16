@@ -43,11 +43,12 @@ log = logging.getLogger("server")
 PAGE_NAMES = PAGE_TYPES
 MAP_KINDS = ("classic",)
 PAGES = dict(THEMES[DEFAULT_THEME].pages)
-def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None, themes=lambda: {}):
+def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=None, themes=lambda: {},
+                   sizes=lambda name: {}):
     """A function that draws a page type with a given picture, into its own files so
     the display's pages stay as they are. It raises LookupError when the page is
     not drawn now. ``themes()`` gives each page type's theme; a type missing from
-    it is Classic."""
+    it is Classic. ``sizes(page_type)`` gives its picture height arguments."""
     lock = threading.Lock()
 
     def preview(name: str, picture_url: str) -> bytes:
@@ -55,7 +56,7 @@ def page_previewer(geometry: dict, sources: list, preview_dir: str, renderer=Non
         with lock:
             theme = themes().get(name, DEFAULT_THEME)
             page = page_class(theme, name)(**geometry, picture="photos", renderer=renderer,
-                                           words=THEMES[theme].words)
+                                           words=THEMES[theme].words, **sizes(name))
             page.page_type, page.name, page.png_dir = name, f"preview-{name}", preview_dir
             try:
                 page.template(**{k: {name: picture_url} if k == "photo_urls" else data[k]() for k in page.requires})
@@ -115,6 +116,7 @@ class ServerConfig:
     page_themes: dict[str, str]  # page type -> a theme in views.themes.THEMES
     page_photos: dict  # page type -> its photo ids in order, or None when not set
     page_maps: dict[str, str]  # page type -> one of MAP_KINDS
+    picture_sizes: dict  # theme -> {page type: percent of image.innerHeight}, only those set
     logs_path: str            # the boards' log lines, relative to this folder
     logs_days: float          # how long a line is kept
 
@@ -216,6 +218,30 @@ def load_settings(config: dict) -> ServerConfig:
     if unknown:
         raise ConfigError(f"pages.{unknown[0]}: no such page (choose from: {', '.join(PAGE_TYPES)})")
 
+    # ---- themes: each theme's layout of each page ----
+    themes = get_prop(config, "themes", required=False, default=None) or {}
+    if not isinstance(themes, dict):
+        raise ConfigError(f"themes must name themes, such as classic: {{today: {{picture_size: 50}}}} (got {themes!r})")
+    picture_sizes = {}
+    for theme, layouts in themes.items():
+        if theme not in THEMES:
+            raise ConfigError(f"themes.{theme}: no such theme (choose from: {', '.join(THEMES)})")
+        if not isinstance(layouts, dict):
+            raise ConfigError(f"themes.{theme} must name pages, such as today: {{picture_size: 50}} (got {layouts!r})")
+        for page_type, layout in layouts.items():
+            if page_type not in THEMES[theme].pages:
+                raise ConfigError(f"themes.{theme}.{page_type}: the theme has no such page")
+            if not isinstance(layout, dict):
+                raise ConfigError(f"themes.{theme}.{page_type} must hold settings, such as picture_size: 50 "
+                                  f"(got {layout!r})")
+            if "picture_size" not in layout:
+                continue
+            size = layout["picture_size"]
+            if isinstance(size, bool) or not isinstance(size, (int, float)) or not 1 <= size <= 100:
+                raise ConfigError(f"themes.{theme}.{page_type}.picture_size must be a percent of "
+                                  f"image.innerHeight, from 1 to 100 (got {size!r})")
+            picture_sizes.setdefault(theme, {})[page_type] = size
+
     # ---- logs: the boards' log lines, kept on disk ----
     logs_path = str(get_prop_by_keys(config, "logs", "path", default="data/board-logs.db",
                                      required=False))
@@ -238,6 +264,7 @@ def load_settings(config: dict) -> ServerConfig:
         page_themes=page_themes,
         page_photos=page_photos,
         page_maps=page_maps,
+        picture_sizes=picture_sizes,
         logs_path=logs_path,
         logs_days=float(logs_days),
     )
@@ -305,19 +332,37 @@ def main():
                    if cfg.page_photos[name] or (cfg.page_photos[name] is None and cfg.pictures[name] == "photos")}
     running = {"cfg": cfg}      # the settings the pages run on; LivePages replaces them on a save
 
+    image = cfg.core.image
+
+    def picture_size(settings, name: str):
+        """The page's picture size in its theme, as a percent of image.innerHeight, or None."""
+        theme = settings.page_themes[name]
+        return settings.picture_sizes.get(theme, {}).get(name)
+
+    def sizes(settings, name: str) -> dict:
+        """The page's picture height and its theme's default, in pixels, for its Page."""
+        area = THEMES[settings.page_themes[name]].areas.get(name)
+        if area is None:
+            return {}
+        return {"picture_height": area.pixels(image.inner_width, image.inner_height, picture_size(settings, name)),
+                "default_picture_height": area.pixels(image.inner_width, image.inner_height)}
+
+    def box(name: str):
+        """The page's picture area on the picture square, at its size now."""
+        settings = running["cfg"]
+        return picture_box(settings.page_themes[name], name, image.inner_width, image.inner_height,
+                           picture_size(settings, name))
+
     def make_page(name: str, settings):
         theme = settings.page_themes[name]
         return page_class(theme, name)(**geometry, picture="photos" if name in photo_pages else "map",
-                                       words=THEMES[theme].words)
+                                       words=THEMES[theme].words, **sizes(settings, name))
 
     pages = [make_page(name, cfg) for name in PAGE_TYPES]
     photo_store = PhotoStore(os.path.join(cwd, "data", "photos"))
     # Each fetches at the first render that needs it, after the server is up.
     # Each page declares what it needs in Page.requires.
-    image = cfg.core.image
-    photo_source = PhotoSource(
-        photo_store, page_sets=lambda: photo_pages,
-        boxes=lambda name: picture_box(running["cfg"].page_themes[name], name, image.inner_width, image.inner_height))
+    photo_source = PhotoSource(photo_store, page_sets=lambda: photo_pages, boxes=box)
     sources = [StaticMapSource(map_cache, cfg.location), weather_svc, photo_source]
     try:
         mods = load_mods(os.path.join(cwd, "mods"), os.path.join(cwd, "data", "mods"), config, geometry, pages, sources)
@@ -371,7 +416,8 @@ def main():
         live_keys=NETWORK_KEYS, take_live=take_network, links=(("pages", "Pages"), ("install", "Install firmware")),
         password_env=PASSWORD_ENV))
     previewer = page_previewer(geometry, sources, os.path.join(cwd, "data", "photos", "previews"),
-                               themes=lambda: running["cfg"].page_themes)
+                               themes=lambda: running["cfg"].page_themes,
+                               sizes=lambda name: sizes(running["cfg"], name))
     live = LivePages(cfg, config_path, load_settings, lambda text: check_config(text, load_settings, served),
                      make_page, photo_pages, lambda: [p.id for p in photo_store.the_set()], server=server,
                      on_change=lambda settings: running.update(cfg=settings))
@@ -380,14 +426,12 @@ def main():
         photo_store, picture_box(DEFAULT_THEME, "today", image.inner_width, image.inner_height),
         photo_source.today_and_tomorrow))
 
-    def box(name: str):
-        return picture_box(running["cfg"].page_themes[name], name, image.inner_width, image.inner_height)
-
     def page_html(name: str, sample: bool) -> str:
         """The page's HTML for the editor, with the editor's addresses for its pictures."""
         settings = running["cfg"]
         theme = settings.page_themes[name]
-        page = page_class(theme, name)(**geometry, picture="photos", words=THEMES[theme].words)
+        page = page_class(theme, name)(**geometry, picture="photos", words=THEMES[theme].words,
+                                       **sizes(settings, name))
         if sample:
             data = _create_weather_service("mock", location=settings.location,
                                            num_hours=settings.num_hourly_forecasts or 6,

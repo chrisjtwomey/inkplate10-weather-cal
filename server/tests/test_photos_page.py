@@ -13,7 +13,7 @@ from PIL import Image
 import server
 from epd_server.source import StaticSource
 from photos import Framing, PhotoStore, photos_blueprint
-from views.themes import CLASSIC_DETAIL, CLASSIC_PICTURE, picture_box
+from views.themes import CLASSIC_DETAIL, CLASSIC_PICTURE, SQUARE, THEMES, picture_box
 from weather.registry import create
 
 HTML = Path(__file__).parent.parent / "views" / "html"
@@ -114,7 +114,7 @@ def _css_number(file, pattern):
 
 
 def test_classics_picture_areas_follow_its_css():
-    assert _css_number("simplified.css", r"#map-container \{[^}]*height: calc\(var\(--inner-vw\) \* ([\d.]+)\)") / 100 \
+    assert _css_number("simplified.css", r"#map-container \{[^}]*height: var\(--picture-height, calc\(var\(--inner-vw\) \* ([\d.]+)\)\)") / 100 \
         == pytest.approx(CLASSIC_PICTURE.height)
     assert _css_number("simplified.css", r"#map \{[^}]*top: ([\d.]+)%") / 100 == CLASSIC_PICTURE.centre
     assert _css_number("styles.css", r"--map-height: ([\d.]+)%") / 100 == CLASSIC_DETAIL.height
@@ -126,11 +126,24 @@ def test_classics_picture_areas_are_the_rows_the_pages_show_at_the_panels_size()
     assert [round(v) for v in picture_box("classic", "hourly", 825, 1200)] == [188, 270, 1012, 930]
 
 
+def test_a_picture_size_is_a_percent_of_the_inner_height():
+    assert CLASSIC_PICTURE.pixels(825, 1100, 55) == pytest.approx(605)
+    assert CLASSIC_PICTURE.pixels(825, 1100) == pytest.approx(0.606061 * 825)
+
+
+@pytest.mark.parametrize("inner", [(825, 1200), (825, 1100)])
+def test_the_map_covers_every_picture_area_at_its_largest(inner):
+    for theme in THEMES.values():
+        for area in theme.areas.values():
+            left, top, right, bottom = area.box(*inner, 100)
+            assert left >= 0 and top >= 0 and right <= SQUARE and bottom <= SQUARE
+
+
 def test_a_picture_area_keeps_its_height_inside_its_range():
     height = lambda box: box[3] - box[1]
-    assert height(CLASSIC_PICTURE.box(825, 1200, 5.0)) == pytest.approx(CLASSIC_PICTURE.largest * 825)
-    assert height(CLASSIC_PICTURE.box(825, 1200, 0.0)) == pytest.approx(CLASSIC_PICTURE.smallest * 825)
-    assert CLASSIC_DETAIL.box(825, 1200, 0.9) == CLASSIC_DETAIL.box(825, 1200)
+    assert height(CLASSIC_PICTURE.box(825, 1200, 500)) == pytest.approx(CLASSIC_PICTURE.largest * 825)
+    assert height(CLASSIC_PICTURE.box(825, 1200, 0)) == pytest.approx(CLASSIC_PICTURE.smallest * 825)
+    assert CLASSIC_DETAIL.box(825, 1200, 90) == CLASSIC_DETAIL.box(825, 1200)
 
 
 # ---------- Thumbnails ----------

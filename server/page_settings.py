@@ -1,9 +1,11 @@
-"""Each page's theme, photos and map, changed while the server runs: written to
-the pages block of config.yaml and applied at once, with a redraw of the
-changed pages and no restart.
+"""Each page's theme, photos, map and picture size, changed while the server runs:
+written to the pages and themes blocks of config.yaml and applied at once, with a
+redraw of the changed pages and no restart.
 
-    GET  /pages/settings     each page type's theme, photos and map
-    POST /pages/settings     JSON {page type: {"theme", "photos", "map"}}: save and apply
+    GET  /pages/settings     each page type's theme, photos, map and picture size
+    POST /pages/settings     JSON {page type: {"theme", "photos", "map", "picture_size"}}: save and apply
+
+The picture size belongs to the page's theme: it is saved under themes.<theme>.<page>.
 
 The server's sign-in covers these routes, and its Origin check covers each change.
 """
@@ -44,7 +46,13 @@ class LivePages:
 
     def current(self) -> dict:
         return {t: {"theme": self.cfg.page_themes[t], "photos": self.photo_list(self.cfg, t),
-                    "map": self.cfg.page_maps[t]} for t in self.cfg.page_themes}
+                    "map": self.cfg.page_maps[t], "picture_size": self.picture_size(self.cfg, t)}
+                for t in self.cfg.page_themes}
+
+    @staticmethod
+    def picture_size(cfg, page_type: str):
+        """The page's picture size in its theme, as a percent of image.innerHeight, or None."""
+        return cfg.picture_sizes.get(cfg.page_themes[page_type], {}).get(page_type)
 
     def photo_list(self, cfg, page_type: str) -> list[str]:
         """The page's photos as ids: its own list, else the included photos when its
@@ -75,6 +83,9 @@ class LivePages:
                 for key, value in (("theme", given.get("theme")), ("photos", photos), ("map", given.get("map"))):
                     if value is not None:
                         doc.set(("pages", page_type, key), value)
+                if given.get("picture_size") is not None:
+                    theme = given.get("theme") or self.cfg.page_themes[page_type]
+                    doc.set(("themes", theme, page_type, "picture_size"), given["picture_size"])
             unknown = sorted(set(changes) - set(self.cfg.page_themes))
             if unknown:
                 raise ValueError(f"{unknown[0]}: no such page")
@@ -93,7 +104,8 @@ class LivePages:
             return changed
 
     def _settings_of(self, cfg, page_type: str) -> tuple:
-        return cfg.page_themes[page_type], tuple(self.photo_list(cfg, page_type)), cfg.page_maps[page_type]
+        return (cfg.page_themes[page_type], tuple(self.photo_list(cfg, page_type)), cfg.page_maps[page_type],
+                self.picture_size(cfg, page_type))
 
     def _apply(self, changed: list[str]) -> None:
         for page_type in self.cfg.page_themes:
