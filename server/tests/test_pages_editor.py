@@ -65,7 +65,8 @@ def parts(tmp_path):
         return b"\x89PNG-" + name.encode()
 
     ed = Editor(live, store, HTML_DIR, page_html, lambda: str(map_png), lambda name: None, render,
-                lambda name: BOX, themes=THEMES, page_types=PAGE_TYPES, map_kinds=("classic",))
+                lambda name: BOX, themes=THEMES, page_types=PAGE_TYPES, map_kinds=("classic",),
+                inner=(825, 1200))
     app = Flask(__name__)
     app.register_blueprint(editor_blueprint(ed))
     return app.test_client(), store, live, rendered
@@ -78,6 +79,9 @@ def test_the_editor_names_the_page_types_themes_and_maps(parts):
     assert numbers["pageTypes"] == list(PAGE_TYPES) and numbers["maps"] == ["classic"]
     assert numbers["themes"]["classic"] == {"label": "Classic", "pages": list(PAGE_TYPES)}
     assert soup.find("script", src="pages/assets/pages.js") and soup.find("a", href="settings")
+    sizes = numbers["sizes"]["classic"]
+    assert set(sizes) == {"today", "current", "tomorrow"}
+    assert (sizes["today"]["min"], sizes["today"]["default"], sizes["today"]["max"]) == (34.4, 41.7, 66.7)
     for name in ("pages.js", "pages.css"):
         assert client.get(f"/pages/assets/{name}").status_code == 200
 
@@ -88,7 +92,8 @@ def test_a_page_view_is_its_html_with_its_files_beside_it(parts):
     assert rsp.status_code == 200 and b'data-sample="True"' in rsp.data and b"photo-hourly.png" in rsp.data
     assert b"is not drawn now" in client.get("/pages/view/daily.html").data
     assert client.get("/pages/view/weekly.html").status_code == 404
-    assert client.get("/pages/view/styles.css").status_code == 200
+    styles = client.get("/pages/view/styles.css")
+    assert styles.status_code == 200 and styles.cache_control.max_age == 0
     assert client.get("/pages/view/map.png").status_code == 200
     assert client.get("/pages/view/photo-today.png").data == client.get("/pages/view/map.png").data
 

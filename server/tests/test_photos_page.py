@@ -5,6 +5,7 @@ import json
 import os
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from flask import Flask
@@ -13,6 +14,7 @@ from PIL import Image
 import server
 from epd_server.source import StaticSource
 from photos import Framing, PhotoStore, photos_blueprint
+from views.page import Page
 from views.themes import CLASSIC_DETAIL, CLASSIC_PICTURE, SQUARE, THEMES, picture_box
 from weather.registry import create
 
@@ -144,6 +146,13 @@ def test_a_picture_area_keeps_its_height_inside_its_range():
     assert height(CLASSIC_PICTURE.box(825, 1200, 500)) == pytest.approx(CLASSIC_PICTURE.largest * 825)
     assert height(CLASSIC_PICTURE.box(825, 1200, 0)) == pytest.approx(CLASSIC_PICTURE.smallest * 825)
     assert CLASSIC_DETAIL.box(825, 1200, 90) == CLASSIC_DETAIL.box(825, 1200)
+
+
+def test_a_grown_picture_gives_its_page_its_height_and_growth():
+    variables = lambda height: Page.picture_css_variables(SimpleNamespace(picture_height=height, default_picture_height=500))
+    assert variables(500) == "" and variables(None) == ""
+    assert variables(650) == "--picture-height:650.00px;--picture-grow:150.00px;--picture-growth:0.3000;"
+    assert "--picture-growth:-0.2000;" in variables(400)
 
 
 # ---------- Thumbnails ----------

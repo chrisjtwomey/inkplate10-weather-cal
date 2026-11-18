@@ -24,6 +24,7 @@
   let selected = null;    // {id, framing, saved, original, img, w, h}
   let panelOn = false;
   let saveTimer = 0;
+  let sizeTimer = 0, pendingSize;   // pendingSize: a percent, null for the default, undefined when saved
 
   const pageType = () => N.pageTypes[at];
   const byId = (id) => library.find((p) => p.id === id);
@@ -79,7 +80,122 @@
     fillChoice("theme", themes.map(([name, t]) => [name, t.label]), s.theme);
     fillChoice("map", N.maps.map((name) => [name, name === "classic" ? "Classic" : name]), s.map);
     $("theme-everywhere").hidden = N.themes[s.theme].pages.every((t) => settings[t].theme === s.theme);
+    drawSize();
   }
+
+  // ---- The picture's size ----
+
+  // The page's size range in its theme, in percent of the inner height, or null when fixed.
+  const sizeRange = () => (N.sizes[settings[pageType()].theme] || {})[pageType()] || null;
+  const savedSize = () => settings[pageType()].picture_size;
+  const shownSize = () => {
+    const range = sizeRange();
+    const size = pendingSize !== undefined ? pendingSize : savedSize();
+    return size === null || size === undefined ? range.default : size;
+  };
+
+  function drawSize() {
+    const range = sizeRange();
+    $("size-tools").hidden = !range;
+    if (!range) return;
+    const slider = $("picture-size");
+    slider.min = range.min;
+    slider.max = range.max;
+    slider.value = shownSize();
+    $("size-value").textContent = Number(slider.value).toFixed(1) + "%";
+    $("size-default").hidden = shownSize() === range.default;
+  }
+
+  // Lays the page out at the shown size, as the server's CSS variables do.
+  function applySize() {
+    const range = sizeRange(), parts = pictureParts();
+    if (!range || !parts) return;
+    const size = shownSize();
+    const height = size === range.default ? range.defaultPixels : size / 100 * N.innerHeight;
+    parts.doc.body.style.setProperty("--picture-height", height + "px");
+    parts.doc.body.style.setProperty("--picture-grow", (height - range.defaultPixels) + "px");
+    parts.doc.body.style.setProperty("--picture-growth", (height - range.defaultPixels) / range.defaultPixels);
+    placeHandle();
+    placeGrip();
+    if (selected) drawPhoto();
+  }
+
+  function setSize(size) {
+    const range = sizeRange();
+    const clamped = Math.round(clamp(size, range.min, range.max) * 10) / 10;
+    pendingSize = clamped === range.default ? null : clamped;
+    drawSize();
+    applySize();
+    clearTimeout(sizeTimer);
+    sizeTimer = setTimeout(saveSize, SAVE_DELAY);
+  }
+
+  async function saveSize() {
+    clearTimeout(sizeTimer);
+    if (pendingSize === undefined) return;
+    const size = pendingSize, page = pageType();
+    $("size-status").textContent = "Saving…";
+    try {
+      await saveSettings({[page]: {picture_size: size}});
+      if (pendingSize === size) pendingSize = undefined;
+      refreshPicture(page);
+      $("size-status").textContent = "Saved. The display gets it at its next wake.";
+      say("");
+    } catch (e) {
+      $("size-status").textContent = "";
+      say("Size not saved. " + e.message);
+    }
+  }
+
+  // Fetches the page's picture again: the server draws a photo for the area's new size.
+  function refreshPicture(page) {
+    const parts = pictureParts();
+    if (parts && parts.square.tagName === "IMG" && page === pageType()) {
+      parts.square.src = parts.square.src.split("?")[0] + "?t=" + Date.now();
+    }
+  }
+
+  $("picture-size").addEventListener("input", () => setSize(Number($("picture-size").value)));
+  $("size-default").addEventListener("click", () => setSize(sizeRange().default));
+
+  const grip = $("grip"), gripLine = $("grip-line");
+
+  function placeGrip() {
+    const parts = pictureParts();
+    if (!parts || !sizeRange() || panelOn) { grip.hidden = gripLine.hidden = true; return; }
+    const scale = viewScale();
+    const a = parts.area.getBoundingClientRect();
+    Object.assign(grip.style, {left: (a.left + a.width / 2) * scale + "px", top: a.bottom * scale + "px"});
+    Object.assign(gripLine.style, {left: a.left * scale + "px", width: a.width * scale + "px", top: a.bottom * scale + "px"});
+    grip.hidden = gripLine.hidden = false;
+  }
+
+  let resizing = null;
+  grip.addEventListener("pointerdown", (event) => {
+    grip.setPointerCapture(event.pointerId);
+    resizing = {y: event.clientY, size: shownSize()};
+  });
+  grip.addEventListener("pointermove", (event) => {
+    if (!resizing) return;
+    const moved = (event.clientY - resizing.y) / viewScale();
+    setSize(resizing.size + moved / N.innerHeight * 100);
+  });
+  for (const name of ["pointerup", "pointercancel"]) {
+    grip.addEventListener(name, (event) => { resizing = null; showGrip(event); });
+  }
+
+  // The grip shows while the pointer is over the picture or the grip, and during a drag.
+  function showGrip(event) {
+    const parts = pictureParts();
+    let over = event.type !== "pointerleave" && grip.contains(event.target);
+    if (parts && !over && event.type !== "pointerleave") {
+      const a = parts.area.getBoundingClientRect(), p = $("preview").getBoundingClientRect();
+      const scale = viewScale(), x = event.clientX - p.left, y = event.clientY - p.top;
+      over = x >= a.left * scale && x <= a.right * scale && y >= a.top * scale && y <= a.bottom * scale;
+    }
+    for (const el of [grip, gripLine]) el.classList.toggle("shown", over || resizing !== null);
+  }
+  for (const name of ["pointermove", "pointerleave"]) $("preview").addEventListener(name, showGrip);
 
   // A choice with one option shows as text; the drop-down appears when there is a second.
   function fillChoice(id, options, current) {
@@ -103,6 +219,7 @@
   });
 
   async function change(changes) {
+    await saveSize();
     try {
       await saveSettings(changes);
       say("");
@@ -138,6 +255,7 @@
   async function openPage(i) {
     if (i === at) return;
     await saveFraming();
+    await saveSize();
     at = i;
     selected = null;
     await showPage();
@@ -174,6 +292,7 @@
     box.style.height = PAGE_HEIGHT * scale + "px";
     $("panel").style.width = PAGE_WIDTH * scale + "px";
     placeHandle();
+    placeGrip();
     return scale;
   }
 
@@ -187,6 +306,7 @@
 
   frame.addEventListener("load", () => {
     fit();
+    placeGrip();
     if (selected) drawPhoto();
     $("framing-tools").hidden = !selected;
   });
@@ -265,7 +385,8 @@
       canvas.id = "map";
       parts.area.insertBefore(canvas, parts.square);
     }
-    const p = placement(selected.framing, selected.w, selected.h, areaBox({...parts, square: canvas}));
+    const box = areaBox({...parts, square: canvas});
+    const p = placement(covering(selected.framing, selected.w, selected.h, box), selected.w, selected.h, box);
     pencil(canvas, p);
     placeHandle();
   }
@@ -367,6 +488,10 @@
   }
 
   window.addEventListener("pagehide", () => {
+    if (pendingSize !== undefined) {
+      navigator.sendBeacon("pages/settings", new Blob([JSON.stringify({[pageType()]: {picture_size: pendingSize}})],
+                                                      {type: "application/json"}));
+    }
     if (!unsaved()) return;
     navigator.sendBeacon("pages/photo/" + selected.id + "/framing/" + pageType(),
                          new Blob([JSON.stringify(selected.framing)], {type: "application/json"}));
@@ -478,7 +603,9 @@
     $("panel").hidden = !on;
     frame.style.visibility = on ? "hidden" : "";
     placeHandle();
+    placeGrip();
     if (!on) return;
+    await saveSize();
     status("Drawing the page as the display will…");
     const f = selected && selected.framing;
     const query = selected ? "?photo=" + selected.id + "&x=" + f.x + "&y=" + f.y + "&zoom=" + f.zoom : "";

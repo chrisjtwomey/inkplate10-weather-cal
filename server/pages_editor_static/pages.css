@@ -39,6 +39,26 @@ button.link { padding: 0; border: 0; background: none; color: var(--soft); text-
 .frame-handle .hint { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 3px;
                       font-size: .85rem; color: #fff; background: var(--frame); pointer-events: none; }
 .frame-handle .hint[hidden] { display: none; }
+.preview iframe { pointer-events: none; }
+/* White with a dark rim, so it shows on light and dark parts of a grey photo. */
+.size-grip { position: absolute; z-index: 2; width: 56px; height: 18px; margin: -9px 0 0 -28px; box-sizing: border-box;
+             border: 1px solid #333; border-radius: 9px; box-shadow: 0 1px 4px rgb(0 0 0 / .45);
+             background: linear-gradient(#333, #333) center 5px / 24px 2px no-repeat,
+                         linear-gradient(#333, #333) center 9px / 24px 2px no-repeat, #fff;
+             cursor: ns-resize; touch-action: none; opacity: 0; transition: opacity .15s; }
+.size-grip.shown, .size-line.shown { opacity: 1; }
+.size-line { position: absolute; z-index: 2; height: 0; margin-top: -1px; border-top: 2px dashed #333;
+             filter: drop-shadow(0 0 1px #fff); pointer-events: none; opacity: 0; transition: opacity .15s; }
+/* A touch screen has no hover: the grip always shows, at a size a finger can hold. */
+@media (hover: none) {
+  .size-grip { opacity: 1; width: 72px; height: 26px; margin: -13px 0 0 -36px; border-radius: 13px;
+               background-position: center 9px, center 13px; }
+  .size-line { opacity: 1; }
+}
+.size-grip[hidden], .size-line[hidden], .size[hidden] { display: none; }
+.size { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; align-self: stretch; }
+.size .field { align-self: stretch; }
+.size input[type=range] { flex: 1; }
 .frame-handle:active { cursor: grabbing; }
 .side { flex: 1 1 18rem; max-width: 34rem; display: flex; flex-direction: column; gap: 24px; }
 .side h3 { margin: 0; }

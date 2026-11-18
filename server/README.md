@@ -39,7 +39,7 @@ cp config.example.yaml config.yaml
 | `pages.today.theme`, `.current.theme`, `.hourly.theme`, `.daily.theme`, `.tomorrow.theme` | `classic` | The page's layout and its words. `classic` is the only theme for now. Set in the [Pages](#pages) editor. |
 | `pages.<page>.photos` | – | The page's own photos, by id, one each day in this order. Without it, the page shows its map. Set in the [Pages](#pages) editor. |
 | `pages.<page>.map` | `classic` | The kind of map the page shows when it has no photos. `classic` is the only kind for now. |
-| `themes.<theme>.<page>.picture_size` | the theme's own | How tall the page's picture is in that theme, as a percent of `image.innerHeight`. Each theme keeps its own size for each page, and holds it inside the range the theme allows. Classic's today, current and tomorrow pages take from 34% to 54% on a bare panel (42% by default): the picture stops where the page's footer starts, above the faint weather icon. The picture's fade keeps its height, and the text moves down with it, so the text keeps its contrast; the text may run into the footer. Classic's hourly and daily pages keep a fixed size. |
+| `themes.<theme>.<page>.picture_size` | the theme's own | How tall the page's picture is in that theme, as a percent of `image.innerHeight`. Set in the [Pages](#pages) editor; **Default size** there takes the key out. Each theme keeps its own size for each page, and holds it inside the range the theme allows. Classic's today, current and tomorrow pages take from 34% to 67% on a bare panel (42% by default): the picture stops where the page's footer starts, and the faint weather icon draws over its lower part. A taller picture moves the text down by 0.4 of the change and makes the fade longer by the rest, so the text keeps its contrast; a soft white glow fades in behind the text as the picture grows past its default, full at 30% taller, and the text may run into the footer. Classic's hourly and daily pages keep a fixed size. |
 | `image.width`, `image.height` | `825`, `1200` | The page size in pixels: the Inkplate 10's panel, upright. |
 | `image.innerWidth`, `image.innerHeight` | the page size | The area the content fits in. See [Fitting a photo mat](#fitting-a-photo-mat). |
 | `image.innerAlignX`, `image.innerAlignY` | `center` | Where that area sits: `left`, `center` or `right`; `top`, `center` or `bottom`. |
@@ -158,6 +158,11 @@ lays it out.
   photo each day; with more, it shows the next one each day, in this order.
   **+ Add photos** picks photos from the library. Drag a photo to move it in the
   list, and **×** takes it off the page.
+- **Picture size** sets how tall the picture is, when the page's theme lets it
+  change. Drag the grip on the picture's bottom edge, or use the slider. The
+  grip shows while the pointer is over the photo, and always on a touch screen.
+  The page re-lays as you go, and the size saves by itself a second after you
+  stop. **Default size** puts back the theme's size.
 - **Sample weather** fills the page with made-up weather, for a page that is not
   drawn now. The page is drawn as large as fits the window; **Actual size**
   shows it at the panel's size.

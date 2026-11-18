@@ -455,7 +455,7 @@ def main():
 
     server.app.register_blueprint(editor_blueprint(Editor(
         live, photo_store, HTML_DIR, page_html, map_file, photo_file, previewer, box,
-        themes=THEMES, page_types=PAGE_TYPES, map_kinds=MAP_KINDS)))
+        themes=THEMES, page_types=PAGE_TYPES, map_kinds=MAP_KINDS, inner=(image.inner_width, image.inner_height))))
     server.run(once=args.once)
 
 

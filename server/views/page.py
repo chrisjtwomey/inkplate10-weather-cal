@@ -31,12 +31,15 @@ class Page(_Page):
             self.requires = (*type(self).requires, "photo_urls")
 
     def picture_css_variables(self) -> str:
-        """The picture area's height in pixels, and how far it grew past the theme's
-        default, as CSS custom properties; empty at the default height."""
+        """The picture area's height in pixels, how far it grew past the theme's default,
+        and that growth as a share of the default, as CSS custom properties; empty at
+        the default height."""
         if self.picture_height is None or self.picture_height == self.default_picture_height:
             return ""
-        grow = self.picture_height - (self.default_picture_height or self.picture_height)
-        return f"--picture-height:{self.picture_height:.2f}px;--picture-grow:{grow:.2f}px;"
+        default = self.default_picture_height or self.picture_height
+        grow = self.picture_height - default
+        return (f"--picture-height:{self.picture_height:.2f}px;--picture-grow:{grow:.2f}px;"
+                f"--picture-growth:{grow / default:.4f};")
 
     def picture_url(self, data) -> str:
         """Today's photo when this page shows photos and one is ready, else the map."""

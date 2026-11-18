@@ -5,7 +5,8 @@ redraw of the changed pages and no restart.
     GET  /pages/settings     each page type's theme, photos, map and picture size
     POST /pages/settings     JSON {page type: {"theme", "photos", "map", "picture_size"}}: save and apply
 
-The picture size belongs to the page's theme: it is saved under themes.<theme>.<page>.
+The picture size belongs to the page's theme: it is saved under themes.<theme>.<page>,
+and a picture_size of null takes it out, back to the theme's default.
 
 The server's sign-in covers these routes, and its Origin check covers each change.
 """
@@ -83,9 +84,13 @@ class LivePages:
                 for key, value in (("theme", given.get("theme")), ("photos", photos), ("map", given.get("map"))):
                     if value is not None:
                         doc.set(("pages", page_type, key), value)
-                if given.get("picture_size") is not None:
+                if "picture_size" in given:
                     theme = given.get("theme") or self.cfg.page_themes[page_type]
-                    doc.set(("themes", theme, page_type, "picture_size"), given["picture_size"])
+                    path = ("themes", theme, page_type, "picture_size")
+                    if given["picture_size"] is None:
+                        doc.remove(path)
+                    else:
+                        doc.set(path, given["picture_size"])
             unknown = sorted(set(changes) - set(self.cfg.page_themes))
             if unknown:
                 raise ValueError(f"{unknown[0]}: no such page")

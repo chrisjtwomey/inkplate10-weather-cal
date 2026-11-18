@@ -62,8 +62,8 @@ class Theme:
 
 
 # Classic: simplified.css sets the picture pages' area, styles.css the detail pages'.
-# A picture page's footer starts 650 px down at 825 px wide; the picture stops there.
-CLASSIC_FOOTER = 0.787879
+# A picture page's footer starts 800 px down at 825 px wide; the picture stops there.
+CLASSIC_FOOTER = 0.969697
 CLASSIC_PICTURE = PictureArea(PICTURE, "width", 0.606061, 0.5, CLASSIC_FOOTER, 0.30)
 CLASSIC_DETAIL = PictureArea(DETAIL, "height", 0.55, 0.55, 0.55, 0.50)
 

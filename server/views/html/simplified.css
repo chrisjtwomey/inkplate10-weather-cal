@@ -16,7 +16,7 @@
   opacity: 0.10;
   transform: rotate(15deg);
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
 }
 
 /* Taller map that bleeds further into the content area. --picture-height is the
@@ -30,15 +30,16 @@
   top: 30%;
 }
 
-/* Fade-to-white at the bottom of the map: a fixed height, so the text below keeps
-   its place on the fade whatever the picture's height */
+/* Fade-to-white at the bottom of the map. A taller picture moves the text down by
+   0.4 of its growth (#day-body) and the fade grows by the other 0.6, so the text
+   keeps its place on the fade whatever the picture's height. */
 #map-container::after {
   content: '';
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(var(--inner-vw) * 36.3636);
+  height: calc(var(--inner-vw) * 36.3636 + var(--picture-grow, 0px) * 0.6);
   background: linear-gradient(to bottom, transparent 0%, var(--color-paper) 100%);
   pointer-events: none;
   z-index: 1;
@@ -47,20 +48,34 @@
 /* ── Content section ── */
 #day-body {
   position: absolute;
-  top: calc(13% + var(--picture-grow, 0px));
+  top: calc(13% + var(--picture-grow, 0px) * 0.4);
   left: 0;
   right: 0;
   padding: 0 calc(var(--inner-vw) * 3);
+  z-index: 3;
 }
 
 /* ── Hero: vertical stack – icon → date → temp → phrase ── */
 #day-hero {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: calc(var(--inner-vh) * 1.5) 0 calc(var(--inner-vh) * 1.5) 0;
   margin-bottom: calc(var(--inner-vh) * 1.5);
   text-align: center;
+}
+
+/* A soft white glow behind the whole block, so it reads over a taller picture. It
+   fades in as the picture grows past the default, full by 30% more height. */
+#day-hero::before {
+  content: '';
+  position: absolute;
+  inset: -12% -8%;
+  background: radial-gradient(ellipse closest-side, var(--color-paper) 55%, transparent 100%);
+  opacity: clamp(0, var(--picture-growth, 0) * 2, 0.6);
+  z-index: -1;
+  pointer-events: none;
 }
 
 #day-icon {

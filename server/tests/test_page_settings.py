@@ -81,6 +81,14 @@ def test_a_picture_size_is_saved_under_the_pages_theme_and_redraws_it(setup):
     assert live.current()["today"]["picture_size"] == 60 and live.current()["current"]["picture_size"] is None
 
 
+def test_a_picture_size_of_null_goes_back_to_the_themes_default(setup):
+    live, server, *_ = setup()
+    live.save({"today": {"picture_size": 60}})
+    live.save({"today": {"picture_size": None}})
+    assert "themes" not in yaml.safe_load(open(live.config_path).read())
+    assert live.current()["today"]["picture_size"] is None
+
+
 def test_only_the_changed_pages_are_swapped_and_redrawn(setup):
     live, server, *_ = setup()
     live.save({"today": {"photos": ["b2"]}, "daily": {"theme": "classic"}})

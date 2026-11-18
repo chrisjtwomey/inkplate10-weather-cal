@@ -1,5 +1,5 @@
-"""The Pages editor: each page in its own HTML, live, with its theme, map and
-photos, and the photo library.
+"""The Pages editor: each page in its own HTML, live, with its theme, map, picture
+size and photos, and the photo library.
 
     GET  /pages                              the editor
     GET  /pages/assets/<name>                its script and stylesheet
@@ -46,15 +46,33 @@ class Editor:
     photo_file(page) -> the page's picture today, or None
     render(page, picture_uri) -> the page as PNG, as the display draws it
     box(page) -> the page's picture area on the picture square
+    inner -> (width, height) of the page's inner area, in pixels
     """
 
     def __init__(self, live, store: PhotoStore, views_dir: str, page_html: Callable, map_file: Callable,
                  photo_file: Callable, render: Callable, box: Callable, themes: dict, page_types: tuple,
-                 map_kinds: tuple):
+                 map_kinds: tuple, inner: tuple):
         self.live, self.store, self.views_dir = live, store, views_dir
         self.page_html, self.map_file, self.photo_file = page_html, map_file, photo_file
         self.render, self.box = render, box
-        self.themes, self.page_types, self.map_kinds = themes, page_types, map_kinds
+        self.themes, self.page_types, self.map_kinds, self.inner = themes, page_types, map_kinds, inner
+
+
+def picture_sizes(themes: dict, inner: tuple) -> dict:
+    """Each theme's pages whose picture can change size: {theme: {page: {"min", "max",
+    "default"}}}, in percent of the inner height, with the default height in pixels."""
+    width, height = inner
+    sizes = {}
+    for name, theme in themes.items():
+        for page_type, area in theme.areas.items():
+            low, high = area.pixels(width, height, 0), area.pixels(width, height, 1000)
+            if high - low < 1:
+                continue
+            default = area.pixels(width, height)
+            sizes.setdefault(name, {})[page_type] = {
+                "min": round(low / height * 100, 1), "max": round(high / height * 100, 1),
+                "default": round(default / height * 100, 1), "defaultPixels": default}
+    return sizes
 
 
 def _framing(given) -> Framing:
@@ -88,6 +106,7 @@ def editor_blueprint(ed: Editor) -> Blueprint:
             "themes": {n: {"label": t.label, "pages": list(t.pages)} for n, t in ed.themes.items()},
             "maps": list(ed.map_kinds),
             "minZoom": AREA_MIN_ZOOM, "maxZoom": MAX_ZOOM, "squareMinZoom": MIN_ZOOM,
+            "sizes": picture_sizes(ed.themes, ed.inner), "innerHeight": ed.inner[1],
         }
         return Response(_page(json.dumps(numbers)), headers={"Cache-Control": "no-store"})
 
@@ -123,7 +142,7 @@ def editor_blueprint(ed: Editor) -> Blueprint:
     def view_file(name: str):
         if name.endswith(".html"):
             abort(404)
-        return send_from_directory(ed.views_dir, name, max_age=3600)
+        return send_from_directory(ed.views_dir, name, max_age=0)
 
     @bp.route("/photo/<photo_id>.jpg", methods=["GET"])
     def working(photo_id: str):
@@ -208,6 +227,8 @@ def _page(numbers: str) -> str:
       <div class="frame-handle" id="handle" tabindex="0" aria-label="The photo's framing" hidden>
         <span class="hint" id="hint">Drag to move · Scroll to zoom</span>
       </div>
+      <div class="size-line" id="grip-line" hidden></div>
+      <div class="size-grip" id="grip" title="Drag to change the picture's size" hidden></div>
       <img id="panel" alt="The page as the display draws it" hidden>
     </div>
     <div class="side">
@@ -218,6 +239,12 @@ def _page(numbers: str) -> str:
       <section class="page-picture">
         <div class="heading"><h3>Picture</h3><button type="button" id="add">+ Add photos</button></div>
         <label class="field">Map <select id="map"></select><span class="only" id="map-only"></span></label>
+        <div class="size" id="size-tools" hidden>
+          <label class="field">Picture size <input type="range" id="picture-size" step="0.1">
+          <output id="size-value" for="picture-size"></output></label>
+          <button type="button" class="link" id="size-default">Default size</button>
+          <p class="help" id="size-status" aria-live="polite"></p>
+        </div>
         <p class="help">The page shows its map when it has no photos. One photo stays; more change each day, in this order.</p>
         <ol id="strip"></ol>
       </section>
