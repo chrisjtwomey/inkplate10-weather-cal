@@ -45,6 +45,11 @@ class Words:
         return self.patterns["hour"].format(hour=when.hour % 12 or 12,
                                             half=self.terms["am"] if when.hour < 12 else self.terms["pm"])
 
+    def hour_and_day(self, when: dt.datetime) -> str:
+        """Such as "9am · Thursday 13"."""
+        return self.patterns["hour_and_day"].format(time=self.hour(when), weekday=self.weekdays[when.weekday()],
+                                                    day=when.day)
+
     def percent(self, value) -> str:
         return self.patterns["percent"].format(value=value)
 
@@ -61,6 +66,7 @@ CLASSIC = Words(
         "date_long": "{weekday}, {month} {day}",
         "date_short": "{day} {month_short}",
         "hour": "{hour}{half}",
+        "hour_and_day": "{time} · {weekday} {day}",
         "percent": "{value}%",
         "rain": "{value}% rain",
     },

@@ -29,6 +29,10 @@ def test_classic_hours(hour, words):
     assert CLASSIC.hour(dt.datetime(2026, 11, 13, hour)) == words
 
 
+def test_classic_hour_and_day():
+    assert CLASSIC.hour_and_day(dt.datetime(2026, 11, 13, 21)) == "9pm · Friday 13"
+
+
 def test_classic_terms():
     assert (CLASSIC.percent(36), CLASSIC.rain(36)) == ("36%", "36% rain")
     assert (CLASSIC["kmh"], CLASSIC["hours"], CLASSIC["uv_medium"]) == ("kph", "hours", "Med")
@@ -67,5 +71,5 @@ def test_every_page_takes_its_words_from_the_list(page_type):
     text = soup.get_text(" ")
     for english in ("Friday", "November", "rain", "hours", "kph", " Low", " Med", "High", "am ", "pm "):
         assert english not in text, f"{page_type} shows {english!r}"
-    expected = {"today": "Vendredi 13 novembre", "current": "9 h", "hourly": "km/h", "daily": "VEN", "tomorrow": "Samedi 14 novembre"}
+    expected = {"today": "Vendredi 13 novembre", "current": "9 h · Vendredi 13", "hourly": "km/h", "daily": "VEN", "tomorrow": "Samedi 14 novembre"}
     assert expected[page_type] in text

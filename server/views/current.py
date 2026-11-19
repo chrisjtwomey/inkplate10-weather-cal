@@ -10,7 +10,7 @@ class CurrentPage(SimplifiedPage):
         self.name = "current"
 
     def _rounded_hour_phrase(self, now: dt.datetime) -> str:
-        return self.words.hour((now + dt.timedelta(minutes=30)).replace(minute=0, second=0, microsecond=0))
+        return self.words.hour_and_day((now + dt.timedelta(minutes=30)).replace(minute=0, second=0, microsecond=0))
 
     def template(self, **kwargs):
         now = dt.datetime.now()

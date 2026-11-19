@@ -151,7 +151,7 @@ def test_rounded_hour_shown_in_hero(rendered_html):
     soup = BeautifulSoup(rendered_html, "html.parser")
     date_el = soup.find(id="day-date")
     assert date_el is not None
-    assert date_el.get_text(strip=True) == "9am"
+    assert date_el.get_text(strip=True) == "9am · Thursday 21"
 
 
 def test_time_rounds_to_nearest_hour_half_up():
@@ -165,4 +165,4 @@ def test_time_rounds_to_nearest_hour_half_up():
     soup = BeautifulSoup(str(page.airium), "html.parser")
     date_el = soup.find(id="day-date")
     assert date_el is not None
-    assert date_el.get_text(strip=True) == "12pm"
+    assert date_el.get_text(strip=True) == "12pm · Thursday 21"
