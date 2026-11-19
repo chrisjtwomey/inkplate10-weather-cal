@@ -8,8 +8,9 @@ from bs4 import BeautifulSoup
 from flask import Flask
 from PIL import Image
 
-from pages_editor import WORKING_SIZE, Editor, editor_blueprint
+from pages_editor import SMALL_SIZE, WORKING_SIZE, Editor, editor_blueprint
 from photos import Framing, PhotoStore
+from photos.picture import EFFECT_VERSION, GREYS, SIZE
 from views.page import HTML_DIR
 from views.themes import picture_box
 from views.themes import PAGE_TYPES, THEMES
@@ -112,6 +113,27 @@ def test_a_working_copy_is_upright_grey_and_small(parts):
         assert img.mode == "L" and img.height == WORKING_SIZE and abs(img.width - WORKING_SIZE * 2000 / 3000) <= 1
 
 
+def test_a_small_copy_is_upright_grey_and_at_most_small_size(parts):
+    client, store, *_ = parts
+    photo = store.add(_photo((3000, 2000), orientation=6), "phone.jpg")
+    with Image.open(io.BytesIO(client.get(f"/pages/photo/{photo.id}/small.jpg").data)) as img:
+        assert img.mode == "L" and img.height == SMALL_SIZE and abs(img.width - SMALL_SIZE * 2000 / 3000) <= 1
+
+
+def test_a_pencil_copy_is_the_whole_photo_at_a_pages_scale_in_the_panels_greys(parts):
+    client, store, *_ = parts
+    photo = store.add(_photo((3000, 2000), orientation=6), "phone.jpg")
+    with Image.open(io.BytesIO(client.get(f"/pages/photo/{photo.id}/pencil.png").data)) as img:
+        assert img.mode == "L" and img.width == SIZE and abs(img.height - SIZE * 3000 / 2000) <= 1
+        assert {g for _, g in img.getcolors()} <= set(GREYS)
+
+
+def test_unknown_photos_have_no_copies(parts):
+    client, *_ = parts
+    for route in ("nope.jpg", "nope/small.jpg", "nope/pencil.png"):
+        assert client.get(f"/pages/photo/{route}").status_code == 404
+
+
 def test_a_framing_is_saved_for_one_page_and_that_page_is_redrawn(parts):
     client, store, live, _ = parts
     photo = store.add(_photo(), "a.jpg")
@@ -130,6 +152,17 @@ def test_deleting_a_photo_takes_it_off_every_page(parts):
     assert client.post(f"/pages/photo/{a.id}/delete").status_code == 204
     assert live.saved == [{"today": {"photos": [b.id]}, "hourly": {"photos": []}}]
     assert [p.id for p in store.photos()] == [b.id]
+
+
+def test_deleting_a_photo_forgets_its_copies_only(parts):
+    client, store, *_ = parts
+    a, b = store.add(_photo((300, 200)), "a.jpg"), store.add(_photo((310, 200)), "b.jpg")
+    for photo in (a, b):
+        for route in (".jpg", "/small.jpg", "/pencil.png"):
+            assert client.get(f"/pages/photo/{photo.id}{route}").status_code == 200
+    client.post(f"/pages/photo/{a.id}/delete")
+    assert sorted(os.listdir(os.path.join(store.folder, "working"))) == sorted(
+        [f"{b.id}.jpg", f"{b.id}-small.jpg", f"{b.id}-pencil-{EFFECT_VERSION}.png"])
 
 
 def test_panel_view_draws_the_page_with_the_unsaved_framing(parts):

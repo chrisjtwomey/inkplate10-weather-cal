@@ -156,8 +156,8 @@ lays it out.
 - **Picture** holds the page's **Map**, the kind of map it shows when it has no
   photos, and the page's own photo list. With one photo, the page shows that
   photo each day; with more, it shows the next one each day, in this order.
-  **+ Add photos** picks photos from the library. Drag a photo to move it in the
-  list, and **×** takes it off the page.
+  **Choose photos** opens the photos. Drag a photo to move it in the list, and
+  **×** takes it off the page.
 - **Picture size** sets how tall the picture is, when the page's theme lets it
   change. Drag the grip on the picture's bottom edge, or use the slider. The
   grip shows while the pointer is over the photo, and always on a touch screen.
@@ -188,9 +188,16 @@ the photo had when you selected it. **Use this framing on every page** copies it
 to the others. While a page is being redrawn, further changes wait and are drawn
 together when it ends.
 
-Under **Photo library**, **Upload photos**, or drop photos on the page, adds
-JPEG, PNG or WebP photos, up to 20 MB and 50 megapixels each. **Delete** takes a
-photo off every page and deletes it.
+**Choose photos** shows every uploaded photo: one large, and the rest in a grid
+of 12 at a time. The grid shows each photo plain, in grey, so it is easy to
+recognise. Click a photo to show it large; ‹ and ›, or the arrow keys, step
+through them. **Panel view** on the large photo switches it to the pencil effect
+and back. **Add to** and **Remove from** put the photo on this page or take it
+off; the round badge on a photo in the grid does the same, and shows ✓ while the
+photo is on this page. A photo that other pages show says which. **Upload
+photos**, or drop photos on the editor, adds JPEG, PNG or WebP photos, up to
+20 MB and 50 megapixels each, and puts them on this page. **Delete** takes
+a photo off every page and deletes it.
 
 The editor writes `pages.<page>.theme`, `.photos` and `.map` in `config.yaml`,
 keeps the old file as `config.yaml.bak`, and redraws the pages that changed. The
@@ -440,7 +447,7 @@ does. It keeps these across updates:
   Without it, every update fetches again.
 - The sign-in's keep file and the HTTPS certificate.
 - A copy of each mod's files, and its pages' HTML and images, in `data/mods`.
-- The uploaded photos, each one as each page draws it with a small copy for the list, which one each page shows today, the editor's working copies and its Panel view pages, in `data/photos`.
+- The uploaded photos, each one as each page draws it with a small copy for the page's photo list, which one each page shows today, the editor's working copies (grey, small grey and pencil) and its Panel view pages, in `data/photos`.
 
 ### When the map or the weather provider is down
 

@@ -8,6 +8,8 @@ size and photos, and the photo library.
     GET  /pages/view/map.png                 the map
     GET  /pages/view/photo-<page>.png        the page's picture today, or the map
     GET  /pages/photo/<id>.jpg               a photo upright, in grey, at most WORKING_SIZE across
+    GET  /pages/photo/<id>/small.jpg         the same, at most SMALL_SIZE across
+    GET  /pages/photo/<id>/pencil.png        the whole photo in the pencil effect, at a page's scale at zoom 1
     POST /pages/photo/<id>/framing/<page>    JSON {"x", "y", "zoom"}: the photo's framing on that page
     POST /pages/photo/<id>/delete            the photo, from the library and every page
     GET  /pages/panel/<page>.png?photo=&x=&y=&zoom=
@@ -28,12 +30,13 @@ from pathlib import Path
 from flask import Blueprint, Response, abort, jsonify, request, send_file, send_from_directory
 from PIL import Image
 
-from photos.picture import AREA_MIN_ZOOM, MAX_ZOOM, MIN_ZOOM, page_drawing, upright
+from photos.picture import AREA_MIN_ZOOM, EFFECT_VERSION, MAX_ZOOM, MIN_ZOOM, SIZE, page_drawing, pencil, upright
 from photos.store import Framing, PhotoStore, write_atomically
 
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "pages_editor_static")
 _ASSETS = ("pages.js", "pages.css")
 WORKING_SIZE = 1600
+SMALL_SIZE = 480
 NO_PANEL = "This page cannot be drawn now. Check the server's log."
 
 
@@ -86,6 +89,34 @@ def _framing(given) -> Framing:
     if not all(math.isfinite(v) for v in (x, y, zoom)) or zoom <= 0:
         abort(400)
     return Framing(min(max(x, 0.0), 1.0), min(max(y, 0.0), 1.0), min(max(zoom, AREA_MIN_ZOOM), MAX_ZOOM))
+
+
+def _jpeg(grey: Image.Image, longest: int) -> bytes:
+    grey.thumbnail((longest, longest), Image.LANCZOS)
+    out = io.BytesIO()
+    grey.save(out, format="JPEG", quality=92)
+    return out.getvalue()
+
+
+def _png(img: Image.Image) -> bytes:
+    out = io.BytesIO()
+    img.save(out, format="PNG", optimize=True)
+    return out.getvalue()
+
+
+def _at_page_scale(grey: Image.Image) -> Image.Image:
+    """``grey`` at the scale a page draws it at zoom 1: its shorter side as long as the square's."""
+    scale = SIZE / min(grey.size)
+    return grey.resize((max(1, round(grey.width * scale)), max(1, round(grey.height * scale))), Image.LANCZOS)
+
+
+def _forget_working(store: PhotoStore, photo_id: str) -> None:
+    folder = os.path.join(store.folder, "working")
+    if not os.path.isdir(folder):
+        return
+    for name in os.listdir(folder):
+        if name.startswith((photo_id + ".", photo_id + "-")):
+            os.remove(os.path.join(folder, name))
 
 
 def editor_blueprint(ed: Editor) -> Blueprint:
@@ -147,20 +178,32 @@ def editor_blueprint(ed: Editor) -> Blueprint:
             abort(404)
         return send_from_directory(ed.views_dir, name, max_age=0)
 
+    def kept(found, name: str, make: Callable) -> str:
+        """A copy of ``found`` in the working folder, made by ``make(original)`` if it is not kept."""
+        folder = os.path.join(ed.store.folder, "working")
+        path = os.path.join(folder, name)
+        if not os.path.exists(path):
+            with Image.open(ed.store.path(found.id)) as img:
+                data = make(img)
+            os.makedirs(folder, exist_ok=True)
+            write_atomically(path, data)
+        return path
+
     @bp.route("/photo/<photo_id>.jpg", methods=["GET"])
     def working(photo_id: str):
         found = photo(photo_id)
-        folder = os.path.join(ed.store.folder, "working")
-        path = os.path.join(folder, f"{found.id}.jpg")
-        if not os.path.exists(path):
-            with Image.open(ed.store.path(found.id)) as img:
-                grey = upright(img)
-            grey.thumbnail((WORKING_SIZE, WORKING_SIZE), Image.LANCZOS)
-            out = io.BytesIO()
-            grey.save(out, format="JPEG", quality=92)
-            os.makedirs(folder, exist_ok=True)
-            write_atomically(path, out.getvalue())
-        return send_file(path, max_age=86400)
+        return send_file(kept(found, f"{found.id}.jpg", lambda img: _jpeg(upright(img), WORKING_SIZE)), max_age=86400)
+
+    @bp.route("/photo/<photo_id>/small.jpg", methods=["GET"])
+    def small(photo_id: str):
+        found = photo(photo_id)
+        return send_file(kept(found, f"{found.id}-small.jpg", lambda img: _jpeg(upright(img), SMALL_SIZE)), max_age=86400)
+
+    @bp.route("/photo/<photo_id>/pencil.png", methods=["GET"])
+    def pencil_copy(photo_id: str):
+        found = photo(photo_id)
+        name = f"{found.id}-pencil-{EFFECT_VERSION}.png"
+        return send_file(kept(found, name, lambda img: _png(pencil(_at_page_scale(upright(img))))), max_age=86400)
 
     @bp.route("/photo/<photo_id>/framing/<name>", methods=["POST"])
     def framing(photo_id: str, name: str):
@@ -178,10 +221,7 @@ def editor_blueprint(ed: Editor) -> Blueprint:
         except ValueError as exc:
             return jsonify(problem=str(exc)), 400
         ed.store.remove(gone)
-        try:
-            os.remove(os.path.join(ed.store.folder, "working", f"{gone}.jpg"))
-        except FileNotFoundError:
-            pass
+        _forget_working(ed.store, gone)
         return "", 204
 
     @bp.route("/today/<name>.json", methods=["GET"])
@@ -244,7 +284,7 @@ def _page(numbers: str) -> str:
         <button type="button" class="link" id="theme-everywhere">Use on every page</button>
       </section>
       <section class="page-picture">
-        <div class="heading"><h3>Picture</h3><button type="button" id="add">+ Add photos</button></div>
+        <div class="heading"><h3>Picture</h3><button type="button" id="add">Choose photos</button></div>
         <label class="field">Map <select id="map"></select><span class="only" id="map-only"></span></label>
         <div class="size" id="size-tools" hidden>
           <label class="field">Picture size <input type="range" id="picture-size" step="0.1">
@@ -273,25 +313,41 @@ def _page(numbers: str) -> str:
   </div>
 </div>
 
-<section id="library">
-  <h2>Photo library</h2>
+<dialog id="picker" aria-labelledby="picker-title">
+  <div class="heading"><h2 id="picker-title">Photos</h2>
+  <button type="button" class="primary" id="picker-done">Done</button></div>
+  <p class="help">Choose the photos for <span id="picker-page"></span>.</p>
   <div class="row">
-    <label class="button primary" for="files">Upload photos</label>
+    <label class="button" for="files">Upload photos</label>
     <input type="file" id="files" accept="image/jpeg,image/png,image/webp" multiple hidden>
-    <p class="help">Or drop them on this page. JPEG, PNG or WebP, up to 20 MB each.</p>
+    <p class="help">Or drop them here. JPEG, PNG or WebP, up to 20 MB each. New photos go on this page.</p>
   </div>
   <ul id="uploads"></ul>
-  <ul id="photos"></ul>
   <p id="empty" hidden>No photos yet. Upload one to start.</p>
-</section>
-
-<dialog id="picker">
-  <h2>Add photos to this page</h2>
-  <ul id="choices"></ul>
-  <button type="button" id="picker-cancel">Cancel</button>
-  <button type="button" class="primary" id="picker-add">Add</button>
+  <div class="library" id="library">
+    <figure id="viewer">
+      <div class="frame"><img id="viewer-img" alt="">
+      <button type="button" class="step" id="viewer-prev" aria-label="Previous photo">‹</button>
+      <button type="button" class="step" id="viewer-next" aria-label="Next photo">›</button>
+      <button type="button" id="viewer-panel" aria-pressed="false">Panel view</button></div>
+      <figcaption>
+        <span class="name" id="viewer-name"></span>
+        <span class="where" id="viewer-where"></span>
+        <div class="row"><button type="button" id="viewer-add"></button>
+        <button type="button" class="danger" id="viewer-delete">Delete</button></div>
+      </figcaption>
+    </figure>
+    <div class="grid">
+      <ul id="photos"></ul>
+      <nav class="pager" id="pager" aria-label="Photo pages">
+        <button type="button" id="pager-prev">Previous</button>
+        <span id="pager-at"></span>
+        <button type="button" id="pager-next">Next</button>
+      </nav>
+    </div>
+  </div>
 </dialog>
-<div id="drop" hidden><p>Drop photos to add them</p></div>
+<div id="drop" hidden><p>Drop photos to add them to this page</p></div>
 
 <script type="application/json" id="numbers">{numbers}</script>
 <script src="pages/assets/pages.js"></script>

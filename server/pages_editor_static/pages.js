@@ -689,6 +689,7 @@
     const f = photo.framing;
     img.src = "photos/" + photo.id + "/thumb.png?f=" + [f.x, f.y, f.zoom].join(",");
     img.alt = "";
+    img.loading = "lazy";
     return img;
   }
 
@@ -753,58 +754,148 @@
     }, true);
   }
 
-  $("add").addEventListener("click", () => {
-    const on = settings[pageType()].photos;
-    const choices = library.filter((p) => !on.includes(p.id));
-    $("choices").replaceChildren(...choices.map((p) => {
-      const li = document.createElement("li");
-      const label = document.createElement("label");
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.value = p.id;
-      label.append(box, thumb(p), " " + p.name);
-      li.append(label);
-      return li;
-    }));
-    if (!choices.length) $("choices").innerHTML = "<li>Every photo is on this page. Upload more below.</li>";
-    $("picker").showModal();
-  });
-  $("picker-cancel").addEventListener("click", () => $("picker").close());
-  $("picker-add").addEventListener("click", () => {
-    const added = Array.from($("choices").querySelectorAll("input:checked")).map((b) => b.value);
-    $("picker").close();
-    if (added.length) setPhotos([...settings[pageType()].photos, ...added]);
-  });
+  function openLibrary() {
+    $("picker-page").textContent = NAMES[pageType()] || pageType();
+    drawLibrary();
+    if (!$("picker").open) $("picker").showModal();
+  }
+  $("add").addEventListener("click", openLibrary);
+  $("picker-done").addEventListener("click", () => $("picker").close());
 
   // ---- The library ----
 
+  // The library: one photo large, with the others in pages of a grid. Adding puts a
+  // photo on this page at the end of its list; Delete takes it from every page.
+  const PER_PAGE = 12;
+  let viewed = null;      // the id of the photo shown large
+  let gridPage = 0;
+  let viewerPanel = false;  // the large photo in the pencil effect
+
+  const onPage = (id) => settings[pageType()].photos.includes(id);
+  const pageName = (t) => NAMES[t] || t;
+  const alsoOn = (id) => {
+    const others = N.pageTypes.filter((t) => t !== pageType() && settings[t].photos.includes(id));
+    return others.length ? "Also on " + others.map(pageName).join(", ") : "";
+  };
+
+  async function putOnPage(id, on) {
+    const now = settings[pageType()].photos;
+    await setPhotos(on ? [...now, id] : now.filter((i) => i !== id));
+    drawLibrary();
+  }
+
+  function view(id) {
+    viewed = id;
+    const at = library.findIndex((p) => p.id === id);
+    if (at >= 0) gridPage = Math.floor(at / PER_PAGE);
+    drawLibrary();
+  }
+
+  function step(by) {
+    if (!library.length) return;
+    const at = library.findIndex((p) => p.id === viewed);
+    view(library[(at + by + library.length) % library.length].id);
+  }
+
   function drawLibrary() {
     $("empty").hidden = library.length > 0;
-    $("photos").replaceChildren(...library.map((p) => {
+    $("library").hidden = library.length === 0;
+    if (!library.length) return;
+    if (!byId(viewed)) {
+      const first = library.find((p) => onPage(p.id)) || library[0];
+      viewed = first.id;
+      gridPage = Math.floor(library.indexOf(first) / PER_PAGE);
+    }
+    const pages = Math.ceil(library.length / PER_PAGE);
+    gridPage = clamp(gridPage, 0, pages - 1);
+    drawViewer();
+    $("photos").replaceChildren(...library.slice(gridPage * PER_PAGE, (gridPage + 1) * PER_PAGE).map((p) => {
       const li = document.createElement("li");
+      li.classList.toggle("viewed", p.id === viewed);
+      li.classList.toggle("on", onPage(p.id));
+      const badge = document.createElement("button");
+      badge.type = "button";
+      badge.className = "badge";
+      badge.setAttribute("aria-pressed", String(onPage(p.id)));
+      badge.setAttribute("aria-label", (onPage(p.id) ? "Remove " + p.name + " from " : "Add " + p.name + " to ") + pageName(pageType()));
+      badge.title = onPage(p.id) ? "Remove from " + pageName(pageType()) : "Add to " + pageName(pageType());
+      badge.addEventListener("click", () => putOnPage(p.id, !onPage(p.id)));
+      const show = document.createElement("button");
+      show.type = "button";
+      show.className = "show";
+      show.setAttribute("aria-pressed", p.id === viewed ? "true" : "false");
       const name = document.createElement("span");
       name.className = "name";
       name.textContent = p.name;
-      const used = N.pageTypes.filter((t) => settings[t].photos.includes(p.id)).map((t) => NAMES[t] || t);
-      const where = document.createElement("span");
-      where.className = "where";
-      where.textContent = used.length ? "On " + used.join(", ") : "Not on a page";
-      const del = document.createElement("button");
-      del.type = "button";
-      del.className = "danger";
-      del.textContent = "Delete";
-      del.addEventListener("click", async () => {
-        if (!confirm("Delete " + p.name + "? It leaves every page, and this cannot be undone.")) return;
-        try {
-          await post("pages/photo/" + p.id + "/delete");
-          if (selected && selected.id === p.id) selected = null;
-          await refresh();
-        } catch (e) { say(e.message); }
-      });
-      li.append(thumb(p), name, where, del);
+      name.title = p.name;
+      show.append(plainThumb(p), name);
+      if (alsoOn(p.id)) {
+        const where = document.createElement("span");
+        where.className = "where";
+        where.textContent = alsoOn(p.id);
+        show.append(where);
+      }
+      show.addEventListener("click", () => view(p.id));
+      li.append(show, badge);
       return li;
     }));
+    $("pager").hidden = pages < 2;
+    $("pager-at").textContent = "Page " + (gridPage + 1) + " of " + pages;
+    $("pager-prev").disabled = gridPage === 0;
+    $("pager-next").disabled = gridPage === pages - 1;
   }
+
+  function plainThumb(photo) {
+    const img = document.createElement("img");
+    img.src = "pages/photo/" + photo.id + "/small.jpg";
+    img.alt = "";
+    img.loading = "lazy";
+    return img;
+  }
+
+  function drawViewer() {
+    const p = byId(viewed);
+    const img = $("viewer-img");
+    const src = "pages/photo/" + p.id + (viewerPanel ? "/pencil.png" : ".jpg");
+    if (img.getAttribute("src") !== src) img.src = src;
+    img.alt = p.name;
+    $("viewer-name").textContent = p.name;
+    $("viewer-where").textContent = alsoOn(p.id);
+    $("viewer-where").hidden = !alsoOn(p.id);
+    const add = $("viewer-add");
+    add.textContent = (onPage(p.id) ? "Remove from " : "Add to ") + pageName(pageType());
+    add.classList.toggle("primary", !onPage(p.id));
+    $("viewer-prev").hidden = $("viewer-next").hidden = library.length < 2;
+  }
+
+  $("viewer-panel").addEventListener("click", () => {
+    viewerPanel = !viewerPanel;
+    $("viewer-panel").setAttribute("aria-pressed", String(viewerPanel));
+    drawViewer();
+  });
+  $("viewer-prev").addEventListener("click", () => step(-1));
+  $("viewer-next").addEventListener("click", () => step(1));
+  $("viewer-add").addEventListener("click", () => putOnPage(viewed, !onPage(viewed)));
+  $("pager-prev").addEventListener("click", () => { gridPage -= 1; drawLibrary(); });
+  $("pager-next").addEventListener("click", () => { gridPage += 1; drawLibrary(); });
+  $("picker").addEventListener("keydown", (event) => {
+    const by = {ArrowLeft: -1, ArrowRight: 1}[event.key];
+    if (!by || event.target.matches("input[type=range], input[type=text]")) return;
+    event.preventDefault();
+    step(by);
+  });
+  $("viewer-delete").addEventListener("click", async () => {
+    const p = byId(viewed);
+    if (!p || !confirm("Delete " + p.name + "? It leaves every page, and this cannot be undone.")) return;
+    const at = library.indexOf(p);
+    try {
+      await post("pages/photo/" + p.id + "/delete");
+      if (selected && selected.id === p.id) selected = null;
+      const next = library[at + 1] || library[at - 1];
+      viewed = next ? next.id : null;
+      await refresh();
+    } catch (e) { say(e.message); }
+  });
 
   async function refresh() {
     await loadAll();
@@ -822,21 +913,24 @@
       xhr.addEventListener("load", () => {
         let body = {};
         try { body = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
-        if (xhr.status === 201) resolve(null);
-        else if (xhr.status === 401) resolve("Signed out. Reload the page to sign in again.");
-        else resolve(body.problem || "The server refused this (" + xhr.status + ").");
+        if (xhr.status === 201) resolve({id: body.id});
+        else if (xhr.status === 401) resolve({problem: "Signed out. Reload the page to sign in again."});
+        else resolve({problem: body.problem || "The server refused this (" + xhr.status + ")."});
       });
-      xhr.addEventListener("error", () => resolve("Cannot reach the server. Check that it is running."));
+      xhr.addEventListener("error", () => resolve({problem: "Cannot reach the server. Check that it is running."}));
       xhr.send(form);
-    }).then((problem) => {
+    }).then(({id, problem}) => {
       bar.value = 1;
       words.textContent = problem || "Added.";
       words.classList.toggle("problem", !!problem);
-      return !problem;
+      return id;
     });
   }
 
+  // Uploads files into the library and puts each new photo on this page.
   async function upload(files) {
+    openLibrary();
+    const added = [];
     for (const file of files) {
       const item = document.createElement("li");
       const name = document.createElement("span");
@@ -848,10 +942,18 @@
       words.className = "result";
       item.append(name, bar, words);
       $("uploads").append(item);
-      if (await sendOne(file, bar, words)) setTimeout(() => item.remove(), 3000);
+      const id = await sendOne(file, bar, words);
+      if (id) {
+        added.push(id);
+        setTimeout(() => item.remove(), 3000);
+      }
     }
     library = (await (await call("photos/list")).json()).photos;
-    drawLibrary();
+    const on = settings[pageType()].photos;
+    const fresh = added.filter((id, i) => !on.includes(id) && added.indexOf(id) === i);
+    if (fresh.length) await setPhotos([...on, ...fresh]);
+    if (added.length) view(added[0]);
+    else drawLibrary();
   }
   $("files").addEventListener("change", () => {
     const files = Array.from($("files").files);

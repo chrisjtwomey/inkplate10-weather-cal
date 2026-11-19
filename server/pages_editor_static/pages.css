@@ -79,25 +79,55 @@ button.link { padding: 0; border: 0; background: none; color: var(--soft); text-
 #strip li.dragging { z-index: 2; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
 #strip .open { padding: 0; border: 2px solid transparent; touch-action: none; }
 #strip li.selected .open { border-color: var(--ink); }
-#strip img, #photos img, #choices img { display: block; width: 120px; aspect-ratio: 825 / 500; object-fit: cover;
+#strip img, #photos img { display: block; width: 120px; aspect-ratio: 825 / 500; object-fit: cover;
                                          border-radius: 3px; background: #fff; }
 #strip .remove { position: absolute; top: 2px; right: 2px; padding: 0 7px; line-height: 1.4; background: var(--paper); }
 
-/* The library */
-#library { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--faint); }
+/* The library, in the Photos dialog */
+#picker { width: min(72rem, 96vw); max-width: none; max-height: 94vh; padding: 20px 24px; }
+#library { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; margin-top: 16px; }
+#library[hidden] { display: none; }
+@media (max-width: 760px) { #library { grid-template-columns: 1fr; } }
+#viewer { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+#viewer .frame { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3;
+                 background: #000; border-radius: 4px; overflow: hidden; }
+#viewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
+#viewer .step { position: absolute; top: 50%; transform: translateY(-50%); padding: 4px 14px; font-size: 1.6rem;
+                line-height: 1; background: rgb(0 0 0 / .55); color: #fff; border-color: transparent; }
+#viewer-prev { left: 8px; }
+#viewer-next { right: 8px; }
+#viewer-panel { position: absolute; top: 8px; right: 8px; background: rgb(0 0 0 / .55); color: #fff; border-color: transparent; }
+#viewer-panel[aria-pressed=true] { color: #000; background: #fff; border-color: #000; }
+#viewer figcaption { display: flex; flex-direction: column; gap: 6px; }
+#viewer .name { overflow-wrap: anywhere; }
+#viewer .where { color: var(--soft); font-size: .9rem; }
+#viewer .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.pager[hidden] { display: none; }
+#picker .heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#picker h2 { margin: 0; }
+#picker::backdrop { background: rgb(0 0 0 / .5); }
 #uploads { list-style: none; margin: 12px 0 0; padding: 0; }
 #uploads li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 4px 0; }
 #uploads progress { width: 10rem; }
 #uploads .result { color: var(--soft); }
-#photos { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--faint); }
-#photos li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 0;
-             border-bottom: 1px solid var(--faint); }
-#photos .name { flex: 1; min-width: 10rem; overflow-wrap: anywhere; }
-#photos .where { color: var(--soft); font-size: .9rem; }
+#photos { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px;
+          grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#photos li { position: relative; min-width: 0; }
+#photos .show { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 0; border: 0;
+                background: none; color: inherit; text-align: left; cursor: pointer; }
+#photos img { width: 100%; border: 2px solid transparent; }
+#photos li.viewed img { border-color: var(--ink); outline: 2px solid var(--ink); }
+#photos .badge { position: absolute; top: 6px; right: 6px; display: grid; place-items: center;
+                 width: 1.75rem; height: 1.75rem; padding: 0; border-radius: 50%; border: 2px solid #fff;
+                 background: rgb(0 0 0 / .4); color: #000; font-size: 1rem; line-height: 1; }
+#photos .badge[aria-pressed=true] { background: #fff; }
+#photos .badge[aria-pressed=true]::after { content: "✓"; }
+#photos .name { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#photos .where { color: var(--soft); font-size: .8rem; }
+
 #drop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: var(--paper);
         opacity: .92; border: 3px dashed var(--mid); pointer-events: none; }
 #drop[hidden] { display: none; }
 #drop p { font-size: 1.6rem; }
 dialog { max-width: 32rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
-#choices { list-style: none; padding: 0; max-height: 50vh; overflow: auto; }
-#choices label { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
