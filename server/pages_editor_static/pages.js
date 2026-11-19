@@ -22,6 +22,7 @@
   let library = [];       // every photo
   let at = 0;             // which page type
   let selected = null;    // {id, framing, saved, original, img, w, h}
+  let pagePhoto = null;   // the page's photo today, {id, framing, img, w, h, live}: drawn while its size changes
   let panelOn = false;
   let saveTimer = 0;
   let sizeTimer = 0, pendingSize;   // pendingSize: a percent, null for the default, undefined when saved
@@ -117,13 +118,14 @@
     parts.doc.body.style.setProperty("--picture-growth", (height - range.defaultPixels) / range.defaultPixels);
     placeHandle();
     placeGrip();
-    if (selected) drawPhoto();
+    if (drawn()) drawPhoto();
   }
 
   function setSize(size) {
     const range = sizeRange();
     const clamped = Math.round(clamp(size, range.min, range.max) * 10) / 10;
     pendingSize = clamped === range.default ? null : clamped;
+    if (pagePhoto) pagePhoto.live = true;
     drawSize();
     applySize();
     clearTimeout(sizeTimer);
@@ -305,6 +307,7 @@
   }
 
   frame.addEventListener("load", () => {
+    loadPagePhoto().catch(() => { pagePhoto = null; });
     fit();
     placeGrip();
     if (selected) drawPhoto();
@@ -355,10 +358,65 @@
             zoom: scale / Math.max((r - l) / w, (b - t) / h)};
   }
 
-  const currentBox = () => {
+  // As photos/picture.py resized: a framing relative to the area at its default height
+  // (dbox), made relative to the same area at another height (box) under the same top edge.
+  function resized(f, w, h, box, dbox) {
+    const [l, t, r, b] = box, [dl, dt, dr, db] = dbox;
+    const scale = f.zoom * Math.max((dr - dl) / w, (db - dt) / h);
+    const lower = ((b - t) - (db - dt)) / (2 * h * scale);
+    return covering({x: f.x, y: f.y + lower, zoom: scale / Math.max((r - l) / w, (b - t) / h)}, w, h, box);
+  }
+
+  // The other way: a framing relative to box, made relative to the area at its default height.
+  function unsized(f, w, h, box, dbox) {
+    const [l, t, r, b] = box, [dl, dt, dr, db] = dbox;
+    const scale = f.zoom * Math.max((r - l) / w, (b - t) / h);
+    const higher = ((b - t) - (db - dt)) / (2 * h * scale);
+    return {x: f.x, y: f.y - higher, zoom: scale / Math.max((dr - dl) / w, (db - dt) / h)};
+  }
+
+  // The picture area on the square now (box) and at the theme's default height (dbox).
+  function areaBoxes() {
     const parts = pictureParts();
-    return parts && areaBox(parts);
-  };
+    if (!parts) return null;
+    const box = areaBox(parts), range = sizeRange();
+    if (!range) return {box, dbox: box};
+    const perPixel = (box[3] - box[1]) / parts.area.getBoundingClientRect().height;
+    return {box, dbox: [box[0], box[1], box[2], box[1] + range.defaultPixels * perPixel]};
+  }
+
+  // The photo the editor draws: the selected one, else the page's own while its size changes.
+  const drawn = () => selected || (pagePhoto && pagePhoto.live ? pagePhoto : null);
+
+  // The drawn photo's framing as the area shows it now.
+  function shown(f = drawn().framing) {
+    const p = drawn(), b = areaBoxes();
+    return b ? resized(f, p.w, p.h, b.box, b.dbox) : f;
+  }
+
+  // The framing a photo has on this page, relative to the area at its default height.
+  function pageFraming(photo, w, h) {
+    const b = areaBoxes();
+    if (!b) return CENTRE;
+    return covering(photo.framings[pageType()] || areaFraming(photo.framing, w, h, b.dbox), w, h, b.dbox);
+  }
+
+  // Loads the page's photo today, so a size change can draw it as the server will.
+  async function loadPagePhoto() {
+    pagePhoto = null;
+    const page = pageType();
+    if (!sizeRange()) return;
+    const {photo: id} = await (await call("pages/today/" + page + ".json")).json();
+    const photo = id && byId(id);
+    if (!photo || page !== pageType()) return;
+    const img = new Image();
+    img.src = "pages/photo/" + id + ".jpg";
+    await img.decode();
+    if (page !== pageType()) return;
+    const w = img.naturalWidth, h = img.naturalHeight;
+    pagePhoto = {id, img, w, h, framing: pageFraming(photo, w, h), live: pendingSize !== undefined};
+    if (pagePhoto.live) drawPhoto();
+  }
 
   let drawing = false, again = false;
   function drawPhoto() {
@@ -374,7 +432,8 @@
 
   function paint() {
     const parts = pictureParts();
-    if (!parts || !selected || !selected.img) return;
+    const photo = drawn();
+    if (!parts || !photo || !photo.img) return;
     let canvas = parts.doc.querySelector('canvas[data-editor="photo"]');
     if (!canvas) {
       canvas = parts.doc.createElement("canvas");
@@ -386,21 +445,22 @@
       parts.area.insertBefore(canvas, parts.square);
     }
     const box = areaBox({...parts, square: canvas});
-    const p = placement(covering(selected.framing, selected.w, selected.h, box), selected.w, selected.h, box);
-    pencil(canvas, p);
+    const f = shown();
+    if (selected) $("zoom").value = Math.log(f.zoom);
+    pencil(canvas, photo, placement(f, photo.w, photo.h, box));
     placeHandle();
   }
 
   // The server's effect, in the same order: place on white, blur the negative,
   // dodge, stretch the middle 98% of greys to full range, dither to four greys.
-  function pencil(canvas, p) {
-    const w = selected.w * p.scale, h = selected.h * p.scale;
+  function pencil(canvas, photo, p) {
+    const w = photo.w * p.scale, h = photo.h * p.scale;
     const base = document.createElement("canvas");
     base.width = base.height = SIZE;
     const bc = base.getContext("2d");
     bc.fillStyle = "#fff";
     bc.fillRect(0, 0, SIZE, SIZE);
-    bc.drawImage(selected.img, SIZE / 2 - p.x * w, SIZE / 2 - p.y * h, w, h);
+    bc.drawImage(photo.img, SIZE / 2 - p.x * w, SIZE / 2 - p.y * h, w, h);
     const neg = document.createElement("canvas");
     neg.width = neg.height = SIZE;
     const nc = neg.getContext("2d");
@@ -458,10 +518,11 @@
     handle.hidden = false;
   }
 
+  // Sets the selected photo's framing from one relative to the area as it is now.
   function setFraming(f) {
     if (!selected.img) return;
-    selected.framing = covering(f, selected.w, selected.h, currentBox());
-    $("zoom").value = Math.log(selected.framing.zoom);
+    const b = areaBoxes();
+    selected.framing = b ? unsized(covering(f, selected.w, selected.h, b.box), selected.w, selected.h, b.box, b.dbox) : f;
     $("undo-framing").disabled = same(selected.framing, selected.original);
     if (!same(selected.framing, selected.original)) $("hint").hidden = true;
     drawPhoto();
@@ -517,14 +578,14 @@
     if (!selected) return;
     handle.setPointerCapture(event.pointerId);
     pointers.set(event.pointerId, {x: event.clientX, y: event.clientY});
-    if (pointers.size === 1) drag = {x: event.clientX, y: event.clientY, framing: {...selected.framing}};
-    else if (pointers.size === 2) { drag = null; pinch = {spread: spread(), zoom: selected.framing.zoom}; }
+    if (pointers.size === 1) drag = {x: event.clientX, y: event.clientY, framing: shown()};
+    else if (pointers.size === 2) { drag = null; pinch = {spread: spread(), zoom: shown().zoom}; }
   });
   handle.addEventListener("pointermove", (event) => {
     if (!pointers.has(event.pointerId)) return;
     pointers.set(event.pointerId, {x: event.clientX, y: event.clientY});
     if (pinch && pointers.size === 2) {
-      setFraming({...selected.framing, zoom: pinch.zoom * spread() / Math.max(pinch.spread, 1)});
+      setFraming({...shown(), zoom: pinch.zoom * spread() / Math.max(pinch.spread, 1)});
     } else if (drag) {
       setFraming(moved(event.clientX - drag.x, event.clientY - drag.y, drag.framing));
     }
@@ -540,12 +601,13 @@
     if (!selected) return;
     event.preventDefault();
     const rate = event.ctrlKey ? TRACKPAD_PINCH_RATE : SCROLL_ZOOM_RATE;
-    setFraming({...selected.framing, zoom: selected.framing.zoom * Math.exp(-event.deltaY * rate)});
+    const f = shown();
+    setFraming({...f, zoom: f.zoom * Math.exp(-event.deltaY * rate)});
   }, {passive: false});
   handle.addEventListener("dblclick", () => { if (selected) setFraming(CENTRE); });
   handle.addEventListener("keydown", (event) => {
     if (!selected) return;
-    const f = selected.framing;
+    const f = shown();
     const by = event.shiftKey ? 10 : 1;
     const across = {ArrowLeft: -1, ArrowRight: 1}[event.key] || 0;
     const down = {ArrowUp: -1, ArrowDown: 1}[event.key] || 0;
@@ -557,10 +619,10 @@
   });
   $("zoom").min = Math.log(N.minZoom);
   $("zoom").max = Math.log(N.maxZoom);
-  $("zoom").addEventListener("input", () => setFraming({...selected.framing, zoom: Math.exp(Number($("zoom").value))}));
+  $("zoom").addEventListener("input", () => setFraming({...shown(), zoom: Math.exp(Number($("zoom").value))}));
   $("centre").addEventListener("click", () => setFraming(CENTRE));
 
-  $("undo-framing").addEventListener("click", () => setFraming(selected.original));
+  $("undo-framing").addEventListener("click", () => setFraming(shown(selected.original)));
   $("framing-everywhere").addEventListener("click", async () => {
     clearTimeout(saveTimer);
     try {
@@ -586,13 +648,13 @@
     img.src = "pages/photo/" + id + ".jpg";
     await img.decode();
     if (!selected || selected.id !== id) return;
-    const w = img.naturalWidth, h = img.naturalHeight, box = currentBox();
-    const own = photo.framings[pageType()];
-    const framing = covering(own || areaFraming(photo.framing, w, h, box), w, h, box);
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const framing = pageFraming(photo, w, h);
     Object.assign(selected, {img, w, h, framing, saved: framing, original: framing});
     status("");
     $("framing-tools").hidden = false;
-    setFraming(framing);
+    $("undo-framing").disabled = true;
+    drawPhoto();
   }
 
   // ---- Panel view ----

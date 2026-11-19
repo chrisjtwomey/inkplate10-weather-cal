@@ -11,7 +11,7 @@ from PIL import Image
 
 from photos import Framing, PhotoSource, PhotoStore
 from photos import picture as pic
-from views.themes import picture_box
+from views.themes import CLASSIC_PICTURE, picture_box
 
 WIDE, TALL = picture_box("classic", "today", 825, 1200), picture_box("classic", "hourly", 825, 1200)
 
@@ -66,6 +66,39 @@ def test_a_page_framing_always_covers_the_picture_area(framing, box):
 def test_a_framing_that_covers_the_area_is_kept_as_it_is():
     f = Framing(0.45, 0.55, 1.5)
     assert pic.covering(f, (400, 300), WIDE) == f
+
+
+def _on_page(framing, size, box, default_box):
+    """Where the photo sits under the area's top-left corner: (left, top, scale)."""
+    p = pic.area_placement(pic.resized(framing, size, box, default_box), size, box)
+    left = pic.SIZE / 2 - p.x * size[0] * p.scale
+    top = pic.SIZE / 2 - p.y * size[1] * p.scale
+    return left - box[0], top - box[1], p.scale
+
+
+TALLER = {height: CLASSIC_PICTURE.box(825, 1200, height / 1200 * 100) for height in (420, 540, 600, 800)}
+
+
+@pytest.mark.parametrize("framing", [Framing(), Framing(0.4, 0.3, 1.2)])
+def test_a_taller_or_shorter_area_keeps_the_photos_scale_and_place(framing):
+    size = (4000, 3000)
+    at_default = _on_page(framing, size, WIDE, WIDE)
+    for height in (420, 540):
+        assert _on_page(framing, size, TALLER[height], WIDE) == pytest.approx(at_default)
+
+
+def test_a_photo_that_runs_out_at_the_bottom_moves_down_then_zooms_to_cover():
+    size, framing = (4000, 3000), Framing()   # 825 x 619 at its default scale
+    _, top, scale = _on_page(framing, size, WIDE, WIDE)
+    _, lower, same = _on_page(framing, size, TALLER[600], WIDE)
+    assert same == pytest.approx(scale) and lower > top
+    _, _, larger = _on_page(framing, size, TALLER[800], WIDE)
+    assert larger == pytest.approx(800 / 3000)
+
+
+def test_at_the_default_size_a_framing_is_as_it_was():
+    f = Framing(0.45, 0.55, 1.5)
+    assert pic.resized(f, (400, 300), WIDE, WIDE) == pytest.approx(f)
 
 
 # ---------- Pictures per page ----------

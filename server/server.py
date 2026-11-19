@@ -347,11 +347,13 @@ def main():
         return {"picture_height": area.pixels(image.inner_width, image.inner_height, picture_size(settings, name)),
                 "default_picture_height": area.pixels(image.inner_width, image.inner_height)}
 
-    def box(name: str):
-        """The page's picture area on the picture square, at its size now."""
+    def boxes(name: str):
+        """The page's picture area on the picture square, at its size now and at its
+        theme's default size; None when the page has no picture area."""
         settings = running["cfg"]
-        return picture_box(settings.page_themes[name], name, image.inner_width, image.inner_height,
-                           picture_size(settings, name))
+        theme = settings.page_themes[name]
+        now = picture_box(theme, name, image.inner_width, image.inner_height, picture_size(settings, name))
+        return now and (now, picture_box(theme, name, image.inner_width, image.inner_height))
 
     def make_page(name: str, settings):
         theme = settings.page_themes[name]
@@ -362,7 +364,7 @@ def main():
     photo_store = PhotoStore(os.path.join(cwd, "data", "photos"))
     # Each fetches at the first render that needs it, after the server is up.
     # Each page declares what it needs in Page.requires.
-    photo_source = PhotoSource(photo_store, page_sets=lambda: photo_pages, boxes=box)
+    photo_source = PhotoSource(photo_store, page_sets=lambda: photo_pages, boxes=boxes)
     sources = [StaticMapSource(map_cache, cfg.location), weather_svc, photo_source]
     try:
         mods = load_mods(os.path.join(cwd, "mods"), os.path.join(cwd, "data", "mods"), config, geometry, pages, sources)
@@ -453,9 +455,14 @@ def main():
         url = photo_source.datasets()["photo_urls"]().get(name)
         return urlparse(url).path if url else None
 
+    def todays_photo(name: str) -> str | None:
+        photo = photo_source.todays_photo(name) if name in photo_pages else None
+        return photo.id if photo else None
+
     server.app.register_blueprint(editor_blueprint(Editor(
-        live, photo_store, HTML_DIR, page_html, map_file, photo_file, previewer, box,
-        themes=THEMES, page_types=PAGE_TYPES, map_kinds=MAP_KINDS, inner=(image.inner_width, image.inner_height))))
+        live, photo_store, HTML_DIR, page_html, map_file, photo_file, previewer, boxes,
+        themes=THEMES, page_types=PAGE_TYPES, map_kinds=MAP_KINDS, inner=(image.inner_width, image.inner_height),
+        todays_photo=todays_photo)))
     server.run(once=args.once)
 
 

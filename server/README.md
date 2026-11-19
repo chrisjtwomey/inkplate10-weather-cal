@@ -161,8 +161,9 @@ lays it out.
 - **Picture size** sets how tall the picture is, when the page's theme lets it
   change. Drag the grip on the picture's bottom edge, or use the slider. The
   grip shows while the pointer is over the photo, and always on a touch screen.
-  The page re-lays as you go, and the size saves by itself a second after you
-  stop. **Default size** puts back the theme's size.
+  The page re-lays as you go, with the page's photo drawn as the display will
+  draw it, and the size saves by itself a second after you stop. **Default
+  size** puts back the theme's size.
 - **Sample weather** fills the page with made-up weather, for a page that is not
   drawn now. The page is drawn as large as fits the window; **Actual size**
   shows it at the panel's size.
@@ -178,7 +179,10 @@ the picture area while you frame it. Drag the photo to move it, or use
 the arrow keys (Shift for bigger steps). Pinch, scroll, use the slider or + and
 − to zoom. Double-click or **Centre** to centre it. The photo always covers the
 picture area: it does not zoom out further, or move so that an edge shows. A
-framing that showed an edge is drawn covering the area. The framing saves by itself
+framing that showed an edge is drawn covering the area. A taller or shorter
+picture keeps the photo's scale and its place under the top edge, and shows more
+or less of it below; when the photo runs out at the bottom, it moves down, then
+zooms only as far as covers the area. The framing saves by itself
 a second after you stop, and the page is redrawn; **Undo** puts back the framing
 the photo had when you selected it. **Use this framing on every page** copies it
 to the others. While a page is being redrawn, further changes wait and are drawn

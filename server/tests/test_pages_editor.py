@@ -65,8 +65,8 @@ def parts(tmp_path):
         return b"\x89PNG-" + name.encode()
 
     ed = Editor(live, store, HTML_DIR, page_html, lambda: str(map_png), lambda name: None, render,
-                lambda name: BOX, themes=THEMES, page_types=PAGE_TYPES, map_kinds=("classic",),
-                inner=(825, 1200))
+                lambda name: (BOX, BOX), themes=THEMES, page_types=PAGE_TYPES, map_kinds=("classic",),
+                inner=(825, 1200), todays_photo={"today": "abc"}.get)
     app = Flask(__name__)
     app.register_blueprint(editor_blueprint(ed))
     return app.test_client(), store, live, rendered
@@ -96,6 +96,13 @@ def test_a_page_view_is_its_html_with_its_files_beside_it(parts):
     assert styles.status_code == 200 and styles.cache_control.max_age == 0
     assert client.get("/pages/view/map.png").status_code == 200
     assert client.get("/pages/view/photo-today.png").data == client.get("/pages/view/map.png").data
+
+
+def test_the_editor_names_a_pages_photo_today(parts):
+    client, *_ = parts
+    assert client.get("/pages/today/today.json").get_json() == {"photo": "abc"}
+    assert client.get("/pages/today/hourly.json").get_json() == {"photo": None}
+    assert client.get("/pages/today/weekly.json").status_code == 404
 
 
 def test_a_working_copy_is_upright_grey_and_small(parts):

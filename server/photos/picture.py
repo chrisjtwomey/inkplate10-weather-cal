@@ -54,6 +54,19 @@ def covering(framing: Framing, size: tuple, box: tuple) -> Framing:
     return Framing(min(max(framing.x, margin_x), 1 - margin_x), min(max(framing.y, margin_y), 1 - margin_y), zoom)
 
 
+def resized(framing: Framing, size: tuple, box: tuple, default_box: tuple) -> Framing:
+    """``framing``, relative to the area at its default height ``default_box``, made
+    relative to ``box``, the same area at another height under the same top edge.
+    The photo keeps its scale and its place under the top edge, and zooms only as
+    far as keeps the area covered."""
+    dl, dt, dr, db = default_box
+    left, top, right, bottom = box
+    scale = framing.zoom * max((dr - dl) / size[0], (db - dt) / size[1])
+    lower = ((bottom - top) - (db - dt)) / (2 * size[1] * scale)
+    return covering(Framing(framing.x, framing.y + lower, scale / max((right - left) / size[0], (bottom - top) / size[1])),
+                    size, box)
+
+
 def area_placement(framing: Framing, size: tuple, box: tuple) -> Placement:
     """A framing relative to a picture area ``box`` (left, top, right, bottom)
     of the square: zoom 1 just covers the area, and the point sits at its centre.
@@ -119,18 +132,22 @@ def drawing(store: PhotoStore, photo: Photo, framing: Framing) -> bytes:
         return _png(pencil(framed(img, framing)))
 
 
-def page_framing(photo: Photo, page_type: str, size: tuple, box: tuple) -> Framing:
-    """The photo's framing on ``page_type``, relative to its area ``box``: the
-    page's own, else the photo's framing for every page, converted."""
-    return photo.framings.get(page_type) or area_framing(photo.framing, size, box)
+def page_framing(photo: Photo, page_type: str, size: tuple, default_box: tuple) -> Framing:
+    """The photo's framing on ``page_type``, relative to its area at its default
+    height: the page's own, else the photo's framing for every page, converted."""
+    return photo.framings.get(page_type) or area_framing(photo.framing, size, default_box)
 
 
-def page_drawing(store: PhotoStore, photo: Photo, page_type: str, box: tuple) -> bytes:
-    """``photo`` as ``page_type`` shows it in its picture area ``box``, in pencil, as PNG."""
+def page_drawing(store: PhotoStore, photo: Photo, page_type: str, box: tuple,
+                 default_box: tuple | None = None) -> bytes:
+    """``photo`` as ``page_type`` shows it in its picture area ``box``, in pencil, as
+    PNG. ``default_box`` is the area at its default height, which the framing is
+    relative to; None when that is ``box``."""
+    default_box = default_box or box
     with Image.open(store.path(photo.id)) as img:
         img = upright(img)
-        placement = area_placement(page_framing(photo, page_type, img.size, box), img.size, box)
-        return _png(pencil(placed(img, placement)))
+        framing = resized(page_framing(photo, page_type, img.size, default_box), img.size, box, default_box)
+        return _png(pencil(placed(img, area_placement(framing, img.size, box))))
 
 
 def _kept(store: PhotoStore, photo: Photo, suffix: str, *more) -> str:
@@ -139,15 +156,17 @@ def _kept(store: PhotoStore, photo: Photo, suffix: str, *more) -> str:
     return os.path.join(store.pictures_folder, f"{photo.id}-{key}{suffix}.png")
 
 
-def page_picture_path(store: PhotoStore, photo: Photo, page_type: str, box: tuple) -> str:
+def page_picture_path(store: PhotoStore, photo: Photo, page_type: str, box: tuple,
+                      default_box: tuple | None = None) -> str:
     """The picture of ``photo`` for ``page_type``, made if it is not kept. Other
     pages' pictures of the photo stay kept."""
     own = photo.framings.get(page_type)
     tag = f"-{page_type}"
-    path = _kept(store, photo, tag, page_type, asdict(own) if own else None, [round(v, 2) for v in box])
+    path = _kept(store, photo, tag, page_type, asdict(own) if own else None,
+                 [round(v, 2) for v in (*box, *(default_box or box))])
     if os.path.exists(path):
         return path
-    png = page_drawing(store, photo, page_type, box)
+    png = page_drawing(store, photo, page_type, box, default_box)
     os.makedirs(store.pictures_folder, exist_ok=True)
     _forget_matching(store, re.compile(re.escape(photo.id) + r"-[0-9a-f]{12}" + re.escape(tag) + r"\.png"))
     write_atomically(path, png)

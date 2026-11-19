@@ -22,7 +22,7 @@ class PhotoSource(DataSource):
 
     ``page_sets`` gives each page's photo ids in order, or None for a page that
     shows the store's included photos. ``boxes`` gives a page's picture area on
-    the square. Without ``page_sets``, every page shares the included photos."""
+    the square, at its size now and at its default size. Without ``page_sets``, every page shares the included photos."""
 
     def __init__(self, store: PhotoStore, today=dt.date.today, page_sets=None, boxes=None):
         self.store = store
@@ -86,8 +86,8 @@ class PhotoSource(DataSource):
             if photo is None:
                 continue
             try:
-                box = self._boxes(page_type)
-                path = page_picture_path(self.store, photo, page_type, box) if box else picture_path(self.store, photo)
+                boxes = self._boxes(page_type)
+                path = page_picture_path(self.store, photo, page_type, *boxes) if boxes else picture_path(self.store, photo)
                 urls[page_type] = Path(path).resolve().as_uri()
             except Exception as exc:
                 log.warning("No photo on the %s page for this render: %s: %s", page_type, photo.name, exc)

@@ -123,7 +123,7 @@ def test_a_broken_state_file_starts_from_the_first_photo(store, clock):
 def test_each_page_gets_its_own_picture_of_todays_photo(store, clock):
     _add(store, 1)
     source = PhotoSource(store, clock, page_sets=lambda: {"today": None, "hourly": None},
-                         boxes={"today": (188, 450, 1012, 950), "hourly": (188, 270, 1012, 930)}.get)
+                         boxes={"today": ((188, 450, 1012, 950),) * 2, "hourly": ((188, 270, 1012, 930),) * 2}.get)
     urls = source.datasets()["photo_urls"]()
     assert set(urls) == {"today", "hourly"} and urls["today"] != urls["hourly"]
     for url in urls.values():

@@ -44,18 +44,21 @@ class Editor:
         as its pictures; raises LookupError when the page has nothing to show
     map_file() -> the map image's path
     photo_file(page) -> the page's picture today, or None
+    todays_photo(page) -> the id of the page's photo today, or None
     render(page, picture_uri) -> the page as PNG, as the display draws it
-    box(page) -> the page's picture area on the picture square
+    boxes(page) -> the page's picture area on the picture square, at its size now
+      and at its default size
     inner -> (width, height) of the page's inner area, in pixels
     """
 
     def __init__(self, live, store: PhotoStore, views_dir: str, page_html: Callable, map_file: Callable,
-                 photo_file: Callable, render: Callable, box: Callable, themes: dict, page_types: tuple,
-                 map_kinds: tuple, inner: tuple):
+                 photo_file: Callable, render: Callable, boxes: Callable, themes: dict, page_types: tuple,
+                 map_kinds: tuple, inner: tuple, todays_photo: Callable = lambda page: None):
         self.live, self.store, self.views_dir = live, store, views_dir
         self.page_html, self.map_file, self.photo_file = page_html, map_file, photo_file
-        self.render, self.box = render, box
+        self.render, self.boxes = render, boxes
         self.themes, self.page_types, self.map_kinds, self.inner = themes, page_types, map_kinds, inner
+        self.todays_photo = todays_photo
 
 
 def picture_sizes(themes: dict, inner: tuple) -> dict:
@@ -181,6 +184,10 @@ def editor_blueprint(ed: Editor) -> Blueprint:
             pass
         return "", 204
 
+    @bp.route("/today/<name>.json", methods=["GET"])
+    def today(name: str):
+        return jsonify(photo=ed.todays_photo(page_type(name)))
+
     @bp.route("/panel/<name>.png", methods=["GET"])
     def panel(name: str):
         name = page_type(name)
@@ -191,7 +198,7 @@ def editor_blueprint(ed: Editor) -> Blueprint:
                 found.framings[name] = _framing(request.args)
                 picture = os.path.join(folder, "picture.png")
                 with open(picture, "wb") as f:
-                    f.write(page_drawing(ed.store, found, name, ed.box(name)))
+                    f.write(page_drawing(ed.store, found, name, *ed.boxes(name)))
             try:
                 png = ed.render(name, Path(picture).resolve().as_uri() if picture else "")
             except LookupError:
